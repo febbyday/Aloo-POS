@@ -1,0 +1,499 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id               String            @id @default(cuid())
+  name             String
+  description      String?
+  shortDescription String?
+  sku              String            @unique
+  barcode          String?           @unique
+  retailPrice      Decimal           @db.Decimal(10, 2)
+  costPrice        Decimal?          @db.Decimal(10, 2)
+  salePrice        Decimal?          @db.Decimal(10, 2)
+  status           ProductStatus     @default(ACTIVE)
+  productType      String            @default("simple")
+  brand            String?
+  stock            Int               @default(0)
+  reorderPoint     Int?              @default(10)
+  categoryId       String?
+  supplierId       String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  OrderItem        OrderItem[]
+  Category         Category?         @relation(fields: [categoryId], references: [id])
+  Supplier         Supplier?         @relation(fields: [supplierId], references: [id])
+  ProductLocation  ProductLocation[]
+}
+
+model Order {
+  id                   String               @id @default(cuid())
+  orderNumber          String               @unique
+  status               OrderStatus          @default(PENDING)
+  total                Decimal              @db.Decimal(10, 2)
+  subtotal             Decimal              @db.Decimal(10, 2)
+  tax                  Decimal              @default(0) @db.Decimal(10, 2)
+  discount             Decimal              @default(0) @db.Decimal(10, 2)
+  notes                String?
+  paymentMethod        String?
+  paymentStatus        PaymentStatus        @default(PENDING)
+  storeId              String?
+  customerId           String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  customer             Customer?            @relation(fields: [customerId], references: [id])
+  Store                Store?               @relation(fields: [storeId], references: [id])
+  items                OrderItem[]
+  loyalty_transactions LoyaltyTransaction[]
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  quantity  Int
+  price     Decimal  @db.Decimal(10, 2)
+  discount  Decimal  @default(0) @db.Decimal(10, 2)
+  tax       Decimal  @default(0) @db.Decimal(10, 2)
+  orderId   String
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model Category {
+  id             String     @id
+  name           String     @unique
+  description    String?
+  parentId       String?
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime
+  Category       Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  other_Category Category[] @relation("CategoryToCategory")
+  Product        Product[]
+}
+
+model Customer {
+  id                   String               @id @default(cuid())
+  firstName            String
+  lastName             String
+  email                String               @unique
+  phone                String?
+  status               String               @default("active")
+  loyaltyPoints        Int                  @default(0)
+  totalSpent           Decimal              @default(0) @db.Decimal(10, 2)
+  dateOfBirth          DateTime?
+  notes                String?
+  tags                 String[]
+  totalOrders          Int                  @default(0)
+  isActive             Boolean              @default(true)
+  lastPurchase         DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  membershipLevel      String               @default("bronze")
+  addresses            Address[]
+  orders               Order[]
+  repairs              Repair[]
+  loyalty_transactions LoyaltyTransaction[]
+  groups               CustomerGroup[]      @relation("CustomerToCustomerGroup")
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  street     String
+  city       String
+  state      String?
+  postalCode String?
+  country    String   @default("USA")
+  isDefault  Boolean  @default(false)
+  type       String   @default("shipping")
+  customerId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model CustomerGroup {
+  id            String     @id @default(cuid())
+  name          String     @unique
+  description   String?
+  discountType  String     @default("percentage")
+  discountValue Decimal    @default(0) @db.Decimal(10, 2)
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  customers     Customer[] @relation("CustomerToCustomerGroup")
+}
+
+model EmploymentStatus {
+  id          String   @id
+  name        String   @unique
+  description String
+  color       String
+  isActive    Boolean  @default(true)
+  staffCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  Staff       Staff[]
+}
+
+model EmploymentType {
+  id          String   @id
+  name        String   @unique
+  description String
+  color       String
+  benefits    String[]
+  staffCount  Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  Staff       Staff[]
+}
+
+model ProductLocation {
+  id        String   @id
+  stock     Int      @default(0)
+  minStock  Int      @default(0)
+  maxStock  Int      @default(100)
+  productId String
+  storeId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  Product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  Store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, storeId])
+}
+
+model Role {
+  id           String   @id
+  name         String   @unique
+  description  String
+  permissions  Json
+  isSystemRole Boolean  @default(false)
+  staffCount   Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+  Staff        Staff[]
+}
+
+model Staff {
+  id                 String            @id
+  firstName          String
+  lastName           String
+  email              String            @unique
+  phone              String
+  roleId             String?
+  status             StaffStatus       @default(ACTIVE)
+  hireDate           DateTime
+  department         String
+  position           String
+  employmentTypeId   String?
+  employmentStatusId String?
+  bankingDetails     Json?
+  emergencyContact   Json
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime
+  updatedBy          String?
+  repairs            Repair[]          @relation("RepairTechnician")
+  EmploymentStatus   EmploymentStatus? @relation(fields: [employmentStatusId], references: [id])
+  EmploymentType     EmploymentType?   @relation(fields: [employmentTypeId], references: [id])
+  Role               Role?             @relation(fields: [roleId], references: [id])
+}
+
+model Store {
+  id              String            @id
+  name            String
+  type            StoreType         @default(RETAIL)
+  address         String?
+  city            String?
+  state           String?
+  phone           String?
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  postalCode      String?
+  Order           Order[]
+  ProductLocation ProductLocation[]
+}
+
+model Supplier {
+  id            String       @id
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  state         String?
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime
+  country       String?
+  notes         String?
+  postalCode    String?
+  taxId         String?
+  code          String?      @unique
+  Product       Product[]
+  RepairItem    RepairItem[]
+}
+
+model Repair {
+  id                   String              @id @default(cuid())
+  ticketNumber         String              @unique
+  customerId           String
+  customerName         String
+  customerPhone        String
+  customerEmail        String?
+  productType          LeatherProductType
+  productDescription   String
+  productImages        String[]
+  color                String?
+  serialNumber         String?
+  issueType            RepairIssueType
+  issueDescription     String
+  additionalNotes      String?
+  technicianAssignedId String
+  priority             RepairPriority      @default(MEDIUM)
+  status               RepairStatus        @default(PENDING)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  completedAt          DateTime?
+  deliveredAt          DateTime?
+  estimatedCost        Decimal             @db.Decimal(10, 2)
+  actualCost           Decimal?            @db.Decimal(10, 2)
+  depositAmount        Decimal             @default(0) @db.Decimal(10, 2)
+  balanceDue           Decimal?            @db.Decimal(10, 2)
+  warranty             Boolean             @default(false)
+  notifyCustomer       Boolean             @default(true)
+  notes                String?
+  cancellationReason   String?
+  dueDate              DateTime
+  isPaid               Boolean             @default(false)
+  paymentDate          DateTime?
+  productBrand         String
+  productModel         String
+  productName          String
+  payments             PaymentRecord[]
+  customer             Customer            @relation(fields: [customerId], references: [id])
+  technician           Staff               @relation("RepairTechnician", fields: [technicianAssignedId], references: [id])
+  diagnostics          RepairDiagnostics[]
+  items                RepairItem[]
+  workLogs             RepairWorkLog[]
+}
+
+model RepairItem {
+  id               String    @id @default(cuid())
+  repairId         String
+  type             String
+  name             String
+  description      String?
+  quantity         Int
+  unitPrice        Decimal   @db.Decimal(10, 2)
+  supplierId       String?
+  status           String
+  estimatedArrival DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  repair           Repair    @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  supplier         Supplier? @relation(fields: [supplierId], references: [id])
+}
+
+model RepairDiagnostics {
+  id                String   @id @default(cuid())
+  repairId          String
+  timestamp         DateTime
+  technician        String
+  findings          String
+  recommendations   String
+  estimatedCost     Decimal  @db.Decimal(10, 2)
+  estimatedDuration Decimal  @db.Decimal(10, 2)
+  images            String[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  repair            Repair   @relation(fields: [repairId], references: [id], onDelete: Cascade)
+}
+
+model RepairWorkLog {
+  id          String       @id @default(cuid())
+  repairId    String
+  timestamp   DateTime
+  technician  String
+  description String
+  hoursWorked Decimal      @db.Decimal(10, 2)
+  status      RepairStatus
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  repair      Repair       @relation(fields: [repairId], references: [id], onDelete: Cascade)
+}
+
+model PaymentRecord {
+  id        String        @id @default(cuid())
+  repairId  String
+  timestamp DateTime
+  amount    Decimal       @db.Decimal(10, 2)
+  method    PaymentMethod
+  reference String?
+  notes     String?
+  isDeposit Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  repair    Repair        @relation(fields: [repairId], references: [id], onDelete: Cascade)
+}
+
+model LoyaltyTransaction {
+  id          String   @id @default(cuid())
+  customerId  String
+  type        String
+  points      Int
+  description String?
+  createdAt   DateTime @default(now())
+  orderId     String?
+  updatedAt   DateTime
+  Customer    Customer @relation(fields: [customerId], references: [id])
+  Order       Order?   @relation(fields: [orderId], references: [id])
+
+  @@map("loyalty_transactions")
+}
+
+model LoyaltyEvent {
+  id            String   @id
+  name          String
+  description   String
+  pointsAwarded Int
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
+}
+
+model LoyaltyReward {
+  id          String   @id
+  name        String
+  description String
+  pointsCost  Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+model LoyaltySettings {
+  id                        String   @id
+  pointsPerDollar           Float    @default(1)
+  pointValueInCents         Float    @default(1)
+  minimumRedemption         Int      @default(100)
+  expiryPeriodInDays        Int      @default(365)
+  enableBirthdayBonus       Boolean  @default(true)
+  birthdayBonusPoints       Int      @default(50)
+  enableReferralBonus       Boolean  @default(true)
+  referralBonusPoints       Int      @default(100)
+  autoTierUpgrade           Boolean  @default(true)
+  tierDowngradeEnabled      Boolean  @default(false)
+  tierDowngradePeriodDays   Int      @default(365)
+  spendingCalculationPeriod String   @default("LIFETIME")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime
+}
+
+model LoyaltyTier {
+  id            String   @id
+  name          String
+  minimumPoints Int      @default(0)
+  minimumSpend  Decimal  @default(0) @db.Decimal(10, 2)
+  discount      Decimal  @default(0) @db.Decimal(10, 2)
+  benefits      String[]
+  color         String   @default("#000000")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+}
+
+enum StoreType {
+  RETAIL
+  WAREHOUSE
+  MARKET
+  ONLINE
+}
+
+enum LeatherProductType {
+  SHOES
+  BOOTS
+  BAGS
+  WALLETS
+  BELTS
+  JACKETS
+  OTHER
+}
+
+enum RepairIssueType {
+  TORN_LEATHER
+  BROKEN_ZIPPER
+  FADED_COLOR
+  STITCHING_DAMAGE
+  BROKEN_STRAP
+  HARDWARE_DAMAGE
+  LINING_DAMAGE
+  WATER_DAMAGE
+  OTHER
+}
+
+enum RepairStatus {
+  PENDING
+  IN_PROGRESS
+  WAITING_PARTS
+  READY_FOR_TESTING
+  COMPLETED
+  DELIVERED
+  CANCELLED
+}
+
+enum RepairPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOBILE_MONEY
+  BANK_TRANSFER
+}

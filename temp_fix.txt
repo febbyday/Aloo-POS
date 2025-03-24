@@ -1,0 +1,18 @@
+// This is a temporary fix for the JSX syntax errors in ProductDetailsPage.tsx
+// Replace the section from line 1280-1294 with this:
+
+                            </div>
+                          )}
+                        </TabsContent>
+                      </Tabs>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

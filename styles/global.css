@@ -1,0 +1,7 @@
+/* Add responsive breakpoints and variables */
+:root {
+  --primary-color: #2c3e50; /* Missing CSS variables */
+}
+
+/* Missing: Mobile-first media queries */
+@media (max-width: 768px) { ... } 

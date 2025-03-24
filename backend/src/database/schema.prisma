@@ -1,0 +1,48 @@
+model Customer {
+  id            String    @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String    @unique
+  phone         String?
+  status        String    @default("active")
+  
+  // Loyalty & Membership
+  tier          String    @default("bronze")
+  loyaltyPoints Int       @default(0)
+  totalSpent    Decimal   @default(0)
+  
+  // Timestamps
+  lastPurchase  DateTime?
+  joinDate      DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  orders        Order[]
+  addresses     Address[]
+  groups        CustomerGroup[]
+  
+  @@map("customers")
+}
+
+model CustomerGroup {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  customers   Customer[]
+  
+  @@map("customer_groups")
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  street      String
+  city        String
+  state       String
+  postalCode  String
+  country     String
+  isDefault   Boolean  @default(false)
+  
+  @@map("addresses")
+}

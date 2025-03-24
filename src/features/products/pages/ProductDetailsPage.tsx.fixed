@@ -1,0 +1,1295 @@
+// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { 
+  ArrowLeft, 
+  ArrowLeftRight,
+  Barcode, 
+  Box, 
+  Calendar, 
+  Edit, 
+  ExternalLink, 
+  Eye, 
+  FileText, 
+  History,
+  Package,
+  Printer, 
+  RefreshCw, 
+  Settings, 
+  Share2, 
+  ShoppingBag,
+  BarChart2,
+  Tag,
+  Truck,
+  Upload,
+  Layers,
+  Link,
+  FolderOpen,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Copy,
+  CreditCard,
+  DollarSign,
+  Download,
+  Filter,
+  Info,
+  ShoppingCart,
+  Search,
+  AlertCircle,
+  Plus,
+  X,
+  LineChart,
+  MoreHorizontal,
+  FileDown,
+  FolderClosed,
+  Store,
+  Warehouse,
+  Users,
+  ImageIcon
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/components/ui/use-toast";
+import { PageHeader } from "@/components/page-header";
+import { QuickActionsPanel } from "../components/QuickActionsPanel";
+import { AttributeMatrix } from "../components/AttributeMatrix";
+import { RelatedProducts } from "../components/RelatedProducts";
+import { ProductImageGallery } from '../components/ProductImageGallery';
+import { StockHeatmap } from '../components/StockHeatmap';
+import { PriceHistoryChart } from '../components/PriceHistoryChart';
+import { cn, formatCurrency } from '@/lib/utils';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { 
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import type { Product } from '../types';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Image } from "@/components/ui/image";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+// Mock data - replace with actual API call
+const mockProduct: Product = {
+  id: "prod-123456",
+  name: "Premium Bluetooth Headphones",
+  sku: "BT-HDPHN-001",
+  barcode: "9876543210123",
+  description: "High-quality wireless headphones with noise cancellation and 20-hour battery life.",
+  shortDescription: "Premium wireless headphones with noise cancellation",
+  productType: "simple",
+  brand: "AudioTech",
+  category: "Electronics",
+  supplier: {
+    id: "sup-789",
+    name: "AudioTech Supplies"
+  },
+  retailPrice: 129.99,
+  costPrice: 79.99,
+  salePrice: 99.99,
+  stock: 45,
+  minStock: 10,
+  maxStock: 100,
+  status: "active",
+  images: ["/images/products/headphones-1.jpg", "/images/products/headphones-2.jpg"],
+  gallery: ["/images/products/headphones-1.jpg", "/images/products/headphones-2.jpg", "/images/products/headphones-3.jpg"],
+  tags: ["wireless", "audio", "bluetooth", "headphones"],
+  attributes: [],
+  variations: [],
+  locations: [
+    { id: "loc-1", name: "Main Store", type: "store", stock: 25 },
+    { id: "loc-2", name: "Warehouse", type: "warehouse", stock: 20 }
+  ],
+  nextRestock: new Date('2024-03-15').toISOString(),
+  createdAt: new Date('2024-01-01').toISOString(),
+  updatedAt: new Date('2024-02-20').toISOString(),
+  isTemporary: false,
+  lastRestock: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+  supplier: {
+    id: "sup-789",
+    name: "AudioTech Supplies",
+    contact: "contact@auditech.com",
+    leadTime: "3-5 days",
+    lastOrder: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
+  }
+};
+
+// Mock temporary product
+const mockTemporaryProduct: Product = {
+  id: "temp-789012",
+  name: "New Wireless Earbuds",
+  sku: "TEMP-123456",
+  barcode: "",
+  description: "",
+  shortDescription: "",
+  productType: "simple",
+  brand: "",
+  category: "",
+  supplier: {
+    id: "",
+    name: ""
+  },
+  retailPrice: 59.99,
+  costPrice: 0,
+  salePrice: 0,
+  stock: 0,
+  minStock: 0,
+  maxStock: 100,
+  status: "draft",
+  images: [],
+  gallery: [],
+  tags: [],
+  attributes: [],
+  variations: [],
+  locations: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  isTemporary: true,
+  lastRestock: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+  supplier: {
+    id: "",
+    name: "",
+    contact: "",
+    leadTime: "",
+    lastOrder: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
+  }
+};
+
+// Mock analytics data - would be fetched from API in real implementation
+const analyticsData = {
+  totalSales: 1247,
+  totalRevenue: 124589.99,
+  totalProfit: 49835.96,
+  salesTrend: [
+    { month: 'Jan', sales: 78, revenue: 7799.22, profit: 3119.69 },
+    { month: 'Feb', sales: 92, revenue: 9199.08, profit: 3679.63 },
+    { month: 'Mar', sales: 103, revenue: 10299.97, profit: 4119.99 },
+    { month: 'Apr', sales: 121, revenue: 12099.79, profit: 4839.92 },
+    { month: 'May', sales: 134, revenue: 13399.66, profit: 5359.86 },
+    { month: 'Jun', sales: 162, revenue: 16199.38, profit: 6479.75 },
+    { month: 'Jul', sales: 176, revenue: 17599.24, profit: 7039.70 },
+    { month: 'Aug', sales: 151, revenue: 15099.49, profit: 6039.80 },
+    { month: 'Sep', sales: 129, revenue: 12899.71, profit: 5159.88 },
+    { month: 'Oct', sales: 101, revenue: 10099.99, profit: 4040.00 }
+  ]
+};
+
+export function ProductDetailsPage() {
+  const { productId } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  
+  const [timeRange, setTimeRange] = useState<'7' | '30' | '90' | '365'>('30');
+  
+  // Get the 'temp' query parameter to determine if we should show a temporary product
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const isTemp = searchParams.get('temp') === 'true';
+  
+  // In a real app, fetch product data based on productId
+  const product = isTemp ? mockTemporaryProduct : mockProduct;
+  
+  // Helper to handle loading states
+  const withLoading = async (key: string, action: () => Promise<void> | void) => {
+    try {
+      setLoading(prev => ({ ...prev, [key]: true }));
+      await action();
+    } catch (error) {
+      console.error(`Error in ${key} action:`, error);
+      toast({
+        title: "Action Failed", 
+        description: `There was an error performing this action. Please try again.`
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handlePrintLabel = () => {
+    withLoading('print', async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast({
+        title: "Printing Label", 
+        description: `Preparing to print label for ${product.name}.`
+      });
+    });
+  };
+
+  const handleCreatePurchaseOrder = () => {
+    navigate(`/products/${productId}/reorder`);
+  };
+
+  const handleViewHistory = () => {
+    navigate(`/products/${productId}/history`);
+  };
+
+  const handleManagePrice = () => {
+    navigate(`/products/${productId}/pricing`);
+  };
+  
+  const handleCategorize = () => {
+    navigate(`/products/${productId}/categories`);
+  };
+  
+  const handleEditProduct = () => {
+    navigate(`/products/${product.id}/edit`);
+  };
+
+  const handleViewAnalytics = () => {
+    navigate(`/products/${productId}/analytics`, {
+      state: {
+        productData: {
+          id: productId,
+          name: product.name,
+          sku: product.sku,
+          // Include essential product data for analytics context
+          salesData: analyticsData.salesTrend,
+          revenueData: analyticsData.salesTrend,
+          profitData: analyticsData.salesTrend
+        }
+      }
+    });
+  };
+
+  const handleStockTransfer = () => {
+    navigate(`/inventory/stock-transfer/new`, {
+      state: {
+        product: {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          currentStock: product.locations && Array.isArray(product.locations) 
+            ? product.locations.reduce((sum, loc) => sum + (loc.stock || 0), 0)
+            : product.stock || 0,
+        }
+      }
+    });
+  };
+
+  const handleReorder = () => {
+    navigate(`/products/reorder`, {
+      state: {
+        preSelectedProduct: {
+          id: productId,
+          name: product.name,
+          sku: product.sku,
+          supplier: product.supplier,
+          reorderPoint: product.reorderPoint,
+          reorderQuantity: product.reorderQuantity
+        }
+      }
+    });
+  };
+
+  const handleExportReport = () => {
+    toast({
+      title: "Exporting Report",
+      description: `Preparing product report for ${product.name}`
+    });
+    // Implement report export logic
+  };
+
+  // Handle completing a temporary product
+  const handleCompleteProduct = () => {
+    navigate(`/products/edit/${productId}`);
+  };
+
+  return (
+    <div className="w-full py-6 mx-auto max-w-[1920px]">
+    <div className="space-y-6">
+        {/* Page Header with Actions */}
+        <PageHeader 
+          title={product.name || "Product Details"} 
+          description={product.isTemporary ? "Complete the product details to finalize this temporary product" : `SKU: ${product.sku}`}
+        >
+        <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrintLabel}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print Label
+                </Button>
+            <Button variant="outline" size="sm" onClick={handleEditProduct}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Product
+                </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreHorizontal className="h-4 w-4 mr-2" />
+                  More Actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleCreatePurchaseOrder}>
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Create Purchase Order
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleManagePrice}>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Manage Price
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCategorize}>
+                  <FolderClosed className="h-4 w-4 mr-2" />
+                  Categorize
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleStockTransfer}>
+                  <ArrowLeftRight className="h-4 w-4 mr-2" />
+                  Stock Transfer
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleReorder}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reorder
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportReport}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Export Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </PageHeader>
+
+        {/* Main Content with Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Featured Image and Gallery */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Product Gallery</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProductImageGallery 
+                  images={product.images || []} 
+                  className="mb-4"
+                />
+                {product.isTemporary && product.images?.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-4 text-center">
+                    <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                    <h3 className="text-sm font-medium mb-1">No Images Added</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Add product images to enhance visibility
+                    </p>
+                    <Button variant="outline" size="sm" onClick={handleEditProduct}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Images
+                </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button className="w-full justify-start" variant="outline" size="sm" onClick={handleEditProduct}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Product
+                </Button>
+                <Button className="w-full justify-start" variant="outline" size="sm" onClick={handlePrintLabel}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Label
+                </Button>
+                <Button className="w-full justify-start" variant="outline" size="sm" onClick={handleReorder}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reorder Stock
+                </Button>
+                <Button className="w-full justify-start" variant="outline" size="sm" onClick={handleStockTransfer}>
+                  <ArrowLeftRight className="h-4 w-4 mr-2" />
+                  Transfer Stock
+                </Button>
+                <Button className="w-full justify-start" variant="outline" size="sm" onClick={handleManagePrice}>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Manage Price
+                </Button>
+                <Button className="w-full justify-start" variant="outline" size="sm" onClick={handleExportReport}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Export Report
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Status Card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id="product-status"
+                      checked={product.status === 'active'} 
+                      onCheckedChange={(checked) => {
+                        // Here you would typically update the product status
+                        toast({
+                          title: `Product ${checked ? 'activated' : 'deactivated'}`,
+                          description: `${product.name} is now ${checked ? 'active' : 'inactive'}`
+                        });
+                      }} 
+                    disabled={product.isTemporary}
+                    />
+                    <Label htmlFor="product-status" className="text-sm font-medium">
+                    {product.isTemporary 
+                      ? 'Temporary' 
+                      : product.status === 'active' 
+                        ? 'Active' 
+                        : 'Inactive'}
+                    </Label>
+                  </div>
+                {product.isTemporary && (
+                  <Alert className="mt-4 border-yellow-300 bg-yellow-50">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <AlertTitle className="text-yellow-800 text-sm">Temporary Product</AlertTitle>
+                    <AlertDescription className="text-yellow-700 text-xs">
+                      Complete the product details to activate this product.
+                    </AlertDescription>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="mt-2 border-yellow-300 text-yellow-800 hover:bg-yellow-100 hover:text-yellow-900" 
+                      onClick={handleCompleteProduct}
+                    >
+                      <Clock className="h-3 w-3 mr-1" />
+                      Complete Details
+                    </Button>
+                  </Alert>
+                )}
+            </CardContent>
+          </Card>
+        </div>
+
+          {/* Main Content Area */}
+        <div className="lg:col-span-3">
+          <Card>
+            <CardContent className="pt-6">
+              <Tabs defaultValue="details" className="w-full">
+                  <TabsList className="w-full grid grid-cols-6">
+                  <TabsTrigger value="details" className="flex items-center justify-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Details
+                  </TabsTrigger>
+                  <TabsTrigger value="inventory" className="flex items-center justify-center">
+                    <Package className="h-4 w-4 mr-2" />
+                    Inventory
+                  </TabsTrigger>
+                  <TabsTrigger value="variants" className="flex items-center justify-center">
+                    <Layers className="h-4 w-4 mr-2" />
+                    Variants
+                  </TabsTrigger>
+                  <TabsTrigger value="analytics" className="flex items-center justify-center">
+                    <BarChart2 className="h-4 w-4 mr-2" />
+                    Analytics
+                  </TabsTrigger>
+                  <TabsTrigger value="related" className="flex items-center justify-center">
+                    <Link className="h-4 w-4 mr-2" />
+                    Related
+                  </TabsTrigger>
+                    <TabsTrigger value="history" className="flex items-center justify-center">
+                      <History className="h-4 w-4 mr-2" />
+                      History
+                    </TabsTrigger>
+                </TabsList>
+
+                <div className="mt-6 space-y-6">
+                  <TabsContent value="details" className="space-y-6">
+                      {product.isTemporary && (
+                        <Alert className="mb-4 border-yellow-300 bg-yellow-50">
+                          <AlertCircle className="h-4 w-4 text-yellow-600" />
+                          <AlertTitle className="text-yellow-800">Temporary Product</AlertTitle>
+                          <AlertDescription className="text-yellow-700">
+                            This is a temporary product with minimal information. Complete the product details to make it fully functional.
+                          </AlertDescription>
+                          <Button 
+                            variant="outline" 
+                            className="mt-2 border-yellow-300 text-yellow-800 hover:bg-yellow-100 hover:text-yellow-900" 
+                            onClick={handleCompleteProduct}
+                          >
+                            <Clock className="h-4 w-4 mr-2" />
+                            Complete Product Details
+                          </Button>
+                        </Alert>
+                      )}
+                      
+                      {/* Missing Information Section for Temporary Products */}
+                      {product.isTemporary && (
+                        <div className="mb-4 p-3 border border-dashed border-yellow-300 bg-yellow-50 rounded-md">
+                          <h4 className="text-sm font-medium text-yellow-800 mb-2">Missing Information</h4>
+                          <ul className="text-xs text-yellow-700 space-y-1">
+                            {!product.description && <li>• Product description</li>}
+                            {!product.barcode && <li>• Barcode</li>}
+                            {!product.brandId && <li>• Brand</li>}
+                            {!product.categoryId && <li>• Category</li>}
+                            {!product.supplier?.name && <li>• Supplier</li>}
+                            {!product.locations?.some(loc => loc.stock > 0) && <li>• Stock levels</li>}
+                            {!product.images?.length && <li>• Product images</li>}
+                          </ul>
+                      </div>
+                      )}
+                        
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Basic Information</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                                  <h3 className="text-sm font-medium">Product Name</h3>
+                                  <p className="text-sm text-muted-foreground">{product.name}</p>
+                              </div>
+                                <div>
+                                  <h3 className="text-sm font-medium">SKU</h3>
+                                  <p className="text-sm text-muted-foreground">{product.sku}</p>
+                            </div>
+                          </div>
+                          
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                                  <h3 className="text-sm font-medium">Barcode</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    {product.barcode || (product.isTemporary ? 
+                                      <span className="italic text-gray-400">Not specified</span> : 
+                                      "N/A")}
+                                  </p>
+                            </div>
+                          <div>
+                                <h3 className="text-sm font-medium">Tax Rate</h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {product.taxRate ? `${product.taxRate}%` : 'Standard'}
+                                </p>
+                        </div>
+                      </div>
+                      
+                              <div>
+                                <h3 className="text-sm font-medium">Description</h3>
+                                <div className="mt-1 p-3 bg-muted/50 rounded-md">
+                          <p className="text-sm">
+                            {product.description || "No description provided for this product."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                          </CardContent>
+                        </Card>
+                        
+                        {/* Pricing Information */}
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Pricing</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <h3 className="text-sm font-medium">Retail Price</h3>
+                                  <p className="text-sm font-semibold">
+                                    ${product.retailPrice?.toFixed(2) || '0.00'}
+                                  </p>
+                        </div>
+                                <div>
+                                  <h3 className="text-sm font-medium">Cost Price</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    ${product.costPrice?.toFixed(2) || '0.00'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <h3 className="text-sm font-medium">Sale Price</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    {product.salePrice ? `$${product.salePrice?.toFixed(2)}` : 'N/A'}
+                                  </p>
+                                </div>
+                        </div>
+                        
+                              <div>
+                                <h3 className="text-sm font-medium">Profit Margin</h3>
+                                <div className="mt-1">
+                                  {product.retailPrice && product.costPrice ? (
+                                    <div className="flex items-center">
+                                      <Progress 
+                                        value={((product.retailPrice - product.costPrice) / product.retailPrice) * 100} 
+                                        className="h-2"
+                                      />
+                                      <span className="ml-2 text-sm font-medium">
+                                        {(((product.retailPrice - product.costPrice) / product.retailPrice) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">Not available</span>
+                                  )}
+                      </div>
+                    </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        
+                        {/* Categorization */}
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Categorization</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <h3 className="text-sm font-medium">Category</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    {product.categoryId ? "Category Name" : (product.isTemporary ? 
+                                      <span className="italic text-gray-400">Not specified</span> : 
+                                      "Uncategorized")}
+                                  </p>
+                          </div>
+                                <div>
+                                  <h3 className="text-sm font-medium">Brand</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    {product.brandId ? "Brand Name" : (product.isTemporary ? 
+                                      <span className="italic text-gray-400">Not specified</span> : 
+                                      "No brand")}
+                                  </p>
+                                </div>
+                        </div>
+                        
+                          <div>
+                                <h3 className="text-sm font-medium">Tags</h3>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {product.tags && product.tags.length > 0 ? (
+                                    product.tags?.map((tag, index) => (
+                                      <Badge key={index} variant="secondary" className="text-xs">
+                                        {tag}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">No tags</span>
+                                  )}
+                          </div>
+                        </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        
+                        {/* Supplier Information */}
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Supplier</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            {product.supplier?.name ? (
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    <Avatar className="h-10 w-10 bg-primary/10">
+                                      <AvatarFallback className="text-primary">
+                                        {product.supplier?.name?.substring(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                            <div>
+                                      <p className="text-sm font-medium">{product.supplier?.name}</p>
+                                      {product.supplier?.contact && (
+                                        <p className="text-xs text-muted-foreground">{product.supplier?.contact}</p>
+                                      )}
+                            </div>
+                                  </div>
+                                  <Button variant="outline" size="sm" onClick={() => navigate(`/suppliers/${product.supplier?.id}`)}>
+                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                    View
+                                  </Button>
+                          </div>
+                          
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <h3 className="text-sm font-medium">Lead Time</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                      {product.supplier?.leadTime || 'N/A'}
+                                    </p>
+                            </div>
+                            <div>
+                                    <h3 className="text-sm font-medium">Last Order</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                      {product.supplier?.lastOrder ? 
+                                        new Date(product.supplier?.lastOrder).toLocaleDateString() : 
+                                        'N/A'}
+                                    </p>
+                            </div>
+                          </div>
+                        </div>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center py-6 text-center">
+                                <Users className="h-8 w-8 text-muted-foreground mb-2" />
+                                <h3 className="text-sm font-medium mb-1">No Supplier Assigned</h3>
+                                <p className="text-xs text-muted-foreground mb-3">
+                                  Assign a supplier to manage inventory more effectively
+                                </p>
+                                <Button variant="outline" size="sm" onClick={handleEditProduct}>
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Assign Supplier
+                                </Button>
+                      </div>
+                    )}
+                          </CardContent>
+                        </Card>
+                  </TabsContent>
+
+                  <TabsContent value="inventory" className="space-y-6">
+                        {product.isTemporary ? (
+                          <Alert className="mb-4 border-yellow-300 bg-yellow-50">
+                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertTitle className="text-yellow-800">Temporary Product</AlertTitle>
+                            <AlertDescription className="text-yellow-700">
+                              You need to complete the product details before managing inventory.
+                            </AlertDescription>
+                            <Button 
+                              variant="outline" 
+                              className="mt-2 border-yellow-300 text-yellow-800 hover:bg-yellow-100 hover:text-yellow-900" 
+                              onClick={handleCompleteProduct}
+                            >
+                              <Clock className="h-4 w-4 mr-2" />
+                              Complete Product Details
+                            </Button>
+                          </Alert>
+                        ) : (
+                          <div className="space-y-6">
+                            {/* Inventory Summary */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <Card>
+                                <CardContent className="pt-6">
+                                  <div className="flex flex-col items-center justify-center text-center p-4">
+                                    <div className="bg-primary/10 p-3 rounded-full mb-3">
+                                      <Package className="h-6 w-6 text-primary" />
+                          </div>
+                                      <h3 className="text-xl font-bold">
+                                        {product.locations?.reduce((total, loc) => total + (loc.stock || 0), 0) || 0}
+                                      </h3>
+                                      <p className="text-sm text-muted-foreground">Total Stock</p>
+                          </div>
+                              </CardContent>
+                            </Card>
+                              
+                              <Card>
+                                <CardContent className="pt-6">
+                                  <div className="flex flex-col items-center justify-center text-center p-4">
+                                    <div className="bg-green-100 p-3 rounded-full mb-3">
+                                      <Store className="h-6 w-6 text-green-600" />
+                          </div>
+                                      <h3 className="text-xl font-bold">
+                                        {product.locations?.filter(loc => loc.type === 'retail').length || 0}
+                                      </h3>
+                                      <p className="text-sm text-muted-foreground">Store Locations</p>
+                          </div>
+                              </CardContent>
+                            </Card>
+                              
+                              <Card>
+                                <CardContent className="pt-6">
+                                  <div className="flex flex-col items-center justify-center text-center p-4">
+                                    <div className="bg-blue-100 p-3 rounded-full mb-3">
+                                      <Warehouse className="h-6 w-6 text-blue-600" />
+                          </div>
+                                      <h3 className="text-xl font-bold">
+                                        {product.locations?.filter(loc => loc.type === 'warehouse').length || 0}
+                                      </h3>
+                                      <p className="text-sm text-muted-foreground">Warehouse Locations</p>
+                          </div>
+                              </CardContent>
+                            </Card>
+                    </div>
+                    
+                              {/* Inventory by Location */}
+                              <Card>
+                                <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                                      <CardTitle className="text-base">Inventory by Location</CardTitle>
+                                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={handleStockTransfer}>
+                          <ArrowLeftRight className="h-4 w-4 mr-2" />
+                          Transfer Stock
+                                </Button>
+                                      <Button variant="outline" size="sm" onClick={handleReorder}>
+                                        <RefreshCw className="h-4 w-4 mr-2" />
+                                        Reorder
+                        </Button>
+                      </div>
+                                  </div>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-4">
+                                    {product.locations && product.locations.length > 0 ? (
+                      <div className="border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Location</TableHead>
+                                                <TableHead>Type</TableHead>
+                              <TableHead>Current Stock</TableHead>
+                              <TableHead>Status</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {product.locations.map((location, index) => (
+                              <TableRow key={index}>
+                                                <TableCell className="font-medium">{location?.name}</TableCell>
+                                <TableCell>
+                                                    {location?.type === 'retail' ? (
+                                                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                                        <Store className="h-3 w-3 mr-1" />
+                                                        Retail
+                                  </Badge>
+                                                    ) : (
+                                                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                                        <Warehouse className="h-3 w-3 mr-1" />
+                                                        Warehouse
+                                                      </Badge>
+                                                    )}
+                                                  </TableCell>
+                                              <TableCell>{location?.stock || 0}</TableCell>
+                                              <TableCell>
+                                                  {(location?.stock || 0) > 10 ? (
+                                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                                      In Stock
+                                    </Badge>
+                                                  ) : (location?.stock || 0) > 0 ? (
+                                                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                                                      Low Stock
+                                                    </Badge>
+                                                  ) : (
+                                                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                                      Out of Stock
+                                                    </Badge>
+                                                  )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                  <Button variant="ghost" size="sm">
+                                                    <Plus className="h-4 w-4 mr-1" />
+                                                    Add Stock
+                                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                                    ) : (
+                                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                                        <Store className="h-8 w-8 text-muted-foreground mb-2" />
+                                        <h3 className="text-sm font-medium mb-1">No Locations Configured</h3>
+                                        <p className="text-xs text-muted-foreground mb-3">
+                                          Add store locations to track inventory across your business
+                                        </p>
+                                        <Button variant="outline" size="sm" onClick={handleEditProduct}>
+                                          <Plus className="h-3 w-3 mr-1" />
+                                          Add Location
+                                        </Button>
+                    </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+                          )}
+                  </TabsContent>
+
+                  <TabsContent value="variants" className="space-y-6">
+                          {product.isTemporary ? (
+                            <Alert className="mb-4 border-yellow-300 bg-yellow-50">
+                              <AlertCircle className="h-4 w-4 text-yellow-600" />
+                              <AlertTitle className="text-yellow-800">Temporary Product</AlertTitle>
+                              <AlertDescription className="text-yellow-700">
+                                You need to complete the product details before adding variants.
+                              </AlertDescription>
+                              <Button 
+                                variant="outline" 
+                                className="mt-2 border-yellow-300 text-yellow-800 hover:bg-yellow-100 hover:text-yellow-900" 
+                                onClick={handleCompleteProduct}
+                              >
+                                <Clock className="h-4 w-4 mr-2" />
+                                Complete Product Details
+                              </Button>
+                            </Alert>
+                          ) : product.variations && product.variations.length > 0 ? (
+                            <div className="space-y-6">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-medium">Product Variants</h3>
+                                <Button variant="outline" size="sm">
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Add Variant
+                                </Button>
+                              </div>
+                              
+                              <div className="border rounded-md">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Variant</TableHead>
+                                      <TableHead>SKU</TableHead>
+                                      <TableHead>Price</TableHead>
+                                      <TableHead>Stock</TableHead>
+                                      <TableHead>Status</TableHead>
+                                      <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {product.variations?.map((variant, index) => (
+                                      <TableRow key={index}>
+                                        <TableCell className="font-medium">
+                                          <div className="flex items-center space-x-3">
+                                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                                              <Image className="h-8 w-8" alt={variant?.name} src={variant?.image} />
+                                            </div>
+                                            <span>{variant?.name}</span>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>{variant?.sku}</TableCell>
+                                        <TableCell>${variant?.price?.toFixed(2) || '0.00'}</TableCell>
+                                        <TableCell>{variant?.stock || 0}</TableCell>
+                                        <TableCell>
+                                          {variant?.status === 'active' ? (
+                                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                              Active
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                                              Inactive
+                                            </Badge>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                          <Button variant="ghost" size="sm">
+                                            <Edit className="h-4 w-4 mr-1" />
+                                            Edit
+                                          </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                              <Layers className="h-12 w-12 text-muted-foreground mb-4" />
+                              <h3 className="text-lg font-medium mb-2">No Variants Created</h3>
+                              <p className="text-muted-foreground max-w-md mb-6">
+                                Create product variants to offer different options like sizes, colors, or materials.
+                              </p>
+                              <Button onClick={handleEditProduct}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Variants
+                              </Button>
+                            </div>
+                          )}
+                  </TabsContent>
+                  
+                  <TabsContent value="analytics" className="space-y-6">
+                    {/* Performance Overview */}
+                    <div className="space-y-4">
+                      <h4 className="font-semibold">Performance Overview</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="text-2xl font-bold">{analyticsData.totalSales}</div>
+                            <p className="text-sm text-muted-foreground">Total Units Sold</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="text-2xl font-bold">
+                              ${analyticsData.totalRevenue.toFixed(2)}
+                            </div>
+                            <p className="text-sm text-muted-foreground">Total Revenue</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="text-2xl font-bold">
+                              ${analyticsData.totalProfit.toFixed(2)}
+                            </div>
+                            <p className="text-sm text-muted-foreground">Total Profit</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+
+                    {/* Sales Trend Chart */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Sales Trend Analysis</CardTitle>
+                        <CardDescription>
+                          Compare sales, revenue, and profit metrics over time
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="h-80">
+                        {/* This would be the GroupedBarChart component */}
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                          [Sales Trend Chart Visualization]
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Product History */}
+                    <div className="space-y-4">
+                      <h4 className="font-semibold">Product History</h4>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-4">
+                              <div className="bg-muted w-10 h-10 rounded-full flex items-center justify-center">
+                                <Edit className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium">Product Updated</p>
+                                <p className="text-sm text-muted-foreground">Price changed from $89.99 to $99.99</p>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {product.updatedAt ? new Date(product.updatedAt).toLocaleString() : 'N/A'}
+                                      </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                              <div className="bg-muted w-10 h-10 rounded-full flex items-center justify-center">
+                                <Truck className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium">Stock Received</p>
+                                <p className="text-sm text-muted-foreground">30 units added to Warehouse</p>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {product.lastRestock ? new Date(product.lastRestock).toLocaleString() : 'N/A'}
+                                      </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                              <div className="bg-muted w-10 h-10 rounded-full flex items-center justify-center">
+                                <Tag className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium">Category Changed</p>
+                                <p className="text-sm text-muted-foreground">Category updated to "Electronics"</p>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {product.createdAt ? new Date(product.createdAt).toLocaleString() : 'N/A'}
+                                      </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                              <div className="bg-muted w-10 h-10 rounded-full flex items-center justify-center">
+                                <Package className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium">Product Created</p>
+                                <p className="text-sm text-muted-foreground">Initial setup with SKU {product.sku}</p>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {product.createdAt ? new Date(product.createdAt).toLocaleString() : 'N/A'}
+                                      </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-6">
+                            <Button 
+                              variant="outline" 
+                              className="w-full"
+                              onClick={() => navigate(`/products/${productId}/history`)}
+                            >
+                              <History className="h-4 w-4 mr-2" />
+                              View Full History
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="related" className="space-y-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-medium">Related Products</h3>
+                              <Button variant="outline" size="sm">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Related Product
+                              </Button>
+                            </div>
+                            
+                            {product.isTemporary ? (
+                              <Alert className="mb-4 border-yellow-300 bg-yellow-50">
+                                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                <AlertTitle className="text-yellow-800">Temporary Product</AlertTitle>
+                                <AlertDescription className="text-yellow-700">
+                                  You need to complete the product details before you can add related products.
+                                </AlertDescription>
+                                <Button 
+                                  variant="outline" 
+                                  className="mt-2 border-yellow-300 text-yellow-800 hover:bg-yellow-100 hover:text-yellow-900" 
+                                  onClick={handleCompleteProduct}
+                                >
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  Complete Product Details
+                                </Button>
+                              </Alert>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {/* Sample Related Products */}
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start space-x-4">
+                                      <div className="h-16 w-16 rounded-md bg-gray-100 flex items-center justify-center">
+                                        <Image className="h-12 w-12" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">Wireless Earbuds</p>
+                                        <p className="text-xs text-muted-foreground">SKU: AUDIO-001</p>
+                                        <p className="text-sm font-medium mt-1">$79.99</p>
+                                      </div>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                                
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start space-x-4">
+                                      <div className="h-16 w-16 rounded-md bg-gray-100 flex items-center justify-center">
+                                        <Image className="h-12 w-12" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">Phone Charger</p>
+                                        <p className="text-xs text-muted-foreground">SKU: CHRG-002</p>
+                                        <p className="text-sm font-medium mt-1">$24.99</p>
+                                      </div>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            )}
+                          </div>
+                        </TabsContent>
+                        
+                        <TabsContent value="history" className="space-y-6">
+                          {product.isTemporary ? (
+                            <Alert className="mb-4 border-yellow-300 bg-yellow-50">
+                              <AlertCircle className="h-4 w-4 text-yellow-600" />
+                              <AlertTitle className="text-yellow-800">Temporary Product</AlertTitle>
+                              <AlertDescription className="text-yellow-700">
+                                No history is available for this temporary product.
+                                Complete the product details to enable history tracking.
+                              </AlertDescription>
+                              <Button 
+                                variant="outline" 
+                                className="mt-2 border-yellow-300 text-yellow-800 hover:bg-yellow-100 hover:text-yellow-900" 
+                                onClick={handleCompleteProduct}
+                              >
+                                <Clock className="h-4 w-4 mr-2" />
+                                Complete Product Details
+                              </Button>
+                            </Alert>
+                          ) : (
+                            <div className="space-y-6">
+                              <div className="space-y-4">
+                                <h4 className="font-semibold">Recent Activity</h4>
+                                <div className="border rounded-md">
+                                  <div className="p-4 border-b">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center">
+                                        <Badge variant="outline" className="mr-2">Update</Badge>
+                                        <span className="font-medium">Product Updated</span>
+                                      </div>
+                                      <span className="text-sm text-muted-foreground">
+                                        {product.updatedAt ? new Date(product.updatedAt).toLocaleString() : 'N/A'}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground mt-2">
+                                      Price updated from ${product.retailPrice ? (product.retailPrice * 0.9).toFixed(2) : '0.00'} to ${product.retailPrice ? product.retailPrice.toFixed(2) : '0.00'}
+                                    </p>
+                                  </div>
+                                  
+                                  <div className="p-4 border-b">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center">
+                                        <Badge variant="outline" className="mr-2">Restock</Badge>
+                                        <span className="font-medium">Inventory Restocked</span>
+                                      </div>
+                                      <span className="text-sm text-muted-foreground">
+                                        {product.lastRestock ? new Date(product.lastRestock).toLocaleString() : 'N/A'}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground mt-2">Added 25 units to inventory</p>
+                                  </div>
+                                  
+                                  <div className="p-4">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center">
+                                        <Badge variant="outline" className="mr-2">Create</Badge>
+                                        <span className="font-medium">Product Created</span>
+                                      </div>
+                                      <span className="text-sm text-muted-foreground">
+                                        {product.createdAt ? new Date(product.createdAt).toLocaleString() : 'N/A'}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground mt-2">
+                                      Initial setup with SKU {product.sku || 'N/A'}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                <div className="mt-6">
+                                  <Button 
+                                    variant="outline" 
+                                    className="w-full"
+                                    onClick={() => navigate(`/products/${productId}/history`)}
+                                  >
+                                    <History className="h-4 w-4 mr-2" />
+                                    View Full History
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-4">
+                                <h4 className="font-semibold">Price History</h4>
+                                <div className="h-64 w-full bg-gray-50 rounded-md border flex items-center justify-center">
+                                  <div className="text-center p-4">
+                                    <LineChart className="h-8 w-8 mx-auto text-gray-400" />
+                                    <p className="mt-2 text-sm text-muted-foreground">Price history chart will be displayed here</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </TabsContent>
+        
+                    </CardContent>
+                  </Card>
+                </div>
+
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

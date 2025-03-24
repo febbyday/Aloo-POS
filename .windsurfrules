@@ -1,0 +1,186 @@
+**# POS System Frontend Development Standards**
+
+Make use of the following frontend development best practices when writing code:
+
+" 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤" add this at the beginning of every code file.
+
+
+## **Technology Stack**
+This POS system is built with the following frontend technology stack:
+
+- **Core**: React with TypeScript
+- **Routing**: React Router
+- **Form Management**: React Hook Form with Zod validation
+- **UI Components**: Shadcn UI component library
+- **Icons**: Lucide Icons
+- **State Management**: React Context API with custom hooks
+- **API Communication**: Fetch/Axios with custom service abstractions
+- **Styling**: TailwindCSS with custom theme configuration
+- **PDF Generation**: PDF utilities for reports and receipts
+- **Event System**: Custom event bus for cross-module communication
+
+---
+
+## **Comprehensive Development Rules**
+
+### **Directory Structure and Organization**
+#### **Mandatory Module Structure**  
+Each feature module **MUST** contain the following directories:
+- `components/` - UI components specific to the feature
+- `hooks/` - Custom React hooks
+- `services/` - API and data services
+- `types/` - TypeScript type definitions
+- `pages/` - Page components
+- `utils/` - Feature-specific utility functions
+- `context/` - Context providers (if needed)
+- `index.ts` - Barrel exports file
+
+#### **Asset Organization**
+- Feature-specific assets **MUST** be stored in an `assets/` directory within the feature.
+- Shared assets **MUST** be stored in a global `assets/` directory.
+
+#### **Test Organization**
+- Tests **MUST** be co-located with the code they test using `.test.tsx` or `.spec.tsx` suffix.
+- Test utilities **MUST** be placed in a `__tests__/utils/` directory.
+
+---
+
+## **Naming and File Conventions**
+
+### **File Naming Standards**
+- **Components**: PascalCase (`CustomerTable.tsx`)
+- **Hooks**: camelCase prefixed with `use` (`useCustomers.tsx`)
+- **Services**: camelCase with `Service` suffix (`customerService.ts`)
+- **Types**: camelCase with `.types.ts` suffix (`customer.types.ts`)
+- **Context**: PascalCase with `Context` suffix (`CustomerContext.tsx`)
+- **Utils**: camelCase (`formatCurrency.ts`)
+- **Constants**: UPPER_SNAKE_CASE in `constants.ts`
+
+### **CSS/Styling Conventions**
+- TailwindCSS utility classes **MUST** be used for styling.
+- Custom CSS **MUST** be organized in `.module.css` files when needed.
+- Global styles **MUST** be defined in `src/styles`.
+- Component-specific styles **MUST** use Tailwind’s `@apply` directive.
+
+---
+
+## **Code Architecture**
+
+### **Component Architecture**
+- Components **MUST** follow atomic design principles:
+  - **Atoms**: Basic UI components (buttons, inputs, etc.)
+  - **Molecules**: Simple component compositions
+  - **Organisms**: Complex UI sections composed of molecules
+  - **Templates**: Page layouts without specific data
+  - **Pages**: Complete pages with data integration
+
+- Components **MUST** be designed for composition over configuration.
+- Complex components **MUST** be broken down into smaller, focused components.
+- Components **SHOULD NOT** exceed **250 lines of code**.
+
+### **Prop Handling**
+- Required props **MUST** be non-nullable.
+- Optional props **MUST** be nullable or have default values.
+- Prop spreading **MUST** be avoided in favor of explicit props.
+- Complex prop objects **MUST** be destructured at the component level.
+
+---
+
+## **State Management**
+
+### **State Organization**
+- Local component state **MUST** use `useState` or `useReducer`.
+- Cross-component state **MUST** use context providers.
+- Global application state **MUST** use dedicated context providers.
+- Feature-specific state **MUST** be contained within its feature module.
+
+### **Performance Optimization**
+- Expensive calculations **MUST** use `useMemo`.
+- Event handlers **MUST** use `useCallback` when passed as props.
+- List components **MUST** implement virtualization for large datasets.
+- Frequently re-rendered components **MUST** use `React.memo`.
+
+### **Data Fetching**
+- Data fetching **MUST** be handled in custom hooks.
+- Hooks **MUST** provide `loading`, `error`, and `data` states.
+- Caching strategies **MUST** be implemented for frequently accessed data.
+
+---
+
+## **Error Handling and Logging**
+
+### **Error Boundary Implementation**
+- Each major feature **MUST** implement error boundaries.
+- Error states **MUST** provide user-friendly messages.
+- Errors **MUST** be logged to an error tracking service.
+- Recovery mechanisms **MUST** be provided where possible.
+
+### **Form Error Handling**
+- Form validations **MUST** provide clear error messages.
+- Errors **MUST** be displayed near relevant fields.
+- Form submissions **MUST** handle API errors gracefully.
+- Validation rules **MUST** be defined in **Zod schemas**.
+
+---
+
+## **Accessibility Standards**
+
+### **Accessibility Requirements**
+- Interactive elements **MUST** have appropriate ARIA attributes.
+- Color contrast **MUST** meet WCAG AA standards.
+- Keyboard navigation **MUST** be supported for all interactions.
+- Screen reader support **MUST** be implemented with appropriate labels.
+
+### **Responsive Design**
+- Mobile-first approach **MUST** be used.
+- Touch targets **MUST** be appropriately sized.
+
+---
+
+## **Code Quality and Maintenance**
+
+### **Code Documentation**
+- Public APIs **MUST** have JSDoc comments.
+- Complex logic **MUST** include explanatory comments.
+- Props **MUST** be documented with type information and descriptions.
+
+### **Code Formatting and Quality**
+- ESLint and Prettier **MUST** be followed.
+- TypeScript **strict mode** **MUST** be enabled.
+- No `any` types allowed except in exceptional cases.
+- No unused variables or imports permitted.
+
+### **Testing Requirements**
+- Components **MUST** have unit tests.
+- Critical user flows **MUST** have integration tests.
+- Custom hooks **MUST** have thorough testing.
+- Test coverage **MUST** be maintained above **70%**.
+
+---
+
+## **Security Practices**
+
+### **Frontend Security**
+- No sensitive data **MUST** be stored in `localStorage` or `sessionStorage`.
+- API endpoints **MUST** use CSRF protection.
+- User input **MUST** be sanitized to prevent XSS.
+- Authentication tokens **MUST** be handled securely.
+
+### **Sensitive Data Handling**
+- Payment information **MUST** be handled through secure, certified services.
+- Personal identifying information **MUST** be masked in the UI.
+- Debug logging **MUST NOT** include sensitive information.
+
+---
+
+## **Internationalization and Localization**
+
+- All user-facing strings **MUST** use i18n translation keys.
+- Date, time, and currency formats **MUST** respect locale settings.
+- Right-to-left (RTL) layout support **MUST** be implemented.
+- Translation files **MUST** be organized by feature.
+
+---
+
+These standards ensure a **high-quality, maintainable, and scalable** POS frontend system while following best practices in modern frontend development.
+
