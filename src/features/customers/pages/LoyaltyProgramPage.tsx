@@ -1,22 +1,22 @@
 import { useState } from 'react';
-import { 
-  Button 
+import {
+  Button
 } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from '@/components/ui/tabs';
-import { 
+import {
   Badge
 } from '@/components/ui/badge';
 import {
@@ -54,19 +54,19 @@ import {
   Users,
   Save,
   AlertCircle,
-  CircleDollarSign, 
-  Calendar, 
-  Settings2, 
-  Plus, 
-  UserCheck, 
-  Activity, 
-  ChevronRight, 
+  CircleDollarSign,
+  Calendar,
+  Settings2,
+  Plus,
+  UserCheck,
+  Activity,
+  ChevronRight,
   CreditCard
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useCustomers } from '../hooks/useCustomers';
 import { useLoyaltyProgram } from '../hooks/useLoyaltyProgram';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -82,20 +82,17 @@ import {
   AlertTitle,
   AlertDescription
 } from '@/components/ui/alert';
-import { ErrorBoundary } from 'react-error-boundary';
+import { ErrorBoundary } from '@/components/unified-error-boundary';
 import { Separator } from '@/components/ui/separator';
 
-function ErrorFallback({ error, resetErrorBoundary }: { 
-  error: Error; 
-  resetErrorBoundary: () => void;
-}) {
+function ErrorFallback(error: Error, reset: () => void) {
   return (
     <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
       <h2 className="text-xl font-bold text-red-800 dark:text-red-400 mb-2">Something went wrong:</h2>
       <pre className="text-sm bg-white dark:bg-zinc-900 p-4 rounded border overflow-auto mb-4">
         {error.message}
       </pre>
-      <Button onClick={resetErrorBoundary} variant="outline">
+      <Button onClick={reset} variant="outline">
         Try Again
       </Button>
     </div>
@@ -112,11 +109,11 @@ export function LoyaltyProgramPage() {
   const [selectedReward, setSelectedReward] = useState<LoyaltyReward | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<LoyaltyEvent | null>(null);
   const [settingsChanged, setSettingsChanged] = useState(false);
-  
+
   // Integration with existing customer data
   const { customers } = useCustomers();
   const { toast } = useToast();
-  
+
   // Use our loyalty program hook for data management
   const {
     tiers,
@@ -138,27 +135,27 @@ export function LoyaltyProgramPage() {
     error,
     fetchSettings
   } = useLoyaltyProgram();
-  
+
   // Stats for the dashboard
   const totalCustomers = customers.length;
   const customersWithPoints = customers.filter(c => c.loyaltyPoints > 0).length;
   const totalPointsIssued = customers.reduce((sum, c) => sum + (c.loyaltyPoints || 0), 0);
-  
+
   // Handlers for tiers
   const handleAddTier = () => {
     setSelectedTier(null);
     setTierDialogOpen(true);
   };
-  
+
   const handleEditTier = (tier: LoyaltyTier) => {
     setSelectedTier(tier);
     setTierDialogOpen(true);
   };
-  
+
   const handleDeleteTier = (tierId: string) => {
     deleteTier(tierId);
   };
-  
+
   const handleSaveTier = (formData: FormData) => {
     const id = selectedTier?.id || `tier_${Date.now().toString()}`;
     const name = formData.get('name') as string;
@@ -167,11 +164,11 @@ export function LoyaltyProgramPage() {
     const benefitsString = formData.get('benefits') as string;
     const benefits = benefitsString.split('\n').filter(b => b.trim().length > 0);
     const color = formData.get('color') as string;
-    
+
     const newTier: LoyaltyTier = {
       id, name, minimumSpend, discount, benefits, color
     };
-    
+
     if (selectedTier) {
       // Update existing tier
       updateTier(id, newTier);
@@ -179,36 +176,36 @@ export function LoyaltyProgramPage() {
       // Add new tier
       createTier(newTier);
     }
-    
+
     setTierDialogOpen(false);
   };
-  
+
   // Handlers for rewards
   const handleAddReward = () => {
     setSelectedReward(null);
     setRewardDialogOpen(true);
   };
-  
+
   const handleEditReward = (reward: LoyaltyReward) => {
     setSelectedReward(reward);
     setRewardDialogOpen(true);
   };
-  
+
   const handleDeleteReward = (rewardId: string) => {
     deleteReward(rewardId);
   };
-  
+
   const handleSaveReward = (formData: FormData) => {
     const id = selectedReward?.id || `reward_${Date.now().toString()}`;
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
     const pointsCost = parseInt(formData.get('pointsCost') as string);
     const isActive = formData.get('isActive') === 'on';
-    
+
     const newReward: LoyaltyReward = {
       id, name, description, pointsCost, isActive
     };
-    
+
     if (selectedReward) {
       // Update existing reward
       updateReward(id, newReward);
@@ -216,25 +213,25 @@ export function LoyaltyProgramPage() {
       // Add new reward
       createReward(newReward);
     }
-    
+
     setRewardDialogOpen(false);
   };
-  
+
   // Handlers for events
   const handleAddEvent = () => {
     setSelectedEvent(null);
     setEventDialogOpen(true);
   };
-  
+
   const handleEditEvent = (event: LoyaltyEvent) => {
     setSelectedEvent(event);
     setEventDialogOpen(true);
   };
-  
+
   const handleDeleteEvent = (eventId: string) => {
     deleteEvent(eventId);
   };
-  
+
   const handleSaveEvent = (formData: FormData) => {
     const id = selectedEvent?.id || `event_${Date.now().toString()}`;
     const name = formData.get('name') as string;
@@ -243,11 +240,11 @@ export function LoyaltyProgramPage() {
     const startDate = new Date(formData.get('startDate') as string);
     const endDate = new Date(formData.get('endDate') as string);
     const isActive = formData.get('isActive') === 'on';
-    
+
     const newEvent: LoyaltyEvent = {
       id, name, description, pointsAwarded, startDate, endDate, isActive
     };
-    
+
     if (selectedEvent) {
       // Update existing event
       updateEvent(id, newEvent);
@@ -255,10 +252,10 @@ export function LoyaltyProgramPage() {
       // Add new event
       createEvent(newEvent);
     }
-    
+
     setEventDialogOpen(false);
   };
-  
+
   // Handlers for settings
   const handleSaveSettings = () => {
     const pointsPerDollar = parseFloat((document.getElementById('pointsPerDollar') as HTMLInputElement).value);
@@ -271,7 +268,7 @@ export function LoyaltyProgramPage() {
     const tierDowngradeEnabled = (document.getElementById('tierDowngradeEnabled') as HTMLInputElement).checked;
     const tierDowngradePeriodDays = parseInt((document.getElementById('tierDowngradePeriodDays') as HTMLInputElement).value);
     const spendingCalculationPeriod = (document.getElementById('spendingCalculationPeriod') as HTMLSelectElement).value as 'LIFETIME' | 'ANNUAL' | 'QUARTERLY' | 'MONTHLY';
-    
+
     const newSettings: LoyaltySettings = {
       pointsPerDollar,
       pointValueInCents,
@@ -286,22 +283,22 @@ export function LoyaltyProgramPage() {
       tierDowngradePeriodDays,
       spendingCalculationPeriod
     };
-    
+
     updateSettings(newSettings);
-    
+
     toast({
       title: "Settings Saved",
       description: "Your loyalty program settings have been updated."
     });
   };
-  
+
   // Add handleSettingChange function
   const handleSettingChange = (setting: string, value: any) => {
     // Update the settings state here - this would typically be more complex
     // and update a local state copy before saving to the backend
     setSettingsChanged(true);
   };
-  
+
   // Show loading state
   if (loading) {
   return (
@@ -338,13 +335,12 @@ export function LoyaltyProgramPage() {
       </div>
     );
   }
-  
+
   return (
-    <ErrorBoundary 
-      FallbackComponent={ErrorFallback}
-      onReset={() => {
-        // Reset the state of your app here
-        fetchSettings();
+    <ErrorBoundary
+      fallback={ErrorFallback}
+      onError={(error) => {
+        console.error('Loyalty Program Error:', error);
       }}
     >
       <div className="space-y-6">
@@ -364,7 +360,7 @@ export function LoyaltyProgramPage() {
             </p>
           </CardContent>
         </Card>
-          
+
           <Card className="bg-zinc-800 border-zinc-700">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center">
@@ -379,7 +375,7 @@ export function LoyaltyProgramPage() {
             </p>
           </CardContent>
         </Card>
-          
+
           <Card className="bg-zinc-800 border-zinc-700">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center">
@@ -426,31 +422,31 @@ export function LoyaltyProgramPage() {
                 Add Tier
               </Button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {tiers && tiers.length > 0 ? (
                 tiers.map((tier) => (
                   <Card key={tier?.id || 'missing-id'} className="bg-zinc-800 border-zinc-700">
-                    <div 
-                      className="h-2 rounded-t-lg" 
+                    <div
+                      className="h-2 rounded-t-lg"
                       style={{ backgroundColor: tier?.color || '#808080' }}
                     />
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <CardTitle>{tier?.name || 'Unnamed Tier'}</CardTitle>
                         <div className="flex space-x-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-8 w-8"
                             onClick={() => handleEditTier(tier)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-destructive" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
                             onClick={() => handleDeleteTier(tier?.id || '')}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -510,25 +506,25 @@ export function LoyaltyProgramPage() {
                 Add Reward
               </Button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {rewards && rewards.length > 0 ? (
                 rewards.map((reward) => (
                   <Card key={reward?.id || 'missing-id'} className="bg-zinc-800 border-zinc-700">
                     <CardHeader className="relative pb-2">
                       <div className="absolute right-4 top-4 flex space-x-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8"
                           onClick={() => handleEditReward(reward)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-destructive" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
                           onClick={() => handleDeleteReward(reward?.id || '')}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -614,18 +610,18 @@ export function LoyaltyProgramPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end space-x-1">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8"
                                 onClick={() => handleEditEvent(event)}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-destructive" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
                                 onClick={() => handleDeleteEvent(event?.id || '')}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -637,7 +633,7 @@ export function LoyaltyProgramPage() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-6 text-zinc-500">
-                          No events scheduled. 
+                          No events scheduled.
                           <Button variant="link" className="pl-1" onClick={handleAddEvent}>
                             Create your first event
                           </Button>
@@ -696,7 +692,7 @@ export function LoyaltyProgramPage() {
                         onChange={(e) => handleSettingChange('programName', e.target.value)}
                       />
                     </div>
-                    
+
                     <div className="grid gap-2">
                       <Label htmlFor="pointsPerDollar">Points per Dollar</Label>
                       <div className="flex items-center">
@@ -712,7 +708,7 @@ export function LoyaltyProgramPage() {
                         <span className="ml-2 text-zinc-400">points per $1 spent</span>
                       </div>
                     </div>
-                    
+
                     <div className="grid gap-2">
                       <Label htmlFor="pointsPerVisit">Points per Visit</Label>
                       <div className="flex items-center">
@@ -728,14 +724,14 @@ export function LoyaltyProgramPage() {
                         <span className="ml-2 text-zinc-400">points per visit (regardless of spend)</span>
                       </div>
                     </div>
-                    
+
                     <Separator />
-                    
+
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
-                        <Switch 
-                          id="enabled" 
-                          checked={settings?.enabled ?? true} 
+                        <Switch
+                          id="enabled"
+                          checked={settings?.enabled ?? true}
                           onCheckedChange={(checked) => handleSettingChange('enabled', checked)}
                         />
                         <Label htmlFor="enabled">Enable Loyalty Program</Label>
@@ -744,12 +740,12 @@ export function LoyaltyProgramPage() {
                         When disabled, customers will not earn or be able to redeem points
                       </p>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
-                        <Switch 
-                          id="allowPointsRedemption" 
-                          checked={settings?.allowPointsRedemption ?? true} 
+                        <Switch
+                          id="allowPointsRedemption"
+                          checked={settings?.allowPointsRedemption ?? true}
                           onCheckedChange={(checked) => handleSettingChange('allowPointsRedemption', checked)}
                         />
                         <Label htmlFor="allowPointsRedemption">Allow Points Redemption</Label>
@@ -784,9 +780,9 @@ export function LoyaltyProgramPage() {
                   <>
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
-                        <Switch 
-                          id="notifyOnPointsEarned" 
-                          checked={settings?.notifyOnPointsEarned ?? true} 
+                        <Switch
+                          id="notifyOnPointsEarned"
+                          checked={settings?.notifyOnPointsEarned ?? true}
                           onCheckedChange={(checked) => handleSettingChange('notifyOnPointsEarned', checked)}
                         />
                         <Label htmlFor="notifyOnPointsEarned">Points Earned Notification</Label>
@@ -795,12 +791,12 @@ export function LoyaltyProgramPage() {
                         Send notification when customers earn points
                       </p>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
-                        <Switch 
-                          id="notifyOnTierChange" 
-                          checked={settings?.notifyOnTierChange ?? true} 
+                        <Switch
+                          id="notifyOnTierChange"
+                          checked={settings?.notifyOnTierChange ?? true}
                           onCheckedChange={(checked) => handleSettingChange('notifyOnTierChange', checked)}
                         />
                         <Label htmlFor="notifyOnTierChange">Tier Change Notification</Label>
@@ -809,12 +805,12 @@ export function LoyaltyProgramPage() {
                         Send notification when customers move to a new loyalty tier
                       </p>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
-                        <Switch 
-                          id="notifyOnPointsExpiring" 
-                          checked={settings?.notifyOnPointsExpiring ?? false} 
+                        <Switch
+                          id="notifyOnPointsExpiring"
+                          checked={settings?.notifyOnPointsExpiring ?? false}
                           onCheckedChange={(checked) => handleSettingChange('notifyOnPointsExpiring', checked)}
                         />
                         <Label htmlFor="notifyOnPointsExpiring">Points Expiration Warning</Label>
@@ -829,7 +825,7 @@ export function LoyaltyProgramPage() {
           </Card>
         </TabsContent>
       </Tabs>
-        
+
         {/* Tier Dialog */}
         <Dialog open={tierDialogOpen} onOpenChange={setTierDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
@@ -848,74 +844,74 @@ export function LoyaltyProgramPage() {
             }} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Tier Name</Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  defaultValue={selectedTier?.name || ''} 
+                <Input
+                  id="name"
+                  name="name"
+                  defaultValue={selectedTier?.name || ''}
                   className="bg-zinc-900 border-zinc-700"
-                  required 
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="minimumSpend">Minimum Spend ($)</Label>
-                <Input 
-                  id="minimumSpend" 
-                  name="minimumSpend" 
-                  type="number" 
-                  min="0" 
+                <Input
+                  id="minimumSpend"
+                  name="minimumSpend"
+                  type="number"
+                  min="0"
                   step="0.01"
-                  defaultValue={selectedTier?.minimumSpend.toString() || '0'} 
+                  defaultValue={selectedTier?.minimumSpend.toString() || '0'}
                   className="bg-zinc-900 border-zinc-700"
-                  required 
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="discount">Discount Percentage</Label>
-                <Input 
-                  id="discount" 
-                  name="discount" 
-                  type="number" 
-                  min="0" 
-                  max="100" 
+                <Input
+                  id="discount"
+                  name="discount"
+                  type="number"
+                  min="0"
+                  max="100"
                   step="0.5"
-                  defaultValue={selectedTier?.discount.toString() || '0'} 
+                  defaultValue={selectedTier?.discount.toString() || '0'}
                   className="bg-zinc-900 border-zinc-700"
-                  required 
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="benefits">Benefits (one per line)</Label>
-                <textarea 
-                  id="benefits" 
-                  name="benefits" 
-                  rows={4} 
+                <textarea
+                  id="benefits"
+                  name="benefits"
+                  rows={4}
                   className="w-full rounded-md bg-zinc-900 border-zinc-700 p-2"
                   defaultValue={selectedTier?.benefits.join('\n') || ''}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="color">Color (Hex)</Label>
                 <div className="flex gap-2">
-                  <Input 
-                    id="color" 
-                    name="color" 
+                  <Input
+                    id="color"
+                    name="color"
                     type="color"
                     defaultValue={selectedTier?.color || '#000000'}
                     className="w-10 h-10 p-1 bg-zinc-900 border-zinc-700"
                   />
-                  <Input 
-                    id="colorHex" 
+                  <Input
+                    id="colorHex"
                     value={selectedTier?.color || '#000000'}
                     className="bg-zinc-900 border-zinc-700 flex-1"
                     readOnly
                   />
                 </div>
               </div>
-              
+
               <DialogFooter>
                 <Button
                   type="button"
@@ -931,7 +927,7 @@ export function LoyaltyProgramPage() {
             </form>
           </DialogContent>
         </Dialog>
-        
+
         {/* Reward Dialog */}
         <Dialog open={rewardDialogOpen} onOpenChange={setRewardDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
@@ -950,53 +946,53 @@ export function LoyaltyProgramPage() {
             }} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Reward Name</Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  defaultValue={selectedReward?.name || ''} 
+                <Input
+                  id="name"
+                  name="name"
+                  defaultValue={selectedReward?.name || ''}
                   className="bg-zinc-900 border-zinc-700"
-                  required 
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <textarea 
-                  id="description" 
-                  name="description" 
-                  rows={3} 
+                <textarea
+                  id="description"
+                  name="description"
+                  rows={3}
                   className="w-full rounded-md bg-zinc-900 border-zinc-700 p-2"
                   defaultValue={selectedReward?.description || ''}
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="pointsCost">Points Cost</Label>
-                <Input 
-                  id="pointsCost" 
-                  name="pointsCost" 
-                  type="number" 
-                  min="1" 
-                  defaultValue={selectedReward?.pointsCost.toString() || '100'} 
+                <Input
+                  id="pointsCost"
+                  name="pointsCost"
+                  type="number"
+                  min="1"
+                  defaultValue={selectedReward?.pointsCost.toString() || '100'}
                   className="bg-zinc-900 border-zinc-700"
-                  required 
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <input 
-                    id="isActive" 
-                    name="isActive" 
-                    type="checkbox" 
+                  <input
+                    id="isActive"
+                    name="isActive"
+                    type="checkbox"
                     className="rounded border-zinc-700"
                     defaultChecked={selectedReward?.isActive !== false}
                   />
                   <Label htmlFor="isActive">Active</Label>
                 </div>
               </div>
-              
+
               <DialogFooter>
                 <Button
                   type="button"
@@ -1012,7 +1008,7 @@ export function LoyaltyProgramPage() {
             </form>
           </DialogContent>
         </Dialog>
-        
+
         {/* Event Dialog */}
         <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
@@ -1024,92 +1020,92 @@ export function LoyaltyProgramPage() {
                 Define the details for this loyalty event.
               </DialogDescription>
             </DialogHeader>
-            <form 
+            <form
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 handleSaveEvent(formData);
-              }} 
+              }}
               className="space-y-4"
             >
               <div className="space-y-2">
                 <Label htmlFor="name">Event Name</Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  defaultValue={selectedEvent?.name || ''} 
+                <Input
+                  id="name"
+                  name="name"
+                  defaultValue={selectedEvent?.name || ''}
                   className="bg-zinc-900 border-zinc-700"
-                  required 
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <textarea 
-                  id="description" 
-                  name="description" 
-                  rows={3} 
+                <textarea
+                  id="description"
+                  name="description"
+                  rows={3}
                   className="w-full rounded-md bg-zinc-900 border-zinc-700 p-2"
                   defaultValue={selectedEvent?.description || ''}
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="pointsAwarded">Points Awarded</Label>
-                <Input 
-                  id="pointsAwarded" 
-                  name="pointsAwarded" 
-                  type="number" 
-                  min="0" 
-                  defaultValue={selectedEvent?.pointsAwarded.toString() || '50'} 
+                <Input
+                  id="pointsAwarded"
+                  name="pointsAwarded"
+                  type="number"
+                  min="0"
+                  defaultValue={selectedEvent?.pointsAwarded.toString() || '50'}
                   className="bg-zinc-900 border-zinc-700"
-                  required 
+                  required
                 />
                 <p className="text-xs text-zinc-400">
                   Enter 0 for special multiplier events
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startDate">Start Date</Label>
-                  <Input 
-                    id="startDate" 
-                    name="startDate" 
-                    type="date" 
-                    defaultValue={selectedEvent?.startDate.toISOString().split('T')[0] || new Date().toISOString().split('T')[0]} 
+                  <Input
+                    id="startDate"
+                    name="startDate"
+                    type="date"
+                    defaultValue={selectedEvent?.startDate.toISOString().split('T')[0] || new Date().toISOString().split('T')[0]}
                     className="bg-zinc-900 border-zinc-700"
-                    required 
+                    required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="endDate">End Date</Label>
-                  <Input 
-                    id="endDate" 
-                    name="endDate" 
-                    type="date" 
-                    defaultValue={selectedEvent?.endDate.toISOString().split('T')[0] || new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]} 
+                  <Input
+                    id="endDate"
+                    name="endDate"
+                    type="date"
+                    defaultValue={selectedEvent?.endDate.toISOString().split('T')[0] || new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]}
                     className="bg-zinc-900 border-zinc-700"
-                    required 
+                    required
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <input 
-                    id="isActive" 
-                    name="isActive" 
-                    type="checkbox" 
+                  <input
+                    id="isActive"
+                    name="isActive"
+                    type="checkbox"
                     className="rounded border-zinc-700"
                     defaultChecked={selectedEvent?.isActive !== false}
                   />
                   <Label htmlFor="isActive">Active</Label>
                 </div>
               </div>
-              
+
               <DialogFooter>
                 <Button
                   type="button"

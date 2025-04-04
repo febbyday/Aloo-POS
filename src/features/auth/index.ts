@@ -1,17 +1,23 @@
 /**
- * Auth Feature
+ * 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
  * 
- * This module exports components, hooks, and utilities for the auth feature.
+ * Auth Feature Exports
+ * 
+ * This file exports all components, hooks, and utilities from the auth feature.
  */
 
-// Re-export components
+// Export components
 export * from './components';
 
-// Re-export hooks
+// Export context and hooks
+export * from './context';
 export * from './hooks';
 
-// Re-export types
+// Export services
+export * from './services';
+
+// Export types
 export * from './types';
 
-// Re-export context
-export * from './context';
+// Export pages
+export * from './pages';

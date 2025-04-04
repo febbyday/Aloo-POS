@@ -23,11 +23,34 @@ export interface TemplateElement {
     fontWeight?: string;
     textAlign?: 'left' | 'center' | 'right';
     color?: string;
+    backgroundColor?: string;
+    borderWidth?: number;
+    borderColor?: string;
+    borderStyle?: string;
+    opacity?: number;
+    padding?: number;
+    zIndex?: number;
   };
+  zIndex?: number;
 }
 
 class TemplateStorage {
   private readonly STORAGE_KEY = 'label_templates';
+  private readonly DEFAULT_DIMENSIONS = { width: 100, height: 50 };
+  private readonly DEFAULT_ELEMENT_STYLE = {
+    fontSize: 14,
+    fontFamily: 'Arial',
+    fontWeight: 'normal',
+    textAlign: 'left' as const,
+    color: '#000000',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderColor: '#000000',
+    borderStyle: 'solid',
+    opacity: 1,
+    padding: 0,
+    zIndex: 1,
+  };
   private listeners: (() => void)[] = [];
 
   constructor() {
@@ -55,6 +78,11 @@ class TemplateStorage {
     
     return JSON.parse(templates).map((template: any) => ({
       ...template,
+      dimensions: template.dimensions || this.DEFAULT_DIMENSIONS,
+      elements: template.elements.map((element: TemplateElement) => ({
+        ...element,
+        style: { ...this.DEFAULT_ELEMENT_STYLE, ...element.style },
+      })),
       createdAt: new Date(template.createdAt),
       updatedAt: new Date(template.updatedAt)
     }));
@@ -64,10 +92,21 @@ class TemplateStorage {
     const templates = this.getTemplates();
     const index = templates.findIndex(t => t.id === template.id);
     
+    // Ensure template has all required properties
+    const updatedTemplate = {
+      ...template,
+      dimensions: template.dimensions || this.DEFAULT_DIMENSIONS,
+      elements: template.elements.map(element => ({
+        ...element,
+        style: { ...this.DEFAULT_ELEMENT_STYLE, ...element.style },
+      })),
+      updatedAt: new Date(),
+    };
+    
     if (index === -1) {
-      templates.push(template);
+      templates.push(updatedTemplate);
     } else {
-      templates[index] = template;
+      templates[index] = updatedTemplate;
     }
 
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(templates));
@@ -84,7 +123,16 @@ class TemplateStorage {
   getTemplate(id: string): LabelTemplate | null {
     const templates = this.getTemplates();
     const template = templates.find(t => t.id === id);
-    return template || null;
+    if (!template) return null;
+
+    return {
+      ...template,
+      dimensions: template.dimensions || this.DEFAULT_DIMENSIONS,
+      elements: template.elements.map(element => ({
+        ...element,
+        style: { ...this.DEFAULT_ELEMENT_STYLE, ...element.style },
+      })),
+    };
   }
 
   async duplicateTemplate(id: string): Promise<LabelTemplate | null> {
@@ -97,7 +145,8 @@ class TemplateStorage {
       name: `${template.name} (Copy)`,
       elements: template.elements.map(element => ({
         ...element,
-        id: Date.now().toString() + Math.random()
+        id: Date.now().toString() + Math.random(),
+        style: { ...this.DEFAULT_ELEMENT_STYLE, ...element.style },
       })),
       createdAt: new Date(),
       updatedAt: new Date()
@@ -105,6 +154,38 @@ class TemplateStorage {
 
     this.saveTemplate(newTemplate);
     return newTemplate;
+  }
+
+  updateTemplateDimensions(id: string, dimensions: { width: number; height: number }) {
+    const template = this.getTemplate(id);
+    if (!template) return null;
+
+    const updatedTemplate = {
+      ...template,
+      dimensions,
+      updatedAt: new Date(),
+    };
+
+    this.saveTemplate(updatedTemplate);
+    return updatedTemplate;
+  }
+
+  updateElementStyle(templateId: string, elementId: string, style: Partial<TemplateElement['style']>) {
+    const template = this.getTemplate(templateId);
+    if (!template) return null;
+
+    const updatedTemplate = {
+      ...template,
+      elements: template.elements.map(element => 
+        element.id === elementId
+          ? { ...element, style: { ...element.style, ...style } }
+          : element
+      ),
+      updatedAt: new Date(),
+    };
+
+    this.saveTemplate(updatedTemplate);
+    return updatedTemplate;
   }
 }
 

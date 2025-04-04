@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
-import { 
+import {
   Search,
   Plus,
   RefreshCw,
@@ -18,8 +18,9 @@ import {
 import { useParams } from 'react-router-dom'
 import { useStaff } from '@/features/staff/hooks/useStaff'
 import { Staff } from '@/features/staff/types'
-import { shopsService } from '../services/shopsService'
+import { useRealShopContext } from '../context/RealShopContext'
 import { ShopStaffMember } from '../types/shops.types'
+import { AddStaffDialog } from '../components/AddStaffDialog'
 
 interface ShopStaff {
   id: string;
@@ -36,27 +37,42 @@ export function ShopStaffPage() {
   const [staff, setStaff] = useState<ShopStaffMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAddStaffDialogOpen, setIsAddStaffDialogOpen] = useState(false);
   const { toast } = useToast();
-  
+
   // Use the staff hook to get all staff
-  const { 
-    items: allStaff, 
-    loading: loadingStaff, 
-    refresh: refreshStaff 
-  } = useStaff({ 
-    autoLoad: true 
+  const {
+    items: allStaff,
+    loading: loadingStaff,
+    refresh: refreshStaff
+  } = useStaff({
+    autoLoad: true
   });
+
+  // Get the real shop context
+  const {
+    fetchShopById,
+    selectedShop,
+    isLoading: shopLoading,
+    fetchStaffAssignments,
+    staffAssignments
+  } = useRealShopContext();
 
   // Fetch shop staff data
   useEffect(() => {
     if (!shopId) return;
-    
+
     async function fetchShopStaff() {
       setLoading(true);
       try {
-        const shop = await shopsService.fetchById(shopId);
-        if (shop && shop.staffMembers) {
-          setStaff(shop.staffMembers);
+        // Fetch both shop details and staff assignments
+        await Promise.all([
+          fetchShopById(shopId),
+          fetchStaffAssignments(shopId)
+        ]);
+
+        if (selectedShop && selectedShop.staffMembers) {
+          setStaff(selectedShop.staffMembers);
         }
       } catch (error) {
         console.error('Error fetching shop staff:', error);
@@ -69,31 +85,31 @@ export function ShopStaffPage() {
         setLoading(false);
       }
     }
-    
-    fetchShopStaff();
-  }, [shopId, toast]);
 
-  const filteredStaff = staff.filter(member => 
+    fetchShopStaff();
+  }, [shopId, fetchShopById, fetchStaffAssignments, selectedShop, toast]);
+
+  const filteredStaff = staff.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.position.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleRefresh = async () => {
     if (!shopId) return;
-    
+
     setLoading(true);
     toast({
       title: "Refreshing data...",
       description: "Staff data is being updated."
     });
-    
+
     try {
       const shop = await shopsService.fetchById(shopId, true); // force refresh
       if (shop && shop.staffMembers) {
         setStaff(shop.staffMembers);
       }
       refreshStaff(); // Also refresh all staff data
-      
+
       toast({
         title: "Updated",
         description: "Staff data has been refreshed."
@@ -111,10 +127,7 @@ export function ShopStaffPage() {
   };
 
   const handleAddStaff = () => {
-    toast({
-      title: "Coming Soon",
-      description: "The ability to add new staff will be available soon."
-    });
+    setIsAddStaffDialogOpen(true);
   };
 
   const handleEditStaff = (staff: ShopStaffMember) => {
@@ -133,6 +146,15 @@ export function ShopStaffPage() {
 
   return (
     <div className="space-y-6">
+      {/* Add Staff Dialog */}
+      {shopId && (
+        <AddStaffDialog
+          shopId={shopId}
+          open={isAddStaffDialogOpen}
+          onOpenChange={setIsAddStaffDialogOpen}
+          onSuccess={handleRefresh}
+        />
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Shop Staff</h2>
@@ -176,8 +198,8 @@ export function ShopStaffPage() {
               <User2 className="h-10 w-10 text-muted-foreground mb-4" />
               <h3 className="font-medium text-lg mb-2">No Staff Members</h3>
               <p className="text-muted-foreground mb-4">
-                {searchQuery 
-                  ? "No staff members match your search criteria." 
+                {searchQuery
+                  ? "No staff members match your search criteria."
                   : "This shop doesn't have any staff members assigned yet."}
               </p>
               <Button variant="outline" onClick={handleAddStaff}>
@@ -212,21 +234,21 @@ export function ShopStaffPage() {
                           <span>{staffMember.email}</span>
                         </div>
                       )}
-                      
+
                       <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full" 
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
                           onClick={() => handleEditStaff(staffMember)}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full" 
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
                           onClick={() => handleRemoveStaff(staffMember)}
                         >
                           <UserMinus className="h-4 w-4 mr-2" />

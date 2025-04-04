@@ -5,3 +5,5 @@
  */
 
 // Export all types here
+export * from './sales.types';
+export * from './gift-cards';

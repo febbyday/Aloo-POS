@@ -32,6 +32,13 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Minus } from "lucide-react"
 import { toast } from "sonner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const orderItemSchema = z.object({
   productId: z.string().min(1, "Product is required"),
@@ -41,6 +48,7 @@ const orderItemSchema = z.object({
 })
 
 const orderSchema = z.object({
+  supplierId: z.string().min(1, "Please select a supplier"),
   expectedDeliveryDate: z.date({
     required_error: "Expected delivery date is required",
   }),
@@ -57,6 +65,13 @@ interface CreateOrderModalProps {
   onSubmit: (data: OrderFormValues) => void
 }
 
+// Mock suppliers data (replace with actual API call)
+const mockSuppliers = [
+  { id: "1", name: "Luxury Leather Co." },
+  { id: "2", name: "Global Bags Distribution" },
+  { id: "3", name: "Eco Bags Direct" }
+]
+
 export function CreateOrderModal({
   open,
   onOpenChange,
@@ -68,6 +83,7 @@ export function CreateOrderModal({
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
+      supplierId: supplierId || "",
       items: [{ productId: "", quantity: 1, price: 0 }],
       notes: "",
     },
@@ -110,6 +126,31 @@ export function CreateOrderModal({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="supplierId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Supplier</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a supplier" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {mockSuppliers.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="expectedDeliveryDate"

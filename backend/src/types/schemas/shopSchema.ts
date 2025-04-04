@@ -1,68 +1,88 @@
 // 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
 
-import { z } from 'zod';
-
 /**
- * Shop schema for shared validation between frontend and backend
- * 
- * This schema defines the structure and validation rules for shop data
- * and should be kept in sync with the frontend schema.
+ * Shop schema for backend validation
+ *
+ * This file imports the shared schema from the shared directory
+ * to ensure consistency between frontend and backend.
  */
 
-// Shop staff member schema
-export const ShopStaffMemberSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Name is required'),
-  position: z.string(),
-  email: z.string().email('Invalid email address'),
-  active: z.boolean().default(true)
-});
+// Import shared schemas
+const {
+  shopSchema,
+  baseShopSchema,
+  createShopSchema,
+  updateShopSchema,
+  shopActivitySchema,
+  staffAssignmentSchema,
+  addressSchema,
+  SHOP_STATUS,
+  SHOP_TYPE,
+  Shop,
+  CreateShopInput,
+  UpdateShopInput,
+  ShopActivity,
+  StaffAssignment
+} = require('../../../shared/schemas/shopSchema.cjs');
 
-// Shop activity schema
-export const ShopActivitySchema = z.object({
-  type: z.enum(['inventory', 'staff', 'sales', 'system']),
-  message: z.string(),
-  timestamp: z.date().or(z.string().transform(val => new Date(val))),
-});
+// Import local address types
+import { Address } from '../models/addressTypes';
 
-// Base shop schema with common fields
-export const BaseShopSchema = z.object({
-  name: z.string().min(1, 'Shop name is required'),
-  location: z.string().min(1, 'Location is required'),
-  type: z.enum(['retail', 'warehouse', 'outlet']),
-  status: z.enum(['active', 'inactive', 'maintenance']),
-  phone: z.string().optional(),
-  email: z.string().email('Invalid email address').optional().or(z.literal('')),
-  manager: z.string().optional(),
-  openingHours: z.string().optional(),
-});
+// Re-export for backward compatibility
+export const ShopSchema = shopSchema;
+export const BaseShopSchema = baseShopSchema;
+export const CreateShopSchema = createShopSchema;
+export const UpdateShopSchema = updateShopSchema;
+export const ShopActivitySchema = shopActivitySchema;
+export const ShopStaffMemberSchema = staffAssignmentSchema;
+export const AddressSchema = addressSchema;
 
-// Schema for creating a new shop
-export const CreateShopSchema = BaseShopSchema.extend({
-  staffMembers: z.array(ShopStaffMemberSchema).optional(),
-  staffCount: z.number().int().nonnegative().optional().default(0),
-});
+// Re-export types
+export {
+  Shop,
+  CreateShopInput,
+  UpdateShopInput,
+  ShopActivity,
+  SHOP_STATUS,
+  SHOP_TYPE,
+  Address
+};
 
-// Schema for updating an existing shop
-export const UpdateShopSchema = BaseShopSchema.partial();
+// For backward compatibility
+export type ShopStaffMember = StaffAssignment;
 
-// Complete shop schema with all fields
-export const ShopSchema = BaseShopSchema.extend({
-  id: z.string(),
-  staffCount: z.number().int().nonnegative(),
-  lastSync: z.date().or(z.string().transform(val => new Date(val))),
-  createdAt: z.date().or(z.string().transform(val => new Date(val))),
-  staffMembers: z.array(ShopStaffMemberSchema).optional(),
-  recentActivity: z.array(ShopActivitySchema).optional(),
-  salesLastMonth: z.number().optional(),
-  inventoryCount: z.number().int().optional(),
-  averageOrderValue: z.number().optional(),
-  topSellingCategories: z.array(z.string()).optional(),
-});
-
-// Derived types from schemas
-export type Shop = z.infer<typeof ShopSchema>;
-export type CreateShopInput = z.infer<typeof CreateShopSchema>;
-export type UpdateShopInput = z.infer<typeof UpdateShopSchema>;
-export type ShopStaffMember = z.infer<typeof ShopStaffMemberSchema>;
-export type ShopActivity = z.infer<typeof ShopActivitySchema>;
+/**
+ * Frontend Shop interface
+ * This represents the shop structure expected by the frontend
+ * Note: This is kept for backward compatibility but should be phased out
+ * in favor of the shared Shop type
+ */
+export interface FrontendShop {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  address: Address; // Now using the shared Address type
+  phone?: string;
+  email?: string;
+  status: string;
+  type: string;
+  manager?: string;
+  operatingHours?: any;
+  lastSync: string;
+  isHeadOffice: boolean;
+  licenseNumber?: string;
+  logoUrl?: string;
+  taxId?: string;
+  timezone: string;
+  website?: string;
+  settings?: any;
+  salesLastMonth?: number;
+  inventoryCount?: number;
+  averageOrderValue?: number;
+  staffCount?: number;
+  createdAt: string;
+  updatedAt: string;
+  recentActivity?: ShopActivity[];
+  staffAssignments?: StaffAssignment[]; // Changed from staffMembers
+}

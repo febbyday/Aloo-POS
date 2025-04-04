@@ -16,9 +16,10 @@ import {
   BadgeCheck, 
   Calendar,
 } from "lucide-react"
-import { Staff } from "../types/staff"
+import { Staff } from "../types/staff.types"
 import { StaffModal } from "./StaffModal"
 import { cn } from "@/lib/utils"
+import { toast } from "@/components/ui/use-toast"
 
 interface StaffTableProps {
   data: Staff[]
@@ -30,23 +31,24 @@ interface StaffTableProps {
 
 export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionChange }: StaffTableProps) {
   const [selectedRows, setSelectedRows] = useState<string[]>([])
-  const [viewModalOpen, setViewModalOpen] = useState(false)
-  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
+  const [activeRowId, setActiveRowId] = useState<string | null>(null)
   const navigate = useNavigate()
 
   const handleEdit = (staff: Staff) => {
-    setSelectedStaff(staff)
-    setViewModalOpen(true)
+    onEdit(staff)
   }
 
   const handleView = (staff: Staff) => {
-    navigate(`/staff/${staff.id}`)
-  }
-
-  const handleUpdate = (updatedStaff: Staff) => {
-    onEdit(updatedStaff)
-    setViewModalOpen(false)
-    setSelectedStaff(null)
+    setActiveRowId(staff.id)
+    
+    toast({
+      title: "Opening Staff Details",
+      description: `Viewing details for ${staff.firstName} ${staff.lastName}`,
+    })
+    
+    setTimeout(() => {
+      navigate(`/staff/${staff.id}`)
+    }, 300)
   }
 
   const handleRowClick = (staff: Staff) => {
@@ -109,10 +111,12 @@ export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionCha
                 key={staff.id}
                 className={cn(
                   "py-2 cursor-pointer transition-colors",
-                  selectedRows.includes(staff.id!) ? "bg-muted/60" : "hover:bg-muted/30"
+                  selectedRows.includes(staff.id!) ? "bg-muted/60" : "hover:bg-muted/30",
+                  activeRowId === staff.id && "bg-primary/10 border-primary/30 border"
                 )}
                 onClick={() => handleRowClick(staff)}
                 onDoubleClick={() => handleView(staff)}
+                title="Double-click to view staff details"
               >
                 <TableCell className="py-2">
                   <div className="flex items-center gap-3">
@@ -122,7 +126,7 @@ export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionCha
                         {staff.firstName} {staff.lastName}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {staff.department}
+                        {staff.role?.name || "No role assigned"}
                       </p>
                     </div>
                   </div>
@@ -130,40 +134,54 @@ export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionCha
                 <TableCell className="py-2">
                   <div className="space-y-1">
                     <p className="text-sm">{staff.email}</p>
-                    <p className="text-sm text-muted-foreground">{staff.phone}</p>
+                    <p className="text-sm text-muted-foreground">{staff.phone || "No phone"}</p>
                   </div>
                 </TableCell>
                 <TableCell className="py-2">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">{staff.position}</p>
+                    <p className="text-sm font-medium">{staff.code || "No position"}</p>
                     <p className="text-xs text-muted-foreground">
-                      Since {new Date(staff.hireDate).toLocaleDateString()}
+                      {staff.updatedAt ? `Updated: ${new Date(staff.updatedAt).toLocaleDateString()}` : "Not updated"}
                     </p>
                   </div>
                 </TableCell>
                 <TableCell className="py-2">
-                  {staff.employmentType === "full-time" ? (
-                    <Badge className="bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 border-blue-500/10">
-                      {staff.employmentType.replace("-", " ")}
+                  {typeof staff.employmentType === 'object' && staff.employmentType && 'name' in staff.employmentType ? (
+                    <Badge 
+                      className="bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 border-blue-500/10"
+                      style={{ 
+                        backgroundColor: `${staff.employmentType.color}20`,
+                        color: staff.employmentType.color,
+                        borderColor: `${staff.employmentType.color}10` 
+                      }}
+                    >
+                      {staff.employmentType.name}
                     </Badge>
-                  ) : staff.employmentType === "part-time" ? (
-                    <Badge className="bg-purple-500/20 text-purple-700 hover:bg-purple-500/30 border-purple-500/10">
-                      {staff.employmentType.replace("-", " ")}
+                  ) : typeof staff.employmentType === 'string' ? (
+                    <Badge className={
+                      staff.employmentType === "full-time" ? "bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 border-blue-500/10" :
+                      staff.employmentType === "part-time" ? "bg-purple-500/20 text-purple-700 hover:bg-purple-500/30 border-purple-500/10" :
+                      "bg-orange-500/20 text-orange-700 hover:bg-orange-500/30 border-orange-500/10"
+                    }>
+                      {staff.employmentType}
                     </Badge>
                   ) : (
-                    <Badge className="bg-orange-500/20 text-orange-700 hover:bg-orange-500/30 border-orange-500/10">
-                      {staff.employmentType.replace("-", " ")}
+                    <Badge className="bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border-gray-500/10">
+                      Not specified
                     </Badge>
                   )}
                 </TableCell>
                 <TableCell className="py-2">
-                  {staff.status === "active" ? (
-                    <Badge className="bg-green-500/20 text-green-700 hover:bg-green-500/30 border-green-500/10">
+                  {typeof staff.status === 'string' ? (
+                    <Badge className={
+                      staff.status.toLowerCase() === "active" ? "bg-green-500/20 text-green-700 hover:bg-green-500/30 border-green-500/10" :
+                      "bg-red-500/20 text-red-700 hover:bg-red-500/30 border-red-500/10"
+                    }>
                       {staff.status}
                     </Badge>
                   ) : (
-                    <Badge className="bg-red-500/20 text-red-700 hover:bg-red-500/30 border-red-500/10">
-                      {staff.status}
+                    <Badge className="bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border-gray-500/10">
+                      Unknown
                     </Badge>
                   )}
                 </TableCell>
@@ -172,17 +190,11 @@ export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionCha
           </TableBody>
         </Table>
       </div>
-
-      {selectedStaff && (
-        <StaffModal
-          isOpen={viewModalOpen}
-          onClose={() => {
-            setViewModalOpen(false);
-            setSelectedStaff(null);
-          }}
-          onSubmit={handleUpdate}
-          initialData={selectedStaff}
-        />
+      
+      {data.length > 0 && (
+        <div className="mt-4 text-xs text-muted-foreground text-center italic">
+          <p>Tip: Click to select a staff member. Double-click to view their full details.</p>
+        </div>
       )}
     </>
   )

@@ -8,8 +8,7 @@ import { Supplier } from '@/features/suppliers/types';
  */
 export enum ProductType {
   SIMPLE = 'simple',
-  VARIABLE = 'variable',
-  SINGLE = 'single'
+  VARIABLE = 'variable'
 }
 
 /**
@@ -71,19 +70,20 @@ export const BaseProductSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters'),
   description: z.string().optional(),
   shortDescription: z.string().optional(),
+  // SKU and barcode will be generated automatically
   sku: z.string().optional(),
   barcode: z.string().optional(),
-  
+
   // Categorization
   category: z.string(),
   subcategory: z.string().optional(),
   brand: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  
+
   // Status and Type
   productType: z.nativeEnum(ProductType),
   status: z.nativeEnum(ProductStatus).default(ProductStatus.ACTIVE),
-  
+
   // Timestamps
   createdAt: z.string().or(z.date()).optional(),
   updatedAt: z.string().or(z.date()).optional(),
@@ -313,17 +313,17 @@ export const UnifiedProductSchema = z.object({
   ...StockManagementSchema.shape,
   ...SupplierInfoSchema.shape,
   ...MediaSchema.shape,
-  
+
   // Variants and Attributes
   attributes: z.array(ProductAttributeSchema).optional(),
   variations: z.array(ProductVariationSchema).optional(),
   variants: z.array(ProductVariantSchema).optional(),
-  
+
   // Related products
   relatedProducts: z.array(z.string()).optional(),
   crossSellProducts: z.array(z.string()).optional(),
   upSellProducts: z.array(z.string()).optional(),
-  
+
   // Custom fields
   customFields: z.record(z.string(), z.any()).optional(),
 });
@@ -366,7 +366,7 @@ export type ProductVariantOption = z.infer<typeof ProductVariantOptionSchema>;
  * Form Data Types
  */
 export type ProductFormData = Omit<
-  UnifiedProduct, 
+  UnifiedProduct,
   'id' | 'sku' | 'barcode' | 'createdAt' | 'updatedAt' | 'updatedBy' | 'locations'
 >;
 

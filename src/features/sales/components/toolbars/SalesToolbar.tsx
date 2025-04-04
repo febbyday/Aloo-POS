@@ -5,7 +5,9 @@ import {
   Printer, 
   Search,
   Plus,
-  Receipt
+  Receipt,
+  Eye,
+  Trash2
 } from "lucide-react"
 import { Toolbar } from "@/components/ui/toolbar/toolbar"
 import { useToast } from "@/components/ui/use-toast"
@@ -20,6 +22,9 @@ interface SalesToolbarProps {
   onPrint?: () => void
   onNewSale?: () => void
   onSearch?: (query: string) => void
+  onViewDetails?: () => void
+  onDelete?: () => void
+  selectedCount?: number
 }
 
 export function SalesToolbar({ 
@@ -28,7 +33,10 @@ export function SalesToolbar({
   onExport,
   onPrint,
   onNewSale,
-  onSearch
+  onSearch,
+  onViewDetails,
+  onDelete,
+  selectedCount = 0
 }: SalesToolbarProps) {
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState("")
@@ -61,6 +69,24 @@ export function SalesToolbar({
           label: "New Sale", 
           onClick: onNewSale 
         }] : []),
+        ...(onViewDetails ? [{ 
+          icon: Eye, 
+          label: "View Details", 
+          onClick: onViewDetails,
+          disabled: selectedCount !== 1,
+          title: selectedCount === 1 ? 'View sale details' : 'Select a sale to view details'
+        }] : []),
+        ...(onDelete ? [{ 
+          icon: Trash2, 
+          label: `Delete${selectedCount > 0 ? ` (${selectedCount})` : ''}`, 
+          onClick: onDelete,
+          disabled: selectedCount === 0,
+          title: selectedCount > 0 ? `Delete ${selectedCount} selected sales` : 'Select sales to delete'
+        }] : [])
+      ]
+    },
+    {
+      buttons: [
         ...(onPrint ? [{ 
           icon: Printer, 
           label: "Print", 

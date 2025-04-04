@@ -28,9 +28,9 @@ export interface Customer {
   };
   loyaltyPoints: number;
   loyaltyTier?: LoyaltyTier;
-  createdAt: Date;
-  updatedAt: Date;
-  lastPurchaseDate?: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  lastPurchaseDate?: Date | string | null;
   totalPurchases: number;
   status: 'active' | 'inactive' | 'blocked';
   notes?: string;

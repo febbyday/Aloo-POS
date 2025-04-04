@@ -23,6 +23,14 @@ const defaultSettings: POSSettings = {
       inventoryAlerts: true,
       systemAlerts: true
     },
+    internal: {
+      enabled: true,
+      showBadge: true,
+      sound: true,
+      desktop: false,
+      autoRead: false,
+      keepDays: 30
+    },
     inventoryAlerts: {
       enabled: true,
       threshold: 10
@@ -305,6 +313,29 @@ const defaultSettings: POSSettings = {
         }
       ]
     }
+  },
+  email: {
+    server: {
+      host: 'smtp.example.com',
+      port: 587,
+      secure: false,
+      useMock: true
+    },
+    auth: {
+      user: '',
+      password: ''
+    },
+    sender: {
+      name: 'POS System',
+      email: 'noreply@posapp.com'
+    },
+    templates: {
+      welcomeEmail: true,
+      passwordReset: true,
+      orderConfirmation: true,
+      staffCredentials: true,
+      invoices: true
+    }
   }
 };
 
@@ -330,7 +361,7 @@ export function SettingsPage() {
     if (location.pathname === '/settings') {
       return <Navigate to="/settings/appearance" replace />;
     }
-    
+
     // Otherwise, render the outlet (child routes)
     return <Outlet context={{ settings, handleSettingsUpdate }} />;
   };

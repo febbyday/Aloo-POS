@@ -5,7 +5,9 @@
  * and to check the status of API endpoints.
  */
 
-import { apiClient, API_CONFIG, getApiConfig } from './api-config';
+import { apiClient } from './api-client';
+import { apiConfig } from './config';
+import { ApiStatus } from './api-health';
 
 // Interface for API check results
 interface ApiCheckResult {
@@ -21,7 +23,7 @@ interface ApiCheckResult {
 /**
  * Verifies that the app is using real APIs for the loyalty program
  */
-export async function verifyLoyaltyApiConnection() {
+export async function verifyLoyaltyApiConnection(): Promise<void> {
   try {
     // Log the base URL and environment variables for debugging
     console.log('API Verification:', {
@@ -29,13 +31,14 @@ export async function verifyLoyaltyApiConnection() {
       useMock: import.meta.env.VITE_USE_MOCK_API,
       loyaltyEnabled: import.meta.env.VITE_LOYALTY_API_ENABLED,
       mode: import.meta.env.MODE,
-      backendUrl: API_CONFIG.BACKEND_URL,
+      backendUrl: apiConfig.baseUrl,
     });
 
     // Check if backend is running by accessing a known endpoint
     try {
-      console.log('Checking backend health via proxy at /api/v1/health...');
-      const healthCheck = await fetch('/api/v1/health');
+      console.log('Checking backend health via proxy at /health...');
+      // Use apiPrefix instead of apiVersion which doesn't exist
+      const healthCheck = await fetch(`${apiConfig.baseUrl}${apiConfig.apiPrefix}/health`);
       const healthData = await healthCheck.json();
       console.log('Backend health check via proxy:', {
         status: healthCheck.status,
@@ -43,255 +46,231 @@ export async function verifyLoyaltyApiConnection() {
         data: healthData
       });
     } catch (error) {
-      console.error('Backend health check via proxy failed:', error);
+      console.error('Backend health check via proxy failed:', error instanceof Error ? error.message : String(error));
     }
 
     // Try direct backend connection
     try {
-      console.log(`Checking direct backend connection at ${API_CONFIG.BACKEND_URL}/api/v1/health...`);
-      const directCheck = await fetch(`${API_CONFIG.BACKEND_URL}/api/v1/health`);
+      console.log('Checking direct backend connection...');
+      // Use a properly constructed health URL
+      const normalizedBaseUrl = apiConfig.baseUrl.endsWith('/') ? apiConfig.baseUrl.slice(0, -1) : apiConfig.baseUrl;
+      const healthUrl = `${normalizedBaseUrl}${apiConfig.apiPrefix}/health`;
+      console.log(`Direct health check URL: ${healthUrl}`);
+      
+      const directCheck = await fetch(healthUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        // Add cache busting to prevent cached responses
+        cache: 'no-cache',
+        // Add credentials to include cookies if needed
+        credentials: 'include'
+      });
+      
       const directData = await directCheck.json();
-      console.log('Direct backend check:', {
+      console.log('Direct backend health check:', {
         status: directCheck.status,
         ok: directCheck.ok,
         data: directData
       });
-      
-      if (!directCheck.ok) {
-        console.error('Direct backend connection failed with status:', directCheck.status);
-      } else {
-        console.log('✅ Direct backend connection successful');
-      }
     } catch (error) {
-      console.error('Direct backend connection failed:', error);
-      console.log('This may indicate the backend server is not running');
+      console.error('Direct backend health check failed:', error instanceof Error ? error.message : String(error));
     }
-    
-    // Check if mock mode is disabled
-    console.log('Checking API config...');
-    try {
-      const configResult = await apiClient.get('/api/v1/config');
-      const isUsingMock = configResult.data?.useMock || false;
-      
-      console.log('API config check:', {
-        mockMode: isUsingMock,
-        data: configResult.data
-      });
-      
-      if (isUsingMock) {
-        console.warn('⚠️ Application is currently using mock data for APIs');
-        return false;
+
+    // Check if mock data is being used
+    const usingMockData = shouldUseMockData();
+    console.log(`Using mock data: ${usingMockData ? 'YES' : 'NO'}`);
+
+    // If using mock data, explain why
+    if (usingMockData) {
+      console.log('Mock data is being used because:');
+      if (import.meta.env.VITE_USE_MOCK_API === 'true') {
+        console.log('- VITE_USE_MOCK_API is set to true');
       }
-    } catch (error) {
-      console.error('API config check failed:', error);
-      console.log('This may indicate an issue with the API server');
       
-      // Try direct connection to config endpoint
+      // Check if backend is unreachable
       try {
-        console.log(`Trying direct connection to config endpoint at ${API_CONFIG.BACKEND_URL}/api/v1/config...`);
-        const directConfigCheck = await fetch(`${API_CONFIG.BACKEND_URL}/api/v1/config`);
-        const directConfigData = await directConfigCheck.json();
-        console.log('Direct config check:', {
-          status: directConfigCheck.status,
-          ok: directConfigCheck.ok,
-          data: directConfigData
+        const response = await fetch(`${apiConfig.baseUrl}${apiConfig.apiPrefix}/health`, { 
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors'
         });
         
-        if (directConfigCheck.ok) {
-          console.log('✅ Direct config connection successful - proxy issue suspected');
+        if (!response.ok) {
+          console.log(`- Backend returned error status: ${response.status}`);
         }
-      } catch (configError) {
-        console.error('Direct config connection also failed:', configError);
+      } catch (error) {
+        console.log('- Backend is unreachable:', error instanceof Error ? error.message : String(error));
       }
     }
-    
-    // Try to access a loyalty API endpoint
-    try {
-      console.log('Checking loyalty tiers endpoint via proxy...');
-      const tiersResult = await apiClient.get('/api/v1/loyalty/tiers');
-      
-      console.log('✅ Successfully connected to loyalty API via proxy', {
-        endpoint: '/api/v1/loyalty/tiers',
-        status: tiersResult.status,
-        dataCount: Array.isArray(tiersResult.data) ? tiersResult.data.length : 'not an array',
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('❌ Failed to access loyalty tiers endpoint via proxy:', 
-        error.response ? {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data
-        } : error
-      );
-      
-      // Try direct connection to tiers endpoint
-      try {
-        console.log(`Trying direct connection to tiers endpoint at ${API_CONFIG.BACKEND_URL}/api/v1/loyalty/tiers...`);
-        const directTiersCheck = await fetch(`${API_CONFIG.BACKEND_URL}/api/v1/loyalty/tiers`);
-        const directTiersData = await directTiersCheck.json();
-        console.log('Direct tiers check:', {
-          status: directTiersCheck.status,
-          ok: directTiersCheck.ok,
-          data: directTiersData
-        });
-        
-        if (directTiersCheck.ok) {
-          console.log('✅ Direct tiers connection successful - proxy issue suspected');
-          return true;
-        }
-      } catch (tiersError) {
-        console.error('Direct tiers connection also failed:', tiersError);
-      }
-      
-      return false;
-    }
+
+    // Provide troubleshooting information
+    displayTroubleshootingInfo();
+
   } catch (error) {
-    console.error('❌ Failed to verify loyalty API connection', error);
-    return false;
+    console.error('API verification failed:', error instanceof Error ? error.message : String(error));
+    
+    // Log detailed error information
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+    } else {
+      console.error('Unknown error type:', error);
+    }
   }
 }
 
 /**
  * Checks if all loyalty API endpoints are accessible
  */
-export async function checkLoyaltyApiEndpoints() {
-  const endpoints = [
-    '/api/v1/loyalty/tiers',
-    '/api/v1/loyalty/rewards',
-    '/api/v1/loyalty/events',
-    '/api/v1/loyalty/settings',
-    '/api/v1/loyalty/transactions'
-  ];
-  
-  const results: Record<string, { success: boolean; error?: string; status?: number; data?: any }> = {};
-  
-  console.log('Checking loyalty API endpoints via proxy...');
-  
-  for (const endpoint of endpoints) {
-    try {
-      console.log(`Testing endpoint via proxy: ${endpoint}...`);
-      const response = await fetch(endpoint);
-      let responseData = null;
+export async function checkLoyaltyApiEndpoints(): Promise<void> {
+  try {
+    console.log('Checking loyalty API endpoints...');
+    
+    // Define the endpoints to check
+    const endpoints = [
+      '/loyalty/programs',
+      '/loyalty/members',
+      '/loyalty/rewards',
+      '/loyalty/transactions'
+    ];
+    
+    // Check each endpoint
+    for (const endpoint of endpoints) {
       try {
-        responseData = await response.json();
-      } catch (e) {
-        console.warn(`Could not parse JSON from ${endpoint}`);
-      }
-      
-      results[endpoint] = { 
-        success: response.ok, 
-        status: response.status,
-        data: responseData
-      };
-      console.log(`Endpoint ${endpoint}: ${response.ok ? '✅' : '❌'} (${response.status})`);
-      
-      // If proxy fails, try direct connection
-      if (!response.ok) {
-        try {
-          console.log(`Testing endpoint directly: ${API_CONFIG.BACKEND_URL}${endpoint}...`);
-          const directResponse = await fetch(`${API_CONFIG.BACKEND_URL}${endpoint}`);
-          let directData = null;
-          try {
-            directData = await directResponse.json();
-          } catch (e) {
-            console.warn(`Could not parse JSON from direct ${endpoint}`);
-          }
-          
-          console.log(`Direct endpoint ${endpoint}: ${directResponse.ok ? '✅' : '❌'} (${directResponse.status})`);
-          
-          if (directResponse.ok) {
-            console.log('Direct connection succeeded where proxy failed - proxy issue confirmed');
-          }
-        } catch (directError) {
-          console.error(`Direct connection to ${endpoint} also failed:`, directError);
-        }
-      }
-    } catch (error) {
-      results[endpoint] = { 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      };
-      console.error(`Endpoint ${endpoint}: ❌ (Error: ${error instanceof Error ? error.message : String(error)})`);
-    }
-  }
-  
-  const allSuccessful = Object.values(results).every(r => r.success);
-  
-  console.log(`Loyalty API Endpoints Check: ${allSuccessful ? '✅ All OK' : '❌ Some Failed'}`, results);
-  
-  return { 
-    success: allSuccessful, 
-    results 
-  };
-}
-
-/**
- * Troubleshooting information to help diagnose API connection issues
- */
-export function displayTroubleshootingInfo() {
-  console.log(`
-    ========== API Troubleshooting Guide ==========
-    
-    Current Configuration:
-    - API URL: ${import.meta.env.VITE_API_URL || '/api/v1'}
-    - Mock API: ${import.meta.env.VITE_USE_MOCK_API || 'false'}
-    - Backend Port: ${import.meta.env.VITE_BACKEND_PORT || '5000'}
-    - Environment: ${import.meta.env.MODE}
-    - Backend URL: ${API_CONFIG.BACKEND_URL}
-    
-    Common Issues:
-    1. Backend server not running - Start with: cd backend && npm run dev
-    2. Backend running on wrong port - Check PORT in backend/.env
-    3. Database connection issues - Check DATABASE_URL in .env
-    4. CORS issues - Backend CORS settings may need updating
-    5. Proxy misconfiguration - Check vite.config.ts proxy settings
-    
-    Debug Steps:
-    - Check browser network tab for detailed error responses
-    - Verify the backend is running (localhost:${import.meta.env.VITE_BACKEND_PORT || '5000'}/api/v1/health)
-    - Check console for database connection errors
-    - Try direct API access: ${API_CONFIG.BACKEND_URL}/api/v1/health
-    
-    Fixing Proxy Issues:
-    - Make sure backend is running on port ${import.meta.env.VITE_BACKEND_PORT || '5000'}
-    - Restart both frontend and backend servers
-    - Clear browser cache and refresh
-    - Check for conflicting port usage with: netstat -ano | findstr :5000
-    
-    =============================================
-  `);
-}
-
-/**
- * Initializes the verification process on application startup
- */
-export function initApiVerification() {
-  // Only run in non-production environments
-  if (import.meta.env.MODE !== 'production') {
-    console.log('Starting API verification process...');
-    
-    // Display troubleshooting info right away
-    displayTroubleshootingInfo();
-    
-    // Wait for the application to finish loading
-    setTimeout(async () => {
-      try {
-        const connected = await verifyLoyaltyApiConnection();
-        await checkLoyaltyApiEndpoints();
+        const fullUrl = `${apiConfig.baseUrl}${apiConfig.apiPrefix}${endpoint}`;
+        console.log(`Checking endpoint: ${fullUrl}`);
         
-        // If connection failed, show troubleshooting info again
-        if (!connected) {
-          console.log('API connection issues detected. Showing troubleshooting information:');
-          displayTroubleshootingInfo();
+        const response = await fetch(fullUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          mode: 'cors'
+        });
+        
+        console.log(`Endpoint ${endpoint} status:`, {
+          status: response.status,
+          ok: response.ok
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`Endpoint ${endpoint} data:`, data);
+        } else {
+          console.warn(`Endpoint ${endpoint} returned error status: ${response.status}`);
         }
       } catch (error) {
-        console.error('API verification process failed:', error);
-        console.log('Showing troubleshooting information due to verification failure:');
-        displayTroubleshootingInfo();
+        console.error(`Failed to check endpoint ${endpoint}:`, error instanceof Error ? error.message : String(error));
       }
-    }, 2000);
+    }
+  } catch (error) {
+    console.error('Failed to check loyalty API endpoints:', error instanceof Error ? error.message : String(error));
+  }
+}
+
+/**
+ * Displays troubleshooting information for API connection issues
+ */
+export function displayTroubleshootingInfo(): void {
+  console.log('API Troubleshooting Information:');
+  console.log('-------------------------------');
+  
+  // Environment information
+  console.log('Environment:');
+  console.log(`- Mode: ${import.meta.env.MODE}`);
+  console.log(`- API URL: ${apiConfig.baseUrl}`);
+  console.log(`- API Prefix: ${apiConfig.apiPrefix}`);
+  console.log(`- Using Mock API: ${import.meta.env.VITE_USE_MOCK_API === 'true' ? 'Yes' : 'No'}`);
+  
+  // CORS information
+  console.log('\nCORS Information:');
+  console.log('- If you see CORS errors, ensure your backend has the correct CORS headers');
+  console.log('- The backend should allow requests from your frontend origin');
+  console.log(`- Current origin: ${window.location.origin}`);
+  
+  // Network information
+  console.log('\nNetwork Information:');
+  console.log('- Check if you can access the API directly in your browser');
+  console.log(`- Try accessing: ${apiConfig.baseUrl}${apiConfig.apiPrefix}/health`);
+  console.log('- Check your browser network tab for detailed error information');
+  
+  // Common solutions
+  console.log('\nCommon Solutions:');
+  console.log('1. Ensure the backend server is running');
+  console.log('2. Check that the API URL is correct in your environment variables');
+  console.log('3. Verify network connectivity between frontend and backend');
+  console.log('4. Check for CORS configuration issues on the backend');
+  console.log('5. Look for authentication/authorization errors in the network tab');
+  console.log('-------------------------------');
+}
+
+/**
+ * Initializes the API verification process
+ */
+export function initApiVerification(): void {
+  console.log('Initializing API verification...');
+  
+  // Check if verification is enabled
+  if (import.meta.env.VITE_ENABLE_API_VERIFICATION === 'false') {
+    console.log('API verification is disabled by environment variable');
+    return;
+  }
+  
+  // Check if we should use mock data
+  const usingMockData = shouldUseMockData();
+  console.log(`Using mock data: ${usingMockData ? 'YES' : 'NO'}`);
+  
+  // If using real API, verify connection
+  if (!usingMockData) {
+    console.log('Using real API, verifying connection...');
+    setTimeout(() => {
+      verifyLoyaltyApiConnection().catch(error => {
+        console.error('API verification failed:', error instanceof Error ? error.message : String(error));
+      });
+    }, 2000); // Delay to allow app to initialize
+  } else {
+    console.log('Using mock API, skipping verification');
+  }
+}
+
+/**
+ * Checks if the application should use mock data instead of real API
+ * @returns True if mock data should be used, false otherwise
+ */
+export function shouldUseMockData(): boolean {
+  // Check environment variable
+  if (import.meta.env.VITE_USE_MOCK_API === 'true') {
+    return true;
+  }
+  
+  // Add additional checks here if needed
+  // For example, checking if API is unreachable
+  
+  return false;
+}
+
+/**
+ * Gets a human-readable API status text
+ * @param status The API status
+ * @returns Human-readable status text
+ */
+export function getApiStatusText(status: ApiStatus): string {
+  switch (status) {
+    case ApiStatus.AVAILABLE:
+      return 'Available';
+    case ApiStatus.UNAVAILABLE:
+      return 'Unavailable';
+    case ApiStatus.UNKNOWN:
+      return 'Unknown';
+    default:
+      return 'Unknown';
   }
 }
 
@@ -300,205 +279,3 @@ export function initApiVerification() {
 if (import.meta.env.VITE_ENABLE_API_VERIFICATION !== 'false') {
   initApiVerification();
 }
-
-/**
- * Detailed API verification to diagnose connection issues
- */
-export async function verifyApiConnection(): Promise<void> {
-  console.group('🔍 API Connection Verification');
-  console.log('Starting API verification...');
-  
-  // Get the current API configuration
-  const apiConfig = getApiConfig();
-  
-  // Log environment configuration
-  console.log('Environment Configuration:');
-  console.log(`- Base URL: ${API_CONFIG.BASE_URL}`);
-  console.log(`- Using Mock API: ${apiConfig.useMock ? 'Yes' : 'No'}`);
-  console.log(`- API Version: ${import.meta.env.VITE_API_VERSION || 'v1'}`);
-  console.log(`- Loyalty API Enabled: ${import.meta.env.VITE_LOYALTY_API_ENABLED === 'true' ? 'Yes' : 'No'}`);
-  
-  // Check if we're in dev mode running on the same domain
-  const isSameOrigin = window.location.origin === new URL(API_CONFIG.BASE_URL, window.location.origin).origin;
-  console.log(`- Same Origin: ${isSameOrigin ? 'Yes (proxy should be working)' : 'No (ensure CORS is enabled)'}`);
-  
-  // Verify basic connectivity
-  try {
-    await checkHealthEndpoint();
-    
-    // Only check loyalty endpoints if loyalty is enabled
-    if (import.meta.env.VITE_LOYALTY_API_ENABLED === 'true') {
-      await checkLoyaltyEndpoints();
-    } else {
-      console.log('Loyalty API is disabled. Skipping loyalty endpoint checks.');
-    }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('API verification failed with an unexpected error:', errorMessage);
-  }
-  
-  console.log('API verification complete.');
-  console.log('If you\'re seeing 404 errors, ensure your backend server is running and routes are configured correctly.');
-  
-  // Output troubleshooting guide
-  outputTroubleshootingGuide();
-  
-  console.groupEnd();
-}
-
-/**
- * Checks the health endpoint to verify basic API connectivity
- */
-async function checkHealthEndpoint(): Promise<void> {
-  console.group('Health Check');
-  
-  try {
-    const healthResult = await checkEndpoint('/health');
-    if (healthResult.status === 'success') {
-      console.log('✅ Backend server is responding');
-    } else {
-      console.error('❌ Backend server health check failed');
-      console.log('This indicates your backend might not be running or the health endpoint is not configured.');
-    }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('❌ Failed to perform health check:', errorMessage);
-  }
-  
-  console.groupEnd();
-}
-
-/**
- * Checks all loyalty endpoints to verify they are working
- */
-async function checkLoyaltyEndpoints(): Promise<void> {
-  console.group('Loyalty API Endpoints');
-  
-  const endpoints = [
-    '/loyalty/settings',
-    '/loyalty/tiers',
-    '/loyalty/rewards',
-    '/loyalty/events',
-    '/loyalty/transactions'
-  ];
-  
-  const results: ApiCheckResult[] = [];
-  
-  for (const endpoint of endpoints) {
-    try {
-      const result = await checkEndpoint(endpoint);
-      results.push(result);
-      
-      if (result.status === 'success') {
-        console.log(`✅ ${endpoint}: Success (${result.statusCode})`);
-      } else {
-        console.error(`❌ ${endpoint}: Failed (${result.statusCode})`);
-        console.log(`   Error: ${result.message}`);
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`❌ ${endpoint}: Exception`, errorMessage);
-    }
-  }
-  
-  // Log summary
-  const successCount = results.filter(r => r.status === 'success').length;
-  console.log(`Summary: ${successCount}/${endpoints.length} endpoints working`);
-  
-  console.groupEnd();
-}
-
-/**
- * Checks a specific API endpoint and returns detailed results
- */
-async function checkEndpoint(endpoint: string): Promise<ApiCheckResult> {
-  const url = `${API_CONFIG.BASE_URL}${endpoint}`;
-  console.log(`Checking endpoint: ${url}`);
-  
-  try {
-    const startTime = Date.now();
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      },
-      // Include credentials if needed for auth
-      credentials: 'include'
-    });
-    const endTime = Date.now();
-    
-    let responseData: any = null;
-    let message = `Request completed in ${endTime - startTime}ms`;
-    
-    // Try to parse response as JSON
-    try {
-      if (response.headers.get('content-type')?.includes('application/json')) {
-        responseData = await response.json();
-      } else {
-        const text = await response.text();
-        message += `. Response is not JSON. First 100 chars: ${text.substring(0, 100)}`;
-      }
-    } catch (parseError: unknown) {
-      const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parse error';
-      message += `. Failed to parse response: ${errorMessage}`;
-    }
-    
-    return {
-      endpoint,
-      status: response.ok ? 'success' : 'error',
-      statusCode: response.status,
-      message,
-      responseData,
-      timestamp: new Date().toISOString()
-    };
-  } catch (error: unknown) {
-    return {
-      endpoint,
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      error,
-      timestamp: new Date().toISOString()
-    };
-  }
-}
-
-/**
- * Outputs a troubleshooting guide for common API connection issues
- */
-function outputTroubleshootingGuide() {
-  console.group('🔧 Troubleshooting Guide');
-  
-  console.log('If you\'re experiencing API connection issues, check the following:');
-  
-  console.log('1. Backend Server:');
-  console.log('   - Is your backend server running? (npm run dev in the backend directory)');
-  console.log('   - Is it running on the correct port (default: 5000)?');
-  
-  console.log('2. Proxy Configuration:');
-  console.log('   - Check your vite.config.ts file for the correct proxy settings');
-  console.log('   - Ensure /api/v1 is proxied to http://localhost:5000');
-  
-  console.log('3. API Routes:');
-  console.log('   - Verify that all routes are properly defined in your backend');
-  console.log('   - Check backend/src/routes/ directory for missing route definitions');
-  
-  console.log('4. Environment Variables:');
-  console.log('   - Ensure .env file has VITE_API_URL set correctly (typically "/api/v1")');
-  console.log('   - Check VITE_USE_MOCK_API is set to "false" if you want to use real API');
-  
-  console.log('5. Network Issues:');
-  console.log('   - Check browser console for CORS errors');
-  console.log('   - Ensure your backend CORS configuration allows requests from your frontend');
-  
-  console.groupEnd();
-}
-
-// Auto-run verification when this module is imported
-if (typeof window !== 'undefined') {
-  // Only run in browser environment, not during SSR
-  setTimeout(() => {
-    verifyApiConnection().catch(err => {
-      console.error('API verification failed to run:', err);
-    });
-  }, 2000); // Delay to ensure app is fully loaded
-} 

@@ -33,23 +33,23 @@ model Product {
 }
 
 model Order {
-  id                String               @id @default(cuid())
-  orderNumber       String               @unique
-  status            OrderStatus          @default(PENDING)
-  total             Decimal              @db.Decimal(10, 2)
-  subtotal          Decimal              @db.Decimal(10, 2)
-  tax               Decimal              @default(0) @db.Decimal(10, 2)
-  discount          Decimal              @default(0) @db.Decimal(10, 2)
-  notes             String?
-  paymentMethod     String?
-  paymentStatus     PaymentStatus        @default(PENDING)
-  storeId           String?
-  customerId        String?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  customer          Customer?            @relation(fields: [customerId], references: [id])
-  Store             Store?               @relation(fields: [storeId], references: [id])
-  items             OrderItem[]
+  id                  String               @id @default(cuid())
+  orderNumber         String               @unique
+  status              OrderStatus          @default(PENDING)
+  total               Decimal              @db.Decimal(10, 2)
+  subtotal            Decimal              @db.Decimal(10, 2)
+  tax                 Decimal              @default(0) @db.Decimal(10, 2)
+  discount            Decimal              @default(0) @db.Decimal(10, 2)
+  notes               String?
+  paymentMethod       String?
+  paymentStatus       PaymentStatus        @default(PENDING)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  customerId          String?
+  shopId              String?
+  customer            Customer?            @relation(fields: [customerId], references: [id])
+  shop                Shop?                @relation(fields: [shopId], references: [id])
+  items               OrderItem[]
   loyaltyTransactions LoyaltyTransaction[]
 }
 
@@ -101,8 +101,8 @@ model Customer {
   addresses       Address[]
   orders          Order[]
   repairs         Repair[]
-  groups          CustomerGroup[]      @relation("CustomerToCustomerGroup")
   transactions    LoyaltyTransaction[]
+  groups          CustomerGroup[]      @relation("CustomerToCustomerGroup")
 }
 
 model Address {
@@ -135,54 +135,145 @@ model CustomerGroup {
 model EmploymentStatus {
   id          String   @id @default(cuid())
   name        String   @unique
-  description String
+  description String?
   color       String
   isActive    Boolean  @default(true)
   staffCount  Int      @default(0)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
+  benefits    String[]
   Staff       Staff[]
 }
 
 model EmploymentType {
   id          String   @id @default(cuid())
   name        String   @unique
-  description String
+  description String?
   color       String
   benefits    String[]
   staffCount  Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
   Staff       Staff[]
 }
 
 model ProductLocation {
-  id        String   @id
+  id        String   @id @default(cuid())
   stock     Int      @default(0)
   minStock  Int      @default(0)
   maxStock  Int      @default(100)
   productId String
-  storeId   String
   createdAt DateTime @default(now())
-  updatedAt DateTime
-  Product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  Store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
+  shopId    String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, storeId])
+  @@unique([productId, shopId])
 }
 
 model Role {
-  id           String   @id @default(cuid())
-  name         String   @unique
-  description  String
-  permissions  Json
-  isSystemRole Boolean  @default(false)
-  staffCount   Int      @default(0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime
-  Staff        Staff[]
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  createdBy       String?
+  isActive        Boolean          @default(true)
+  isSystemRole    Boolean          @default(false)
+  permissions     Json             @default("{}")
+  staffCount      Int              @default(0)
+  updatedBy       String?
+  auditLogs       RoleAuditLog[]
+  rolePermissions RolePermission[]
+  staff           Staff[]
+}
+
+model RolePermission {
+  id          String   @id @default(cuid())
+  roleId      String
+  resource    String
+  action      String
+  granted     Boolean  @default(false)
+  constraints Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  role        Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, resource, action])
+  @@index([roleId])
+  @@index([resource, action])
+}
+
+model RoleAuditLog {
+  id        String   @id @default(cuid())
+  roleId    String
+  userId    String?
+  action    String
+  changes   Json
+  createdAt DateTime @default(now())
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@index([roleId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model RoleTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  permissions Json
+  isPreset    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  updatedBy   String?
+
+  @@index([createdAt])
+}
+
+model Shop {
+  id                   String            @id @default(cuid())
+  code                 String            @unique
+  name                 String
+  description          String?
+
+  // Address as a JSON object
+  address              Json
+
+  phone                String
+  email                String?
+  status               ShopStatus        @default(ACTIVE)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  type                 ShopType          @default(RETAIL)
+  manager              String?
+  operatingHours       Json?
+  lastSync             DateTime          @default(now())
+  isHeadOffice         Boolean           @default(false)
+  licenseNumber        String?
+  logoUrl              String?
+  taxId                String?
+  timezone             String            @default("UTC")
+  website              String?
+  settings             Json?
+
+  // Analytics fields
+  salesLastMonth       Decimal?          @db.Decimal(10, 2)
+  inventoryCount       Int?              @default(0)
+  averageOrderValue    Decimal?          @db.Decimal(10, 2)
+  topSellingCategories String[]          @default([])
+  recentActivity       Json?
+
+  // Staff related
+  staffCount           Int?              @default(0)
+  orders               Order[]
+  productLocations     ProductLocation[]
+  shifts               Shift[]
+  assignments          StaffAssignment[]
+  staff                Staff[]           @relation("StaffToShop")
 }
 
 model Staff {
@@ -190,39 +281,49 @@ model Staff {
   firstName          String
   lastName           String
   email              String            @unique
-  phone              String
-  roleId             String?
+  phone              String?
+  roleId             String
   status             StaffStatus       @default(ACTIVE)
-  hireDate           DateTime
-  department         String
-  position           String
   employmentTypeId   String?
   employmentStatusId String?
-  bankingDetails     Json?
-  emergencyContact   Json
   createdAt          DateTime          @default(now())
-  updatedAt          DateTime
-  updatedBy          String?
+  updatedAt          DateTime          @updatedAt
+  code               String            @unique
   repairs            Repair[]          @relation("RepairTechnician")
-  EmploymentStatus   EmploymentStatus? @relation(fields: [employmentStatusId], references: [id])
-  EmploymentType     EmploymentType?   @relation(fields: [employmentTypeId], references: [id])
-  Role               Role?             @relation(fields: [roleId], references: [id])
+  shifts             Shift[]
+  employmentStatus   EmploymentStatus? @relation(fields: [employmentStatusId], references: [id])
+  employmentType     EmploymentType?   @relation(fields: [employmentTypeId], references: [id])
+  role               Role              @relation(fields: [roleId], references: [id])
+  assignments        StaffAssignment[]
+  shops              Shop[]            @relation("StaffToShop")
 }
 
-model Store {
-  id              String            @id @default(cuid())
-  name            String
-  type            StoreType         @default(RETAIL)
-  address         String?
-  city            String?
-  state           String?
-  phone           String?
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime
-  postalCode      String?
-  Order           Order[]
-  ProductLocation ProductLocation[]
+model Shift {
+  id        String      @id @default(cuid())
+  staffId   String
+  shopId    String
+  startTime DateTime
+  endTime   DateTime?
+  status    ShiftStatus @default(ACTIVE)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  shop      Shop        @relation(fields: [shopId], references: [id])
+  staff     Staff       @relation(fields: [staffId], references: [id])
+}
+
+model StaffAssignment {
+  id        String    @id @default(cuid())
+  staffId   String
+  shopId    String
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  role      String?
+  isPrimary Boolean   @default(false)
+  schedule  Json?
+  shop      Shop      @relation(fields: [shopId], references: [id])
+  staff     Staff     @relation(fields: [staffId], references: [id])
 }
 
 model Supplier {
@@ -350,6 +451,197 @@ model PaymentRecord {
   repair    Repair        @relation(fields: [repairId], references: [id], onDelete: Cascade)
 }
 
+model User {
+  id                   String         @id @default(uuid())
+  username             String         @unique
+  password             String
+  email                String         @unique
+  firstName            String
+  lastName             String
+  role                 UserRole       @default(CASHIER)
+  avatar               String?
+  createdAt            DateTime       @default(now())
+  lastLogin            DateTime?
+  permissions          String[]
+  auditLogs            AuditLog[]
+  createdNotifications Notification[] @relation("NotificationCreator")
+  notifications        Notification[] @relation("UserNotifications")
+  refreshTokens        RefreshToken[]
+  sessions             Session[]
+}
+
+model LoyaltyTransaction {
+  id          String   @id @default(cuid())
+  customerId  String
+  points      Int
+  type        String
+  description String?
+  orderId     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  customer    Customer @relation(fields: [customerId], references: [id])
+  order       Order?   @relation(fields: [orderId], references: [id])
+
+  @@map("loyalty_transactions")
+}
+
+model LoyaltyTier {
+  id           String   @id @default(uuid())
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  color        String   @default("#000000")
+  discount     Decimal  @default(0) @db.Decimal(10, 2)
+  minimumSpend Decimal  @default(0) @db.Decimal(10, 2)
+  benefits     String[]
+
+  @@map("loyalty_tiers")
+}
+
+model LoyaltyReward {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  pointsCost  Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("loyalty_rewards")
+}
+
+model LoyaltyEvent {
+  id            String   @id @default(uuid())
+  name          String
+  description   String
+  pointsAwarded Int
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("loyalty_events")
+}
+
+model LoyaltySettings {
+  id                        String   @id @default(uuid())
+  pointsPerDollar           Float    @default(1)
+  pointValueInCents         Float    @default(1)
+  minimumRedemption         Int      @default(100)
+  expiryPeriodInDays        Int      @default(365)
+  enableBirthdayBonus       Boolean  @default(true)
+  birthdayBonusPoints       Int      @default(50)
+  enableReferralBonus       Boolean  @default(true)
+  referralBonusPoints       Int      @default(100)
+  autoTierUpgrade           Boolean  @default(true)
+  tierDowngradeEnabled      Boolean  @default(false)
+  tierDowngradePeriodDays   Int      @default(365)
+  spendingCalculationPeriod String   @default("LIFETIME")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@map("loyalty_settings")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  action       String?
+  resourceId   String?
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+  category     String
+  resourceType String?
+  sessionId    String?
+  severity     String
+  status       String
+  timestamp    DateTime @default(now())
+  type         String
+  username     String?
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([timestamp])
+  @@index([category])
+  @@index([type])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Session {
+  id             String            @id @default(uuid())
+  userId         String
+  createdAt      DateTime          @default(now())
+  expiresAt      DateTime
+  lastActivityAt DateTime
+  ipAddress      String?
+  userAgent      String?
+  isActive       Boolean           @default(true)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activities     SessionActivity[]
+
+  @@index([userId])
+  @@index([isActive, expiresAt])
+}
+
+model SessionActivity {
+  id        String   @id @default(uuid())
+  sessionId String
+  activity  String
+  timestamp DateTime @default(now())
+  details   Json?
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([timestamp])
+}
+
+model Notification {
+  id          String               @id @default(uuid())
+  title       String
+  message     String
+  type        NotificationType     @default(SYSTEM)
+  priority    NotificationPriority @default(LOW)
+  isRead      Boolean              @default(false)
+  isArchived  Boolean              @default(false)
+  link        String?
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  readAt      DateTime?
+  expiresAt   DateTime?
+  userId      String
+  createdById String?
+  createdBy   User?                @relation("NotificationCreator", fields: [createdById], references: [id])
+  user        User                 @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  CASHIER
+  USER
+}
+
 enum OrderStatus {
   PENDING
   PROCESSING
@@ -376,13 +668,6 @@ enum StaffStatus {
   ACTIVE
   INACTIVE
   ON_LEAVE
-}
-
-enum StoreType {
-  RETAIL
-  WAREHOUSE
-  MARKET
-  ONLINE
 }
 
 enum LeatherProductType {
@@ -431,71 +716,42 @@ enum PaymentMethod {
   BANK_TRANSFER
 }
 
-// Loyalty Program Models
-model LoyaltyTransaction {
-  id          String    @id @default(cuid())
-  customerId  String
-  customer    Customer  @relation(fields: [customerId], references: [id])
-  points      Int
-  type        String    // EARN, REDEEM, ADJUST
-  description String?
-  orderId     String?
-  order       Order?    @relation(fields: [orderId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@map("loyalty_transactions")
+enum ShiftStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
 }
 
-model LoyaltyTier {
-  id            String   @id @default(uuid())
-  name          String
-  minimumSpend  Decimal  @default(0) @db.Decimal(10, 2) // Spending threshold for this tier
-  discount      Decimal  @default(0) @db.Decimal(10, 2) // Discount percentage for this tier
-  benefits      String[] // Array of benefit descriptions
-  color         String   @default("#000000") // Color for UI representation
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  // Add any other relations or fields needed
+enum ShopStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  CLOSED
+  PENDING
 }
 
-model LoyaltyReward {
-  id          String   @id @default(uuid())
-  name        String
-  description String
-  pointsCost  Int
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum ShopType {
+  RETAIL
+  WAREHOUSE
+  OUTLET
+  MARKET
+  ONLINE
 }
 
-model LoyaltyEvent {
-  id            String   @id @default(uuid())
-  name          String
-  description   String
-  pointsAwarded Int
-  startDate     DateTime
-  endDate       DateTime
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+enum NotificationType {
+  SYSTEM
+  INVENTORY
+  SALES
+  USER
+  TASK
+  SECURITY
+  PAYMENT
+  OTHER
 }
 
-model LoyaltySettings {
-  id                      String                                @id @default(uuid())
-  pointsPerDollar         Float                                 @default(1)
-  pointValueInCents       Float                                 @default(1)
-  minimumRedemption       Int                                   @default(100)
-  expiryPeriodInDays      Int                                   @default(365)
-  enableBirthdayBonus     Boolean                               @default(true)
-  birthdayBonusPoints     Int                                   @default(50)
-  enableReferralBonus     Boolean                               @default(true)
-  referralBonusPoints     Int                                   @default(100)
-  autoTierUpgrade         Boolean                               @default(true)
-  tierDowngradeEnabled    Boolean                               @default(false)
-  tierDowngradePeriodDays Int                                   @default(365)
-  spendingCalculationPeriod String                              @default("LIFETIME")
-  createdAt               DateTime                              @default(now())
-  updatedAt               DateTime                              @updatedAt
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }

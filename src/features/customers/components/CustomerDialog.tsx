@@ -58,16 +58,14 @@ interface CustomerDialogProps {
   customer: Customer | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCustomerAdded?: (customer: Customer) => void
-  onCustomerUpdated?: (customer: Customer) => void
+  onSubmit: () => void
 }
 
 export function CustomerDialog({ 
   customer,
   open,
   onOpenChange,
-  onCustomerAdded,
-  onCustomerUpdated
+  onSubmit
 }: CustomerDialogProps) {
   const { toast } = useToast()
   const form = useForm<CustomerFormValues>({
@@ -91,6 +89,8 @@ export function CustomerDialog({
   })
 
   function onSubmit(data: CustomerFormValues) {
+    console.log('Customer form submitted with data:', data);
+    
     // Create a properly formatted customer object
     const updatedCustomer: Customer = {
       id: customer?.id || Date.now().toString(),
@@ -101,20 +101,22 @@ export function CustomerDialog({
       updatedAt: new Date(),
       lastPurchaseDate: customer?.lastPurchaseDate,
       totalPurchases: customer?.totalPurchases || 0,
+      // Add missing required fields that the API expects
+      totalSpent: customer?.totalSpent || 0,
+      totalOrders: customer?.totalOrders || 0,
+      tier: customer?.tier || 'bronze',
+      isActive: data.status === 'active',
     };
     
-    toast({
-      title: customer ? "Customer Updated" : "Customer Created",
-      description: `Successfully ${customer ? 'updated' : 'created'} ${data.firstName} ${data.lastName}`,
-    })
+    console.log('Formatted customer object:', updatedCustomer);
     
-    if (customer && onCustomerUpdated) {
-      onCustomerUpdated(updatedCustomer);
-    } else if (onCustomerAdded) {
-      onCustomerAdded(updatedCustomer);
+    // Don't show toast here - let the API response handler show it
+    if (customer && onSubmit) {
+      onSubmit();
+      // Toast will be shown by the API success handler
     }
     
-    onOpenChange(false)
+    onOpenChange(false);
   }
 
   return (

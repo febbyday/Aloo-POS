@@ -16,8 +16,7 @@ export type Customer = {
   createdAt: string;
   updatedAt?: string;
   loyaltyPoints: number;
-  membershipLevel?: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
-  tierId?: string;
+  membershipLevel?: 'bronze' | 'silver' | 'gold' | 'platinum';
   totalSpent: number;
   lastOrderDate?: string | null;
   isActive: boolean;
@@ -44,7 +43,6 @@ export type CustomerFilterOptions = {
   maxPoints?: number;
   minSpent?: number;
   maxSpent?: number;
-  tierId?: string;
   tags?: string[];
   dateJoinedFrom?: string;
   dateJoinedTo?: string;
@@ -119,12 +117,9 @@ export type LoyaltySettings = {
   pointValueInCents: number;
   minimumRedemption: number;
   expiryPeriodInDays: number;
-  enableBirthdayBonus: boolean;
-  birthdayBonusPoints: number;
-  enableReferralBonus: boolean;
-  referralBonusPoints: number;
-  autoTierUpgrade: boolean;
-  tierDowngradeEnabled: boolean;
-  tierDowngradePeriodDays: number;
-  spendingCalculationPeriod: 'LIFETIME' | 'ANNUAL' | 'QUARTERLY' | 'MONTHLY';
+  welcomeBonus: number;
+  referralBonus: number;
+  birthdayBonus: number;
+  isEnabled: boolean;
+  termsAndConditions: string;
 };

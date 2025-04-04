@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -42,7 +42,7 @@ export function PaymentDialog({ open, onOpenChange, total, onProcessPayment }: P
 
   const change = Number(amountPaid) - total
   const isValidPayment = paymentMethod === 'cash' ? Number(amountPaid) >= total : Number(amountPaid) === total
-  
+
   const installmentDownPaymentAmount = downPayment ? Number(downPayment) : 0
   const remainingAmount = total - installmentDownPaymentAmount
   const monthlyAmount = installmentMonths ? remainingAmount / Number(installmentMonths) : 0
@@ -55,12 +55,12 @@ export function PaymentDialog({ open, onOpenChange, total, onProcessPayment }: P
       ...(paymentMethod === 'cash' && { change }),
       ...(paymentMethod === 'card' && { cardType }),
       ...(paymentMethod === 'mobile' && { mobileProvider }),
-      ...(paymentMethod === 'installment' && { 
+      ...(paymentMethod === 'installment' && {
         installmentPlan: {
           months: Number(installmentMonths),
           downPayment: installmentDownPaymentAmount,
           monthlyAmount
-        } 
+        }
       })
     }
     onProcessPayment(paymentDetails)
@@ -73,7 +73,7 @@ export function PaymentDialog({ open, onOpenChange, total, onProcessPayment }: P
         <DialogHeader>
           <DialogTitle>Process Payment</DialogTitle>
         </DialogHeader>
-        
+
         <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)}>
           <TabsList className="grid grid-cols-4 mb-4">
             <TabsTrigger value="cash" className="flex items-center gap-2">
@@ -128,6 +128,7 @@ export function PaymentDialog({ open, onOpenChange, total, onProcessPayment }: P
                   className="w-full p-2 border rounded"
                   value={cardType}
                   onChange={(e) => setCardType(e.target.value)}
+                  autoComplete="cc-type"
                 >
                   <option value="">Select Card Type</option>
                   <option value="visa">Visa</option>
@@ -139,8 +140,8 @@ export function PaymentDialog({ open, onOpenChange, total, onProcessPayment }: P
                 <Label>Amount</Label>
                 <Input value={total.toFixed(2)} disabled />
               </div>
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 onClick={handlePayment}
                 disabled={!cardType}
               >
@@ -158,6 +159,7 @@ export function PaymentDialog({ open, onOpenChange, total, onProcessPayment }: P
                   className="w-full p-2 border rounded"
                   value={mobileProvider}
                   onChange={(e) => setMobileProvider(e.target.value)}
+                  autoComplete="off"
                 >
                   <option value="">Select Provider</option>
                   <option value="mpesa">M-Pesa</option>
@@ -168,8 +170,8 @@ export function PaymentDialog({ open, onOpenChange, total, onProcessPayment }: P
                 <Label>Amount</Label>
                 <Input value={total.toFixed(2)} disabled />
               </div>
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 onClick={handlePayment}
                 disabled={!mobileProvider}
               >
@@ -196,10 +198,10 @@ export function PaymentDialog({ open, onOpenChange, total, onProcessPayment }: P
               </div>
               <div>
                 <Label>Down Payment</Label>
-                <Input 
-                  value={downPayment} 
+                <Input
+                  value={downPayment}
                   onChange={(e) => setDownPayment(e.target.value)}
-                  placeholder="Enter down payment amount" 
+                  placeholder="Enter down payment amount"
                 />
               </div>
               {Number(downPayment) > 0 && (
@@ -223,8 +225,8 @@ export function PaymentDialog({ open, onOpenChange, total, onProcessPayment }: P
                 onChange={setDownPayment}
                 onSubmit={isValidInstallment ? handlePayment : undefined}
               />
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 onClick={handlePayment}
                 disabled={!isValidInstallment}
               >

@@ -10,6 +10,13 @@ import { HelmetProvider } from 'react-helmet-async'
 // Import API verification
 import './lib/api/api-verification'
 
+// Import the role setup utility to ensure roles are created in development
+// This will now only run after authentication is complete
+import { setupDefaultRoles } from './features/staff/utils/setupRoles'
+
+// Import admin account initialization
+import { initAdminAccount } from './lib/api/init-admin-account'
+
 // Create a global error handler specifically for vendor.js errors
 const handleVendorJsErrors = () => {
   // Global error handler for extension-related errors
@@ -64,7 +71,7 @@ const handleVendorJsErrors = () => {
       // Silently ignore these errors
       return;
     }
-    
+
     // Pass through all other errors to the original console.error
     return originalConsoleError.apply(console, args);
   };
@@ -97,6 +104,18 @@ const handleVendorJsErrors = () => {
 
 // Initialize error handling
 handleVendorJsErrors();
+
+// Initialize admin account
+initAdminAccount();
+
+// Create a custom event listener for authentication success
+document.addEventListener('auth:login:success', () => {
+  // Run role setup after successful authentication
+  console.log('Authentication successful, setting up roles...');
+  setupDefaultRoles().catch(err => {
+    console.warn('Error setting up roles after authentication:', err);
+  });
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

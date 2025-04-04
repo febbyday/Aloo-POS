@@ -50,11 +50,18 @@ export const getEmploymentTypeById = async (req: Request, res: Response) => {
  */
 export const createEmploymentType = async (req: Request, res: Response) => {
   try {
-    const { name, description, color, benefits } = req.body;
+    const { name, description, color, benefits, isActive } = req.body;
     
     // Validate required fields
     if (!name || !description || !color) {
-      return res.status(400).json({ error: 'Name, description, and color are required' });
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: {
+          name: !name ? 'Name is required' : null,
+          description: !description ? 'Description is required' : null,
+          color: !color ? 'Color is required' : null
+        }
+      });
     }
     
     // Check if employment type with this name already exists
@@ -73,7 +80,7 @@ export const createEmploymentType = async (req: Request, res: Response) => {
         description,
         color,
         benefits: Array.isArray(benefits) ? benefits : [],
-        isActive: true,
+        isActive: isActive ?? true,
         staffCount: 0
       }
     });
@@ -88,7 +95,10 @@ export const createEmploymentType = async (req: Request, res: Response) => {
       }
     }
     
-    return res.status(500).json({ error: 'Failed to create employment type' });
+    return res.status(500).json({ 
+      error: 'Failed to create employment type',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 

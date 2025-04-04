@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm, UseFormReturn, FieldValues, DefaultValues, SubmitHandler, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { 
-  Form, 
-  FormControl, 
-  FormDescription, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
 } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -23,27 +23,60 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 
-export type FieldType = 
-  | 'text' 
-  | 'number' 
-  | 'email' 
-  | 'password' 
-  | 'textarea' 
-  | 'select' 
-  | 'multiselect' 
-  | 'checkbox' 
-  | 'switch' 
-  | 'date' 
+/**
+ * Helper function to determine the appropriate autocomplete attribute based on field name and type
+ */
+function getDefaultAutoComplete(fieldName: string, fieldType: FieldType): string {
+  const name = fieldName.toLowerCase();
+
+  // Handle common field names
+  if (name === 'email' || name.includes('email')) return 'email';
+  if (name === 'username' || name === 'userid') return 'username';
+  if (name === 'password' || name.includes('password')) return fieldType === 'password' ? 'current-password' : 'off';
+  if (name === 'newpassword') return 'new-password';
+  if (name === 'firstname' || name === 'fname' || name.includes('firstname')) return 'given-name';
+  if (name === 'lastname' || name === 'lname' || name.includes('lastname')) return 'family-name';
+  if (name === 'fullname' || name === 'name') return 'name';
+  if (name === 'phone' || name.includes('phone') || name.includes('tel')) return 'tel';
+  if (name === 'address' || name.includes('street')) return 'street-address';
+  if (name === 'city') return 'address-level2';
+  if (name === 'state' || name === 'province') return 'address-level1';
+  if (name === 'zip' || name === 'zipcode' || name === 'postalcode') return 'postal-code';
+  if (name === 'country') return 'country-name';
+  if (name.includes('cardnumber') || name.includes('ccnumber')) return 'cc-number';
+  if (name.includes('cardname') || name.includes('ccname')) return 'cc-name';
+  if (name.includes('cardexp') || name.includes('ccexp')) return 'cc-exp';
+  if (name.includes('cardcvv') || name.includes('cccvv') || name.includes('cvv')) return 'cc-csc';
+
+  // Handle field types
+  if (fieldType === 'password') return 'new-password';
+  if (fieldType === 'email') return 'email';
+
+  // Default to off for fields we don't recognize
+  return 'off';
+}
+
+export type FieldType =
+  | 'text'
+  | 'number'
+  | 'email'
+  | 'password'
+  | 'textarea'
+  | 'select'
+  | 'multiselect'
+  | 'checkbox'
+  | 'switch'
+  | 'date'
   | 'custom';
 
 export interface FormFieldConfig<T extends FieldValues> {
@@ -59,6 +92,7 @@ export interface FormFieldConfig<T extends FieldValues> {
   min?: number;
   max?: number;
   rows?: number;
+  autoComplete?: string;
   customField?: (form: UseFormReturn<T>) => React.ReactNode;
   gridSpan?: 1 | 2 | 3 | 4;
   condition?: (values: T) => boolean;
@@ -98,7 +132,7 @@ export function GenericForm<T extends FieldValues>({
 
   const renderField = (field: FormFieldConfig<T>, form: UseFormReturn<T>) => {
     const values = form.getValues();
-    
+
     // Check if field should be conditionally hidden
     if (field.condition && !field.condition(values)) {
       return null;
@@ -129,6 +163,7 @@ export function GenericForm<T extends FieldValues>({
                   disabled={field.disabled || loading}
                   min={field.min}
                   max={field.max}
+                  autoComplete={field.autoComplete || getDefaultAutoComplete(field.name, field.type)}
                   onChange={e => {
                     if (field.type === 'number') {
                       formField.onChange(e.target.value === '' ? '' : Number(e.target.value));
@@ -143,12 +178,14 @@ export function GenericForm<T extends FieldValues>({
                   placeholder={field.placeholder}
                   disabled={field.disabled || loading}
                   rows={field.rows || 3}
+                  autoComplete={field.autoComplete || 'off'}
                 />
               ) : field.type === 'select' ? (
                 <Select
                   onValueChange={formField.onChange}
                   defaultValue={String(formField.value)}
                   disabled={field.disabled || loading}
+                  name={field.name.toString()}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={field.placeholder} />
@@ -196,13 +233,13 @@ export function GenericForm<T extends FieldValues>({
         <div className={`grid grid-cols-1 md:grid-cols-${columns} gap-4 mb-6`}>
           {fields.map((field) => renderField(field, form))}
         </div>
-        
+
         {error && (
           <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-md mb-4">
             {error}
           </div>
         )}
-        
+
         <div className="flex justify-end gap-2">
           {onCancel && (
             <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
@@ -284,7 +321,7 @@ export function useFormDialog<T extends FieldValues>(
   const handleSubmit: SubmitHandler<T> = async (data) => {
     setLoading(true);
     setError(undefined);
-    
+
     try {
       await onSubmit(data);
       setOpen(false);

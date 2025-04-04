@@ -11,7 +11,7 @@ export function RootLayout() {
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className={`flex flex-col ${sidebarOpen ? 'ml-64' : 'ml-16'} transition-all duration-300 ease-in-out`}>
         <Header />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 w-full">
           <Outlet />
         </main>
       </div>

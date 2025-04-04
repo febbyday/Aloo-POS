@@ -14,6 +14,7 @@ import { WooCommerceSettingsPanel } from "./WooCommerceSettings";
 import { CompanySettingsPanel } from "./CompanySettings";
 import { PaymentSettingsPanel } from "./PaymentSettings";
 import { ProductsSettingsPanel } from "./ProductsSettings";
+import { EmailSettingsPanel } from "./EmailSettings";
 
 // Define the type for the context provided by the outlet
 type SettingsContextType = {
@@ -25,9 +26,9 @@ type SettingsContextType = {
 export function AppearanceSettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <AppearanceSettingsPanel 
-      settings={settings.appearance} 
-      onUpdate={(newSettings) => handleSettingsUpdate('appearance', newSettings)} 
+    <AppearanceSettingsPanel
+      settings={settings.appearance}
+      onUpdate={(newSettings) => handleSettingsUpdate('appearance', newSettings)}
     />
   );
 }
@@ -35,9 +36,9 @@ export function AppearanceSettingsWrapper() {
 export function NotificationSettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <NotificationSettingsPanel 
-      settings={settings.notifications} 
-      onUpdate={(newSettings) => handleSettingsUpdate('notifications', newSettings)} 
+    <NotificationSettingsPanel
+      settings={settings.notifications}
+      onUpdate={(newSettings) => handleSettingsUpdate('notifications', newSettings)}
     />
   );
 }
@@ -45,9 +46,9 @@ export function NotificationSettingsWrapper() {
 export function BackupSettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <BackupSettingsPanel 
-      settings={settings.backup} 
-      onUpdate={(newSettings) => handleSettingsUpdate('backup', newSettings)} 
+    <BackupSettingsPanel
+      settings={settings.backup}
+      onUpdate={(newSettings) => handleSettingsUpdate('backup', newSettings)}
     />
   );
 }
@@ -55,9 +56,9 @@ export function BackupSettingsWrapper() {
 export function ReceiptSettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <ReceiptSettingsPanel 
-      settings={settings.receipt} 
-      onUpdate={(newSettings) => handleSettingsUpdate('receipt', newSettings)} 
+    <ReceiptSettingsPanel
+      settings={settings.receipt}
+      onUpdate={(newSettings) => handleSettingsUpdate('receipt', newSettings)}
     />
   );
 }
@@ -65,9 +66,9 @@ export function ReceiptSettingsWrapper() {
 export function TaxSettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <TaxSettingsPanel 
-      settings={settings.tax} 
-      onUpdate={(newSettings) => handleSettingsUpdate('tax', newSettings)} 
+    <TaxSettingsPanel
+      settings={settings.tax}
+      onUpdate={(newSettings) => handleSettingsUpdate('tax', newSettings)}
     />
   );
 }
@@ -75,9 +76,9 @@ export function TaxSettingsWrapper() {
 export function SecuritySettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <SecuritySettingsPanel 
-      settings={settings.security} 
-      onUpdate={(newSettings) => handleSettingsUpdate('security', newSettings)} 
+    <SecuritySettingsPanel
+      settings={settings.security}
+      onUpdate={(newSettings) => handleSettingsUpdate('security', newSettings)}
     />
   );
 }
@@ -85,9 +86,9 @@ export function SecuritySettingsWrapper() {
 export function SystemSettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <SystemSettingsPanel 
-      settings={settings.system} 
-      onUpdate={(newSettings) => handleSettingsUpdate('system', newSettings)} 
+    <SystemSettingsPanel
+      settings={settings.system}
+      onUpdate={(newSettings) => handleSettingsUpdate('system', newSettings)}
     />
   );
 }
@@ -95,9 +96,9 @@ export function SystemSettingsWrapper() {
 export function HardwareSettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <HardwareSettingsPanel 
-      settings={settings.hardware} 
-      onUpdate={(newSettings) => handleSettingsUpdate('hardware', newSettings)} 
+    <HardwareSettingsPanel
+      settings={settings.hardware}
+      onUpdate={(newSettings) => handleSettingsUpdate('hardware', newSettings)}
     />
   );
 }
@@ -105,9 +106,9 @@ export function HardwareSettingsWrapper() {
 export function WooCommerceSettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <WooCommerceSettingsPanel 
-      settings={settings.woocommerce} 
-      onUpdate={(newSettings) => handleSettingsUpdate('woocommerce', newSettings)} 
+    <WooCommerceSettingsPanel
+      settings={settings.woocommerce}
+      onUpdate={(newSettings) => handleSettingsUpdate('woocommerce', newSettings)}
     />
   );
 }
@@ -115,9 +116,9 @@ export function WooCommerceSettingsWrapper() {
 export function CompanySettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <CompanySettingsPanel 
-      settings={settings.company} 
-      onUpdate={(newSettings) => handleSettingsUpdate('company', newSettings)} 
+    <CompanySettingsPanel
+      settings={settings.company}
+      onUpdate={(newSettings) => handleSettingsUpdate('company', newSettings)}
     />
   );
 }
@@ -125,9 +126,9 @@ export function CompanySettingsWrapper() {
 export function PaymentSettingsWrapper() {
   const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <PaymentSettingsPanel 
-      settings={settings.payment} 
-      onUpdate={(newSettings) => handleSettingsUpdate('payment', newSettings)} 
+    <PaymentSettingsPanel
+      settings={settings.payment}
+      onUpdate={(newSettings) => handleSettingsUpdate('payment', newSettings)}
     />
   );
 }
@@ -136,5 +137,15 @@ export function ProductsSettingsWrapper() {
   // For ProductsSettingsPanel, we don't need to pass any settings as it doesn't accept them
   return (
     <ProductsSettingsPanel />
+  );
+}
+
+export function EmailSettingsWrapper() {
+  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
+  return (
+    <EmailSettingsPanel
+      settings={settings.email}
+      onUpdate={(newSettings) => handleSettingsUpdate('email', newSettings)}
+    />
   );
 }

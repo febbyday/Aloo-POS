@@ -11,12 +11,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Shop, ShopStaffMember } from '../types/shops.types'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue, 
+  SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 // Import staff hook to pull staff data
@@ -24,13 +24,13 @@ import { useStaff } from '@/features/staff/hooks/useStaff'
 import { Staff } from '@/features/staff/types'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Check, UserCircle, CircleCheck, Check as CheckIcon, ChevronRight, ChevronLeft, Store, Clock, Plus, Trash, InfoIcon } from "lucide-react"
-import { 
-  Command, 
-  CommandEmpty, 
-  CommandGroup, 
-  CommandInput, 
-  CommandItem, 
-  CommandList 
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
@@ -43,7 +43,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent } from "@/components/ui/card"
-import { useShopOperations } from '../hooks/useShopOperations'
+import { useRealShopContext } from '../context/RealShopContext'
 import { Switch } from "@/components/ui/switch"
 
 // Define time slot interface
@@ -126,7 +126,7 @@ const createGroupedHours = (hours: OpeningHours): GroupedOpeningHours => {
 // Parse a string representation of opening hours to structured format
 const parseOpeningHours = (hoursString?: string): OpeningHours => {
   if (!hoursString) return { ...defaultOpeningHours };
-  
+
   try {
     return JSON.parse(hoursString) as OpeningHours;
   } catch (e) {
@@ -139,27 +139,32 @@ const parseOpeningHours = (hoursString?: string): OpeningHours => {
 const formatOpeningHoursToDisplay = (hours: OpeningHours): string => {
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
   const formattedDays: string[] = [];
-  
+
   days.forEach(day => {
     const schedule = hours[day];
     if (schedule.isOpen && schedule.timeSlots.length > 0) {
-      const timeRanges = schedule.timeSlots.map(slot => 
+      const timeRanges = schedule.timeSlots.map(slot =>
         `${slot.from} - ${slot.to}`
       ).join(', ');
-      
+
       formattedDays.push(`${day.charAt(0).toUpperCase() + day.slice(1)}: ${timeRanges}`);
     }
   });
-  
+
   return formattedDays.join('\n');
 };
+
+// Import address schema from shared schema
+import { addressSchema } from '../../../shared/schemas/shopSchema';
 
 // Define the validation schema for each step
 const basicInfoSchema = z.object({
   name: z.string().min(2, { message: "Shop name must be at least 2 characters." }),
-  location: z.string().min(2, { message: "Location must be at least 2 characters." }),
-  type: z.enum(["retail", "warehouse", "outlet"]),
-  status: z.enum(["active", "inactive", "maintenance"]),
+  code: z.string().min(2, { message: "Shop code must be at least 2 characters." }),
+  description: z.string().optional(),
+  type: z.enum(["RETAIL", "WAREHOUSE", "OUTLET", "MARKET", "ONLINE"]),
+  status: z.enum(["ACTIVE", "INACTIVE", "MAINTENANCE", "CLOSED", "PENDING"]),
+  address: addressSchema,
 });
 
 const contactInfoSchema = z.object({
@@ -167,6 +172,11 @@ const contactInfoSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }).optional().or(z.literal('')),
   manager: z.string().optional(),
   openingHours: z.string().optional(),
+  isHeadOffice: z.boolean().default(false),
+  timezone: z.string().default('UTC'),
+  taxId: z.string().optional(),
+  licenseNumber: z.string().optional(),
+  website: z.string().optional(),
 });
 
 // Combined schema for all steps
@@ -183,16 +193,16 @@ interface ShopDialogProps {
 }
 
 // Step component for the multi-step form
-const FormStep = ({ 
-  stepNumber, 
-  title, 
-  isActive, 
-  isCompleted 
-}: { 
-  stepNumber: number; 
-  title: string; 
-  isActive: boolean; 
-  isCompleted: boolean 
+const FormStep = ({
+  stepNumber,
+  title,
+  isActive,
+  isCompleted
+}: {
+  stepNumber: number;
+  title: string;
+  isActive: boolean;
+  isCompleted: boolean
 }) => (
   <div className={cn(
     "flex items-center gap-2",
@@ -200,8 +210,8 @@ const FormStep = ({
   )}>
     <div className={cn(
       "flex items-center justify-center w-8 h-8 rounded-full border-2",
-      isActive ? "border-primary bg-primary/10" : 
-      isCompleted ? "border-success bg-success/10" : 
+      isActive ? "border-primary bg-primary/10" :
+      isCompleted ? "border-success bg-success/10" :
       "border-muted-foreground/30"
     )}>
       {isCompleted ? (
@@ -224,107 +234,139 @@ export function ShopDialog({
   // Current step state (1-based)
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 3;
-  
+
   // State for opening hours (detailed per day)
   const [openingHours, setOpeningHours] = useState<OpeningHours>(
     parseOpeningHours(shop?.openingHours)
   );
-  
+
   // State for grouped opening hours (weekdays/weekends for UI)
   const [groupedHours, setGroupedHours] = useState<GroupedOpeningHours>(
     createGroupedHours(parseOpeningHours(shop?.openingHours))
   );
-  
+
   // Use React Hook Form with Zod validation
   const form = useForm<ShopFormValues>({
     resolver: zodResolver(shopFormSchema),
     defaultValues: shop ? {
       name: shop.name,
-      location: shop.location,
+      code: shop.code,
+      description: shop.description || '',
       type: shop.type,
       status: shop.status,
+      address: shop.address || {
+        street: '',
+        street2: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'United States',
+        latitude: undefined,
+        longitude: undefined,
+      },
       phone: shop.phone || '',
       email: shop.email || '',
-      manager: shop.manager || '',  // This is now expected to be a staff ID
+      manager: shop.manager || '',
       openingHours: shop.openingHours || '',
+      isHeadOffice: shop.isHeadOffice || false,
+      timezone: shop.timezone || 'UTC',
+      taxId: shop.taxId || '',
+      licenseNumber: shop.licenseNumber || '',
+      website: shop.website || '',
     } : {
       name: '',
-      location: '',
-      type: 'retail',
-      status: 'active',
+      code: '',
+      description: '',
+      type: 'RETAIL',
+      status: 'ACTIVE',
+      address: {
+        street: '',
+        street2: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'United States',
+        latitude: undefined,
+        longitude: undefined,
+      },
       phone: '',
       email: '',
       manager: '',
       openingHours: '',
+      isHeadOffice: false,
+      timezone: 'UTC',
+      taxId: '',
+      licenseNumber: '',
+      website: '',
     },
     mode: "onChange" // Validate on change for better UX
   });
-  
+
   // State for staff members
   const [staffMembers, setStaffMembers] = useState<ShopStaffMember[]>(
     shop?.staffMembers || []
   );
-  
+
   // Tracking form completion per step
   const [stepsCompleted, setStepsCompleted] = useState({
     1: false,
     2: false,
     3: false
   });
-  
+
   // Use the staff hook to pull staff data from the staff module
   const { items: staffList, loading: loadingStaff } = useStaff({
     autoLoad: true,
     initialPageSize: 100 // Load a larger number of staff to choose from
   });
-  
+
   const [staffSelectorOpen, setStaffSelectorOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { toast } = useToast();
 
   // Hook for API operations - MUST be before accessing apiLoading
-  const { createShop, updateShop, loading: apiLoading, error: apiError } = useShopOperations();
-  
+  const { createShop, updateShop, isLoading: apiLoading, error: apiError } = useRealShopContext();
+
   // Now we can safely use apiLoading
   const isLoading = isSubmitting || apiLoading;
-  
+
   // Check if current step is valid to enable the Next button
   const isCurrentStepValid = () => {
     switch (currentStep) {
       case 1:
         // Basic info and contact validation
         const basicFields = form.getValues(['name', 'location', 'type', 'status']);
-        const hasBasicErrors = !!form.formState.errors.name || 
-                             !!form.formState.errors.location || 
-                             !!form.formState.errors.type || 
+        const hasBasicErrors = !!form.formState.errors.name ||
+                             !!form.formState.errors.location ||
+                             !!form.formState.errors.type ||
                              !!form.formState.errors.status ||
                              !!form.formState.errors.phone ||
                              !!form.formState.errors.email;
-        
+
         return basicFields.every(field => !!field) && !hasBasicErrors;
-        
+
       case 2:
         // Staff and manager validation - both are optional, so always valid
         // If a manager is selected, it should be a valid staff ID
         const manager = form.getValues('manager');
         return !form.formState.errors.manager;
-        
+
       case 3:
         // Opening hours validation - check if all days are closed
         const allDaysClosed = Object.values(groupedHours).every(schedule => !schedule.isOpen || schedule.timeSlots.length === 0);
         return !allDaysClosed;
-        
+
       default:
         return false;
     }
   };
-  
+
   // Navigate to next step
   const goToNextStep = async () => {
     // Only validate fields for the current step
     let fieldsToValidate: string[] = [];
-    
+
     if (currentStep === 1) {
       fieldsToValidate = ['name', 'location', 'type', 'status', 'phone', 'email'];
     } else if (currentStep === 2) {
@@ -334,23 +376,23 @@ export function ShopDialog({
     } else if (currentStep === 3) {
       fieldsToValidate = ['openingHours'];
     }
-    
+
     // Only trigger validation for current step's fields
     const isStepValid = await form.trigger(fieldsToValidate as any);
-    
+
     if (isStepValid && isCurrentStepValid()) {
       // Mark current step as completed
       setStepsCompleted(prev => ({
         ...prev,
         [currentStep]: true
       }));
-      
+
       if (currentStep < totalSteps) {
         setCurrentStep(prev => prev + 1);
       }
     }
   };
-  
+
   // Navigate to previous step
   const goToPreviousStep = () => {
     if (currentStep > 1) {
@@ -360,49 +402,56 @@ export function ShopDialog({
 
   const handleSubmit = async (formData: ShopFormValues) => {
     setIsSubmitting(true);
-    
+
     try {
       // Convert grouped hours to detailed opening hours and update the form data
       const detailedOpeningHours = expandGroupedHours(groupedHours);
-      
+
       // Update opening hours data
       const updatedFormData = {
         ...formData,
         openingHours: JSON.stringify(detailedOpeningHours)
       };
-      
+
       // Create shop data based on form values and staff members
       const shopData = {
         name: updatedFormData.name,
-        location: updatedFormData.location,
+        code: updatedFormData.code,
+        description: updatedFormData.description,
         type: updatedFormData.type,
         status: updatedFormData.status,
+        address: updatedFormData.address,
         staffCount: staffMembers.length,
         staffMembers: staffMembers,
         phone: updatedFormData.phone,
         email: updatedFormData.email,
         manager: updatedFormData.manager,
         openingHours: updatedFormData.openingHours,
+        isHeadOffice: updatedFormData.isHeadOffice,
+        timezone: updatedFormData.timezone,
+        taxId: updatedFormData.taxId,
+        licenseNumber: updatedFormData.licenseNumber,
+        website: updatedFormData.website,
       };
-      
+
       let result: Shop | null = null;
-      
+
       // If editing, update the existing shop
       if (mode === 'edit' && shop) {
         result = await updateShop(shop.id, shopData);
-      } 
+      }
       // If creating, create a new shop
       else {
         result = await createShop(shopData);
       }
-      
+
       // If operation was successful and we have a result
       if (result) {
         // Call the onSave callback if provided
         if (onSave) {
           onSave(result);
         }
-        
+
         onClose();
       }
     } catch (error) {
@@ -416,51 +465,51 @@ export function ShopDialog({
       setIsSubmitting(false);
     }
   };
-  
+
   // Toggle group open/closed status (weekdays or weekends)
   const toggleGroupOpen = (groupKey: keyof GroupedOpeningHours) => {
     setGroupedHours(prev => {
       const updated = { ...prev };
-      
+
       // Toggle isOpen status
       updated[groupKey] = {
         ...updated[groupKey],
         isOpen: !updated[groupKey].isOpen
       };
-      
+
       // Ensure at least one time slot if opening
       if (updated[groupKey].isOpen && updated[groupKey].timeSlots.length === 0) {
-        updated[groupKey].timeSlots = groupKey === 'weekdays' 
-          ? [{ ...defaultTimeSlot }] 
+        updated[groupKey].timeSlots = groupKey === 'weekdays'
+          ? [{ ...defaultTimeSlot }]
           : [{ from: '10:00', to: '15:00' }];
       }
-      
+
       return updated;
     });
   };
-  
+
   // Add a time slot to a group
   const addGroupTimeSlot = (groupKey: keyof GroupedOpeningHours) => {
     setGroupedHours(prev => {
       const updated = { ...prev };
-      
+
       // Get the last time slot end time as a starting point for the new slot
       const lastSlot = updated[groupKey].timeSlots[updated[groupKey].timeSlots.length - 1];
       const newFromTime = lastSlot ? lastSlot.to : '09:00';
       let newToTime = '17:00';
-      
+
       // Calculate a reasonable end time (2 hours after start)
       const [hours, minutes] = newFromTime.split(':').map(Number);
       const newHours = hours + 2;
       if (newHours < 24) {
         newToTime = `${newHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
       }
-      
+
       updated[groupKey].timeSlots.push({ from: newFromTime, to: newToTime });
       return updated;
     });
   };
-  
+
   // Remove a time slot from a group
   const removeGroupTimeSlot = (groupKey: keyof GroupedOpeningHours, index: number) => {
     setGroupedHours(prev => {
@@ -469,12 +518,12 @@ export function ShopDialog({
       return updated;
     });
   };
-  
+
   // Update a time slot in a group
   const updateGroupTimeSlot = (
-    groupKey: keyof GroupedOpeningHours, 
-    index: number, 
-    field: 'from' | 'to', 
+    groupKey: keyof GroupedOpeningHours,
+    index: number,
+    field: 'from' | 'to',
     value: string
   ) => {
     setGroupedHours(prev => {
@@ -487,24 +536,24 @@ export function ShopDialog({
       return updated;
     });
   };
-  
+
   // Clone hours from one day to all weekdays or weekend days
   const applyHoursToMultipleDays = (sourceDay: keyof OpeningHours, targetDays: Array<keyof OpeningHours>) => {
     setOpeningHours(prev => {
       const updated = { ...prev };
       const sourceSchedule = updated[sourceDay];
-      
+
       targetDays.forEach(day => {
         updated[day] = {
           isOpen: sourceSchedule.isOpen,
           timeSlots: sourceSchedule.timeSlots.map(slot => ({ ...slot }))
         };
       });
-      
+
       return updated;
     });
   };
-  
+
   // Convert a Staff object to a ShopStaffMember
   const convertToShopStaffMember = (staff: Staff): ShopStaffMember => {
     return {
@@ -514,24 +563,24 @@ export function ShopDialog({
       email: staff.email || ''
     };
   };
-  
+
   // Add a staff member to the shop
   const addStaffMember = (staff: Staff) => {
     const shopStaffMember = convertToShopStaffMember(staff);
-    
+
     // Check if staff is already added
     if (staffMembers.some(member => member.id === staff.id)) {
       return;
     }
-    
+
     setStaffMembers(prev => [...prev, shopStaffMember]);
   };
-  
+
   // Remove a staff member from the shop
   const removeStaffMember = (staffId: string) => {
     setStaffMembers(prev => prev.filter(member => member.id !== staffId));
   };
-  
+
   // Render form steps based on current step
   const renderFormStep = () => {
     switch (currentStep) {
@@ -542,7 +591,7 @@ export function ShopDialog({
               <Store className="h-6 w-6 text-primary" />
               <h3 className="text-lg font-medium text-center">Basic Shop Information</h3>
             </div>
-            
+
             <FormField
               control={form.control}
               name="name"
@@ -550,33 +599,162 @@ export function ShopDialog({
                 <FormItem>
                   <FormLabel>Shop Name*</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Enter shop name" 
-                      {...field} 
+                    <Input
+                      placeholder="Enter shop name"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
-              name="location"
+              name="code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location*</FormLabel>
+                  <FormLabel>Shop Code*</FormLabel>
                   <FormControl>
-              <Input
-                placeholder="Enter shop location"
-                      {...field} 
+                    <Input
+                      placeholder="Enter shop code"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter shop description"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Address Information */}
+            <div className="pt-2 pb-2">
+              <h4 className="text-sm font-medium mb-3 text-muted-foreground">Address Information</h4>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="address.street"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Street Address*</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="123 Main St"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="address.street2"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Street Address 2</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Suite 100"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="address.city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City*</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="New York"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="address.state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State/Province*</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="NY"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="address.postalCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Postal Code*</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="10001"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="address.country"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country*</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="United States"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Contact Information - Moved to appear after location */}
             <div className="pt-2 pb-2">
               <h4 className="text-sm font-medium mb-3 text-muted-foreground">Contact Information</h4>
@@ -588,16 +766,16 @@ export function ShopDialog({
                     <FormItem>
                       <FormLabel>Phone</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Enter phone number" 
-                          {...field} 
+                        <Input
+                          placeholder="Enter phone number"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="email"
@@ -605,10 +783,10 @@ export function ShopDialog({
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Enter email address" 
+                        <Input
+                          placeholder="Enter email address"
                           type="email"
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -617,7 +795,7 @@ export function ShopDialog({
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -626,7 +804,7 @@ export function ShopDialog({
                   <FormItem>
                     <FormLabel>Shop Type*</FormLabel>
               <Select
-                      onValueChange={field.onChange} 
+                      onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
@@ -644,7 +822,7 @@ export function ShopDialog({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="status"
@@ -652,7 +830,7 @@ export function ShopDialog({
                   <FormItem>
                     <FormLabel>Status*</FormLabel>
               <Select
-                      onValueChange={field.onChange} 
+                      onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
@@ -673,7 +851,7 @@ export function ShopDialog({
             </div>
           </div>
         );
-        
+
       case 2:
         return (
           <div className="space-y-4">
@@ -681,7 +859,7 @@ export function ShopDialog({
               <Store className="h-6 w-6 text-primary" />
               <h3 className="text-lg font-medium text-center">Staff Assignment</h3>
             </div>
-            
+
             {/* Manager Selection */}
             <FormField
               control={form.control}
@@ -689,7 +867,7 @@ export function ShopDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Manager</FormLabel>
-                  <Select 
+                  <Select
                     onValueChange={(value) => {
                       // If a staff ID is selected, store it
                       // If "none" is selected, store empty string
@@ -701,14 +879,14 @@ export function ShopDialog({
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a manager">
-                          {field.value && staffList ? 
+                          {field.value && staffList ?
                             (() => {
                               // Find the staff member by ID
                               const manager = staffList.find(staff => staff.id === field.value);
-                              return manager ? 
-                                `${manager.firstName} ${manager.lastName}${manager.role ? ` (${manager.role.name})` : ''}` : 
+                              return manager ?
+                                `${manager.firstName} ${manager.lastName}${manager.role ? ` (${manager.role.name})` : ''}` :
                                 field.value;
-                            })() : 
+                            })() :
                             "No manager assigned"
                           }
                         </SelectValue>
@@ -728,7 +906,7 @@ export function ShopDialog({
                 </FormItem>
               )}
             />
-            
+
             <div className="space-y-3 mt-4">
               <Label>Assign Staff to Shop</Label>
               <Popover open={staffSelectorOpen} onOpenChange={setStaffSelectorOpen}>
@@ -782,7 +960,7 @@ export function ShopDialog({
                   </Command>
                 </PopoverContent>
               </Popover>
-              
+
               {/* Display selected staff members */}
               {staffMembers.length > 0 ? (
                 <ScrollArea className="h-[180px] rounded-md border p-2">
@@ -811,12 +989,12 @@ export function ShopDialog({
                   No staff members assigned to this shop
                 </div>
               )}
-              
+
               {/* Staff count is now derived from the selected staff members */}
               <div className="text-sm text-muted-foreground">
                 Staff Count: {staffMembers.length}
               </div>
-              
+
               <div className="mt-4 bg-muted/50 p-3 rounded-md">
                 <p className="text-sm text-muted-foreground">
                   <strong>Note:</strong> Staff members can be managed at any time from the shop details page after creation.
@@ -825,10 +1003,10 @@ export function ShopDialog({
             </div>
           </div>
         );
-        
+
       case 3:
         return renderOpeningHoursSection();
-        
+
       default:
         return null;
     }
@@ -853,24 +1031,24 @@ export function ShopDialog({
           {/* Weekdays and Weekends sections */}
           {Object.entries(groupedHours).map(([groupKey, schedule]) => {
             const displayName = groupKey === 'weekdays' ? 'Weekdays (Mon-Fri)' : 'Weekends (Sat-Sun)';
-            
+
             return (
               <div key={groupKey} className="border rounded-md p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Switch 
+                    <Switch
                       id={`open-${groupKey}`}
                       checked={schedule.isOpen}
                       onCheckedChange={() => toggleGroupOpen(groupKey as keyof GroupedOpeningHours)}
                     />
-                    <Label 
+                    <Label
                       htmlFor={`open-${groupKey}`}
                       className="font-medium"
                     >
                       {displayName}
                     </Label>
                   </div>
-                  
+
                   {schedule.isOpen && (
                     <Button
                       variant="ghost"
@@ -882,7 +1060,7 @@ export function ShopDialog({
                     </Button>
                   )}
                 </div>
-                
+
                 {schedule.isOpen && (
                   <div className="mt-4 space-y-2">
                     {schedule.timeSlots.length === 0 ? (
@@ -915,7 +1093,7 @@ export function ShopDialog({
                               className="w-32"
                             />
                           </div>
-                          
+
                           <Button
                             variant="ghost"
                             size="icon"
@@ -928,7 +1106,7 @@ export function ShopDialog({
                     )}
                   </div>
                 )}
-                
+
                 {!schedule.isOpen && (
                   <p className="mt-2 text-sm text-muted-foreground">
                     {groupKey === 'weekdays' ? 'Weekdays' : 'Weekends'} are set as closed
@@ -937,7 +1115,7 @@ export function ShopDialog({
               </div>
             );
           })}
-          
+
           {/* Show note about overriding specific days */}
           <div className="mt-4 p-4 bg-muted rounded-md">
             <div className="flex items-start">
@@ -973,39 +1151,39 @@ export function ShopDialog({
         <DialogHeader>
           <DialogTitle>{mode === 'create' ? 'Create New Shop' : 'Edit Shop'}</DialogTitle>
           <DialogDescription>
-            {mode === 'create' 
-              ? 'Add a new shop to your business' 
+            {mode === 'create'
+              ? 'Add a new shop to your business'
               : 'Edit shop details and settings'}
           </DialogDescription>
         </DialogHeader>
-        
+
         {/* Step indicators */}
         <div className="flex justify-between items-center mb-6 pt-4">
-          <FormStep 
-            stepNumber={1} 
-            title="Basic Info" 
-            isActive={currentStep === 1} 
-            isCompleted={stepsCompleted[1]} 
+          <FormStep
+            stepNumber={1}
+            title="Basic Info"
+            isActive={currentStep === 1}
+            isCompleted={stepsCompleted[1]}
           />
           <div className="w-8 h-[2px] bg-muted-foreground/30" />
-          <FormStep 
-            stepNumber={2} 
-            title="Staff" 
-            isActive={currentStep === 2} 
-            isCompleted={stepsCompleted[2]} 
+          <FormStep
+            stepNumber={2}
+            title="Staff"
+            isActive={currentStep === 2}
+            isCompleted={stepsCompleted[2]}
           />
           <div className="w-8 h-[2px] bg-muted-foreground/30" />
-          <FormStep 
-            stepNumber={3} 
-            title="Opening Hours" 
-            isActive={currentStep === 3} 
-            isCompleted={stepsCompleted[3]} 
+          <FormStep
+            stepNumber={3}
+            title="Opening Hours"
+            isActive={currentStep === 3}
+            isCompleted={stepsCompleted[3]}
           />
         </div>
-        
+
         <Form {...form}>
-          <form 
-            onSubmit={form.handleSubmit(handleSubmit)} 
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-6"
             onKeyDown={handleFormKeyDown}
           >
@@ -1013,13 +1191,13 @@ export function ShopDialog({
             <div className="p-6">
               {renderFormStep()}
             </div>
-            
+
             <DialogFooter className="pt-2 flex items-center justify-between w-full">
               <div>
                 {currentStep > 1 && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={goToPreviousStep}
                   >
                     <ChevronLeft className="mr-1 h-4 w-4" />
@@ -1027,11 +1205,11 @@ export function ShopDialog({
                   </Button>
                 )}
               </div>
-              
+
               <div>
                 {currentStep < totalSteps ? (
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       goToNextStep();
@@ -1042,8 +1220,8 @@ export function ShopDialog({
                     <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
                 ) : (
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={isLoading}
                   >
                     {isLoading ? 'Saving...' : mode === 'create' ? 'Create Shop' : 'Save Changes'}

@@ -74,6 +74,14 @@ export function useCustomers({
     setError(null);
     
     try {
+      console.log('Fetching customers with params:', {
+        page: pagination.page,
+        pageSize: pagination.limit,
+        search: filters.search || '',
+        status: filters.status?.join(',') || '',
+        loyaltyTier: filters.loyaltyTier?.join(',') || ''
+      });
+      
       const result = await customerService.getAll({
         page: pagination.page,
         pageSize: pagination.limit,
@@ -82,14 +90,22 @@ export function useCustomers({
         loyaltyTier: filters.loyaltyTier?.join(',') || ''
       });
       
-      setCustomers(result.data || []);
-      setPagination(prev => ({
-        ...prev,
-        total: result?.pagination?.total || 0
-      }));
+      console.log('Customer fetch result:', result);
       
-      return result.data;
+      if (result && result.data) {
+        setCustomers(result.data || []);
+        setPagination(prev => ({
+          ...prev,
+          total: result?.pagination?.total || 0
+        }));
+        return result.data;
+      } else {
+        console.error('Invalid response format from customer service:', result);
+        setError(new Error('Invalid response format'));
+        return [];
+      }
     } catch (err) {
+      console.error('Error in fetchCustomers:', err);
       setError(err as Error);
       toast({
         title: "Error loading customers",
@@ -131,9 +147,9 @@ export function useCustomers({
   }, [toast]);
 
   /**
-   * Add a new customer
+   * Create a new customer
    */
-  const addCustomer = useCallback(async (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const createCustomer = useCallback(async (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => {
     setLoading(true);
     setError(null);
     
@@ -226,7 +242,7 @@ export function useCustomers({
     sort,
     fetchCustomers,
     deleteCustomer,
-    addCustomer,
+    createCustomer,
     updateCustomer,
     setPage,
     setPageSize,

@@ -32,10 +32,10 @@ import {
 } from "@/components/ui/select"
 import { useToastManager } from "@/components/ui/toast-manager"
 import { cn } from "@/lib/utils"
-import { 
-  Building2, 
-  Mail, 
-  Phone, 
+import {
+  Building2,
+  Mail,
+  Phone,
   User2,
   MapPin,
   Globe,
@@ -58,8 +58,8 @@ interface SupplierModalProps {
   onSubmit: (data: SupplierFormValues) => void
 }
 
-export function SupplierModal({ 
-  open, 
+export function SupplierModal({
+  open,
   onOpenChange,
   initialData,
   onSubmit: onSubmitProp
@@ -69,7 +69,7 @@ export function SupplierModal({
   const [operationStatus, setOperationStatus] = useState<ActionStatus>("idle")
   const [showBankingDetails, setShowBankingDetails] = useState(!!initialData?.bankingDetails)
   const [showCommission, setShowCommission] = useState(!!initialData?.commission)
-  
+
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
     defaultValues: {
@@ -127,7 +127,7 @@ export function SupplierModal({
   async function onSubmit(data: SupplierFormValues) {
     try {
       setOperationStatus("loading")
-      
+
       // Track this action for undo/redo
       if (initialData?.id) {
         trackAction(
@@ -143,19 +143,19 @@ export function SupplierModal({
         trackAction(
           {
             type: 'create_supplier',
-            supplier: { 
-              id: crypto.randomUUID(), 
+            supplier: {
+              id: crypto.randomUUID(),
               createdAt: new Date(),
               updatedAt: new Date(),
-              ...data 
+              ...data
             }
           },
           `Added new supplier ${data.name}`
         )
       }
-      
+
       await onSubmitProp(data)
-      
+
       setOperationStatus("success")
       showToast.success(
         initialData ? "Supplier updated" : "Supplier added",
@@ -175,16 +175,16 @@ export function SupplierModal({
         <DialogHeader>
           <DialogTitle>{initialData ? "Edit Supplier" : "Add New Supplier"}</DialogTitle>
           <DialogDescription>
-            {initialData 
-              ? "Update the supplier information below." 
+            {initialData
+              ? "Update the supplier information below."
               : "Fill in the supplier information below to add them to your system."}
           </DialogDescription>
         </DialogHeader>
-        
+
         <InfoBox variant="info" className="mb-4">
           All fields marked with * are required. Make sure to provide accurate information to maintain good supplier relationships.
         </InfoBox>
-        
+
         <ActionFeedback
           status={operationStatus}
           message={operationStatus === "success" ? "Supplier saved successfully" : "Saving supplier..."}
@@ -345,7 +345,7 @@ export function SupplierModal({
                       <FormControl>
                         <div className="relative">
                           <Phone className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="Enter phone number" className="pl-8" {...field} />
+                          <Input placeholder="Enter phone number" className="pl-8" {...field} autoComplete="tel" />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -426,10 +426,10 @@ export function SupplierModal({
                       content="Any additional information about this supplier (optional)."
                     />
                     <FormControl>
-                      <Textarea 
-                        placeholder="Enter any additional notes..." 
-                        className="min-h-[100px]" 
-                        {...field} 
+                      <Textarea
+                        placeholder="Enter any additional notes..."
+                        className="min-h-[100px]"
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -633,8 +633,8 @@ export function SupplierModal({
                           <FormItem>
                             <FieldHelpTooltip
                               label="Base Rate"
-                              content={commissionType === CommissionType.FIXED ? 
-                                "Fixed amount per transaction" : 
+                              content={commissionType === CommissionType.FIXED ?
+                                "Fixed amount per transaction" :
                                 "Base percentage rate"
                               }
                               required
@@ -642,7 +642,7 @@ export function SupplierModal({
                             <FormControl>
                               <div className="relative">
                                 <Star className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input 
+                                <Input
                                   type="number"
                                   placeholder={commissionType === CommissionType.FIXED ? "Enter amount" : "Enter percentage"}
                                   className="pl-8"
@@ -848,7 +848,7 @@ export function SupplierModal({
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <OperationButton 
+                <OperationButton
                   type="submit"
                   successMessage="Supplier saved successfully"
                   errorMessage="Failed to save supplier"

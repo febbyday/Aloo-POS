@@ -4,14 +4,9 @@
  * This module exports components, hooks, and utilities for the suppliers feature.
  */
 
-// Re-export components
+// Export suppliers module components and pages
 export * from './components';
+export { suppliersService } from './services/suppliersService';
 
-// Re-export hooks
-export * from './hooks';
-
-// Re-export types
-export * from './types';
-
-// Re-export context
-export * from './context';
+// Export the connection page for routing
+export { SupplierConnectionPage } from './pages/SupplierConnectionPage';

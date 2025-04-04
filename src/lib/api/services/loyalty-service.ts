@@ -17,26 +17,30 @@ import {
 } from '@/features/customers/types/customers.types';
 import { apiClient, API_CONFIG } from '../api-config';
 import { handleApiError } from '../api-client';
+import { getApiEndpoint } from '@/lib/api/config';
 
 // Remove mock data variables and storage functions, as we'll use real APIs now
 
 // Determine if we should use direct API access instead of going through proxy
 const useDirect = import.meta.env.VITE_USE_DIRECT_API === 'true';
-const apiBaseUrl = useDirect ? API_CONFIG.BACKEND_URL : '';
+const apiBaseUrl = useDirect ? API_CONFIG.BASE_URL : '';
 
 // Log API access strategy
 console.log(`Loyalty service using ${useDirect ? 'direct backend connection' : 'proxy'} for API access`);
 
+// Get the base URL for loyalty endpoints
+const loyaltyBaseUrl = getApiEndpoint('loyalty');
+
 // Constants for API endpoints - updated to match backend routes
 const API_ENDPOINTS = {
-  TIERS: `${apiBaseUrl}/api/v1/loyalty/tiers`,
-  REWARDS: `${apiBaseUrl}/api/v1/loyalty/rewards`,
-  EVENTS: `${apiBaseUrl}/api/v1/loyalty/events`,
-  TRANSACTIONS: `${apiBaseUrl}/api/v1/loyalty/transactions`,
-  SETTINGS: `${apiBaseUrl}/api/v1/loyalty/settings`,
-  CUSTOMER_TIERS: `${apiBaseUrl}/api/v1/loyalty/customer-tiers`,
-  CUSTOMER_REWARDS: `${apiBaseUrl}/api/v1/loyalty/customer-rewards`,
-  NEXT_TIER: `${apiBaseUrl}/api/v1/loyalty/next-tier`,
+  TIERS: '/loyalty/tiers',
+  REWARDS: '/loyalty/rewards',
+  EVENTS: '/loyalty/events',
+  TRANSACTIONS: '/loyalty/transactions',
+  SETTINGS: '/loyalty/settings',
+  CUSTOMER_TIERS: '/loyalty/customer-tiers',
+  CUSTOMER_REWARDS: '/loyalty/customer-rewards',
+  NEXT_TIER: '/loyalty/next-tier',
 };
 
 /**
@@ -45,7 +49,9 @@ const API_ENDPOINTS = {
 async function makeApiRequest(endpoint: string, options?: RequestInit) {
   try {
     // First try through the configured method (proxy or direct)
-    const response = await fetch(endpoint, options);
+    // Remove the duplicate /api/v1 prefix from the endpoint if it exists
+    const cleanEndpoint = endpoint.startsWith('/api/v1') ? endpoint : endpoint;
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.API_VERSION}${cleanEndpoint}`, options);
     if (!response.ok) {
       throw new Error(`API request failed with status ${response.status}`);
     }
@@ -60,8 +66,8 @@ async function makeApiRequest(endpoint: string, options?: RequestInit) {
     
     // Retry with direct connection if proxy failed for GET requests
     try {
-      console.log(`Retry with direct connection: ${API_CONFIG.BACKEND_URL}${endpoint}`);
-      const directResponse = await fetch(`${API_CONFIG.BACKEND_URL}${endpoint.replace(apiBaseUrl, '')}`, options);
+      console.log(`Retry with direct connection: ${API_CONFIG.BASE_URL}${API_CONFIG.API_VERSION}${endpoint}`);
+      const directResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.API_VERSION}${endpoint}`, options);
       if (!directResponse.ok) {
         throw new Error(`Direct API request failed with status ${directResponse.status}`);
       }
@@ -139,13 +145,14 @@ export class LoyaltyService {
     console.warn('Using fallback loyalty settings');
     // Return default settings as fallback
     return {
-      enabled: true,
-      pointsPerPurchase: 1,
-      minimumPurchase: 10,
+      pointsPerDollar: 1,
+      pointValueInCents: 1,
+      minimumRedemption: 100,
+      expiryPeriodInDays: 365,
       welcomeBonus: 100,
       referralBonus: 50,
       birthdayBonus: 200,
-      expiryDays: 365,
+      isEnabled: true,
       termsAndConditions: "Default terms and conditions"
     };
   }

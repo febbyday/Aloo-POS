@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import loyaltyRoutes from './src/routes/loyalty';
 
 // Initialize environment variables
 dotenv.config();
@@ -26,7 +27,8 @@ app.get('/', (req, res) => {
     status: 'running',
     endpoints: {
       health: '/api/v1/health',
-      api: '/api/v1'
+      api: '/api/v1',
+      loyalty: '/api/v1/loyalty'
     }
   });
 });
@@ -35,6 +37,9 @@ app.get('/', (req, res) => {
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
+
+// Mount routes
+app.use('/api/v1/loyalty', loyaltyRoutes);
 
 // Start the server
 app.listen(PORT, () => {

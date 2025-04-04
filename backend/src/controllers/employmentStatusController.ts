@@ -52,7 +52,7 @@ export const getEmploymentStatusById = async (req: Request, res: Response) => {
  */
 export const createEmploymentStatus = async (req: Request, res: Response) => {
   try {
-    const { name, description, color } = req.body;
+    const { name, description, color, benefits } = req.body;
     
     // Validate required fields
     if (!name || !description || !color) {
@@ -74,6 +74,7 @@ export const createEmploymentStatus = async (req: Request, res: Response) => {
         name,
         description,
         color,
+        benefits: benefits || [],
         isActive: true,
         staffCount: 0
       }
@@ -100,7 +101,7 @@ export const createEmploymentStatus = async (req: Request, res: Response) => {
 export const updateEmploymentStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, color, isActive } = req.body;
+    const { name, description, color, isActive, benefits } = req.body;
     
     // Check if employment status exists
     const existing = await prisma.employmentStatus.findUnique({
@@ -130,9 +131,10 @@ export const updateEmploymentStatus = async (req: Request, res: Response) => {
       where: { id },
       data: {
         ...(name && { name }),
-        ...(description && { description }),
+        ...(description !== undefined && { description }),
         ...(color && { color }),
-        ...(isActive !== undefined && { isActive })
+        ...(isActive !== undefined && { isActive }),
+        ...(benefits !== undefined && { benefits })
       }
     });
     
@@ -200,42 +202,50 @@ export const createDefaultEmploymentStatuses = async () => {
       {
         name: 'Full-time',
         description: 'Regular full-time employee',
-        color: '#4CAF50' // Green
+        color: '#4CAF50', // Green
+        benefits: ['Health Insurance', 'Paid Time Off', '401k', 'Dental', 'Vision', 'Life Insurance']
       },
       {
         name: 'Part-time',
         description: 'Regular part-time employee',
-        color: '#8BC34A' // Light Green
+        color: '#8BC34A', // Light Green
+        benefits: ['Limited Health Insurance', 'Limited Paid Time Off', 'Employee Discounts']
       },
       {
         name: 'Contractor',
         description: 'Independent contractor or freelancer',
-        color: '#9C27B0' // Purple
+        color: '#9C27B0', // Purple
+        benefits: ['Performance Bonus', 'Flexible Hours', 'Remote Work Option']
       },
       {
         name: 'Intern',
         description: 'Temporary internship position',
-        color: '#FFC107' // Amber
+        color: '#FFC107', // Amber
+        benefits: ['Training Program', 'Mentorship', 'Networking Opportunities']
       },
       {
         name: 'Temporary',
         description: 'Short-term temporary employment',
-        color: '#607D8B' // Blue Grey
+        color: '#607D8B', // Blue Grey
+        benefits: ['Flexible Scheduling', 'Experience Certificate']
       },
       {
         name: 'Terminated',
         description: 'Employment has been terminated',
-        color: '#F44336' // Red
+        color: '#F44336', // Red
+        benefits: []
       },
       {
         name: 'Probation',
         description: 'In trial period',
-        color: '#2196F3' // Blue
+        color: '#2196F3', // Blue
+        benefits: ['Basic Health Insurance', 'Training Program', 'Mentorship']
       },
       {
         name: 'Suspended',
         description: 'Temporarily removed from duties',
-        color: '#FF9800' // Orange
+        color: '#FF9800', // Orange
+        benefits: []
       }
     ];
     
@@ -250,12 +260,15 @@ export const createDefaultEmploymentStatuses = async () => {
             name: status.name,
             description: status.description,
             color: status.color,
-            isActive: true
+            benefits: status.benefits,
+            isActive: true,
+            staffCount: 0
           }
         });
-        console.log(`Created default employment status: ${status.name}`);
       }
     }
+    
+    console.log('Default employment statuses created successfully');
   } catch (error) {
     console.error('Error creating default employment statuses:', error);
   }

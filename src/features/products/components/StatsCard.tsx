@@ -66,7 +66,7 @@ export function StatsCard({
           </div>
 
           {trend && (
-            <div className="h-[70px] mt-4">
+            <div className="h-[70px] mt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trend.data}>
                   <defs>

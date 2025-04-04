@@ -11,7 +11,7 @@ export const staffSchema = z.object({
   hireDate: z.string(),
   department: z.string().min(1, "Department is required"),
   position: z.string().min(1, "Position is required"),
-  employmentType: z.enum(["full-time", "part-time", "contract", "temporary"]).default("full-time"),
+  employmentType: z.string().min(1, "Employment type is required"),
   bankingDetails: z.object({
     accountName: z.string().min(1, "Account name is required"),
     accountNumber: z.string().min(1, "Account number is required"),

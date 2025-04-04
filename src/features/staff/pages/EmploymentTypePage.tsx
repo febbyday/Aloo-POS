@@ -1,33 +1,27 @@
-/**
- * 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
- */
-
 import { useState, useEffect } from "react"
-import { DataTable } from "@/components/ui/data-table"
-import { columns } from "./columns"
 import { useEmploymentTypes } from "../hooks/useEmploymentTypes"
-import { PageHeader } from "@/components/page-header"
-import { Button } from "@/components/ui/button"
-import { AlertCircle, PlusCircle, RefreshCw } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { 
   Dialog, 
   DialogContent, 
   DialogDescription, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+  DialogTitle
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
 import { EmploymentType } from "../types/employmentType"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { employmentTypeService } from "../services/employmentTypeService"
+import { EmploymentTypesToolbar } from "../components/toolbars/EmploymentTypesToolbar"
+import { EmploymentTypeCard } from "../components/EmploymentTypeCard"
 
 // Form schema for employment type
 const formSchema = z.object({
@@ -59,6 +53,8 @@ export const EmploymentTypePage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [typeToDelete, setTypeToDelete] = useState<EmploymentType | null>(null)
   const [usingMockData, setUsingMockData] = useState(false)
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
 
   // Check if we're using mock data
   useEffect(() => {
@@ -77,7 +73,7 @@ export const EmploymentTypePage = () => {
   })
 
   // Reset form when editingType changes
-  useState(() => {
+  useEffect(() => {
     if (editingType) {
       form.reset({
         name: editingType.name,
@@ -127,21 +123,8 @@ export const EmploymentTypePage = () => {
       })
     } finally {
       setIsSubmitting(false)
-      // Update mock data status after operation
       setUsingMockData(employmentTypeService.isUsingMockData())
     }
-  }
-
-  // Handle edit button click
-  const handleEdit = (type: EmploymentType) => {
-    setEditingType(type)
-    form.reset({
-      name: type.name,
-      description: type.description,
-      color: type.color,
-      benefits: type.benefits.join(", ")
-    })
-    setOpen(true)
   }
 
   // Handle delete confirmation
@@ -162,65 +145,98 @@ export const EmploymentTypePage = () => {
         variant: "destructive"
       })
     } finally {
-      // Update mock data status after operation
       setUsingMockData(employmentTypeService.isUsingMockData())
     }
   }
 
-  // Close dialogs and reset state
-  const handleDialogClose = () => {
-    setEditingType(null)
-    form.reset({
-      name: "",
-      description: "",
-      color: "#4CAF50",
-      benefits: ""
-    })
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    try {
+      await Promise.all(selectedTypes.map(id => deleteEmploymentType(id)))
+      toast({
+        title: "Employment types deleted",
+        description: `${selectedTypes.length} employment type(s) have been removed successfully.`,
+      })
+      setSelectedTypes([])
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+      toast({
+        title: "Error",
+        description: `Failed to delete employment types: ${errorMessage}`,
+        variant: "destructive"
+      })
+    } finally {
+      setUsingMockData(employmentTypeService.isUsingMockData())
+    }
   }
 
-  // Handle manual refresh
-  const handleRefresh = () => {
-    refetch();
-    toast({
-      title: "Refreshed",
-      description: "Employment types data has been refreshed.",
-    });
-    // Update mock data status after refresh
-    setUsingMockData(employmentTypeService.isUsingMockData())
-  };
-
-  // Generate custom columns with edit/delete handlers
-  const tableColumns = columns({
-    onEdit: handleEdit,
-    onDelete: (type) => {
-      setTypeToDelete(type)
-      setDeleteDialogOpen(true)
+  // Handle view details
+  const handleViewDetails = () => {
+    if (selectedTypes.length === 1) {
+      const type = employmentTypes?.find(t => t.id === selectedTypes[0])
+      if (type) {
+        setEditingType(type)
+        setOpen(true)
+      }
     }
-  })
+  }
+
+  // Filter employment types based on search query
+  const filteredTypes = employmentTypes?.filter(type => 
+    type.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    type.description.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Employment Types"
-        description="Manage staff employment classifications"
-        children={
-          <>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleRefresh} disabled={isRefetching}>
-                <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
-                {isRefetching ? 'Refreshing...' : 'Refresh'}
-              </Button>
-              
+      <EmploymentTypesToolbar
+        onRefresh={refetch}
+        onFilter={() => {/* TODO: Implement filtering */}}
+        onExport={() => {/* TODO: Implement export */}}
+        onAddEmploymentType={() => setOpen(true)}
+        onSearch={setSearchQuery}
+        onViewDetails={handleViewDetails}
+        onDelete={handleBulkDelete}
+        selectedCount={selectedTypes.length}
+      />
+
+      {/* Mock Data Alert */}
+      {usingMockData && (
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">Using Mock Data</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            The backend API for employment types is currently unavailable. 
+            Using mock data instead. Changes will persist in memory during this session but 
+            will not be saved to the database.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Show error alert if API call failed */}
+      {error && !usingMockData && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error loading employment types</AlertTitle>
+          <AlertDescription>
+            {error.message || "Failed to fetch data from the API. Please refresh and try again."}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Add/Edit Employment Type Dialog */}
               <Dialog open={open} onOpenChange={(open) => {
                 setOpen(open)
-                if (!open) handleDialogClose()
-              }}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Employment Type
-                  </Button>
-                </DialogTrigger>
+        if (!open) {
+          setEditingType(null)
+          form.reset({
+            name: "",
+            description: "",
+            color: "#4CAF50",
+            benefits: []
+          })
+        }
+      }}>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>
@@ -269,17 +285,11 @@ export const EmploymentTypePage = () => {
                         control={form.control}
                         name="color"
                         render={({ field }) => (
-                          <FormItem className="flex flex-col">
+                  <FormItem>
                             <FormLabel>Color</FormLabel>
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="h-6 w-6 rounded-full border" 
-                                style={{ backgroundColor: field.value }}
-                              />
                               <FormControl>
-                                <Input {...field} />
+                      <Input type="color" {...field} />
                               </FormControl>
-                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -290,16 +300,13 @@ export const EmploymentTypePage = () => {
                         name="benefits"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Benefits</FormLabel>
+                    <FormLabel>Benefits (comma-separated)</FormLabel>
                             <FormControl>
-                              <Textarea 
+                      <Input 
                                 placeholder="Health Insurance, Paid Time Off, 401(k)" 
                                 {...field} 
                               />
                             </FormControl>
-                            <FormDescription className="text-xs">
-                              Enter benefits separated by commas
-                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -319,34 +326,6 @@ export const EmploymentTypePage = () => {
                   </Form>
                 </DialogContent>
               </Dialog>
-            </div>
-          </>
-        }
-      />
-
-      {/* Mock Data Alert */}
-      {usingMockData && (
-        <Alert variant="warning" className="bg-amber-50 border-amber-200">
-          <AlertCircle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800">Using Mock Data</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            The backend API for employment types is currently unavailable. 
-            Using mock data instead. Changes will persist in memory during this session but 
-            will not be saved to the database.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Show error alert if API call failed */}
-      {error && !usingMockData && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error loading employment types</AlertTitle>
-          <AlertDescription>
-            {error.message || "Failed to fetch data from the API. Please refresh and try again."}
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -382,26 +361,24 @@ export const EmploymentTypePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Employee Types Data Table */}
-      <DataTable
-        columns={tableColumns}
-        data={employmentTypes || []}
-        isLoading={isLoading}
-        searchKey="name"
-      />
-
-      {/* Status Information Alert */}
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>
-          {usingMockData ? "Using Mock Data" : "Connected to API"}
-        </AlertTitle>
-        <AlertDescription>
-          {usingMockData 
-            ? "This module is currently using mock data due to API connection failure. Changes are stored in memory for this session only."
-            : "This module is connected to the backend API at /api/employment-types. All changes are persisted to the database."}
-        </AlertDescription>
-      </Alert>
+      {/* Employment Types Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredTypes?.map((type) => (
+          <EmploymentTypeCard
+            key={type.id}
+            type={type}
+            employeeCount={type.staffCount || 0}
+            onEdit={(type) => {
+              setEditingType(type)
+              setOpen(true)
+            }}
+            onDelete={(type) => {
+              setTypeToDelete(type)
+              setDeleteDialogOpen(true)
+            }}
+          />
+        ))}
+      </div>
     </div>
   )
 }

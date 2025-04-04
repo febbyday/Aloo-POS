@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  BarChart, 
-  Bar, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
   Legend,
   PieChart,
   Pie,
@@ -22,7 +22,7 @@ import { formatCurrency } from '@/lib/utils';
 import type { Product } from '../../types';
 
 interface SalesStatsChartsProps {
-  product: Product;
+  productId: string;
   timeRange?: '7d' | '30d' | '90d' | '1y' | 'all';
 }
 
@@ -30,12 +30,19 @@ interface SalesStatsChartsProps {
  * Component that displays sales statistics charts for a product
  * Shows sales volume, revenue, and trends over time
  */
-export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChartsProps) {
+export function SalesStatsCharts({ productId, timeRange = '90d' }: SalesStatsChartsProps) {
+  // Mock product data for demonstration
+  const product = {
+    id: productId,
+    price: 99.99,
+    costPrice: 49.99,
+    retailPrice: 99.99
+  };
   // Generate mock sales data based on time range
   const salesData = useMemo(() => {
     const data = [];
     const today = new Date();
-    
+
     // Determine number of days based on timeRange
     let days = 90;
     switch (timeRange) {
@@ -45,19 +52,19 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
       case '1y': days = 365; break;
       case 'all': days = 730; break; // 2 years
     }
-    
+
     // Generate daily data points
     for (let i = days; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      
+
       // Create some random but realistic sales data
       const quantity = Math.floor(Math.random() * 10) + 1;
       const price = product.price || 19.99;
       const cost = product.costPrice || 9.99;
       const revenue = quantity * price;
       const profit = revenue - (quantity * cost);
-      
+
       data.push({
         date: date.toISOString().split('T')[0],
         formattedDate: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
@@ -66,28 +73,28 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
         profit
       });
     }
-    
+
     return data;
   }, [product, timeRange]);
 
   // Generate monthly aggregated data
   const monthlyData = useMemo(() => {
     const months: Record<string, { month: string, quantity: number, revenue: number, profit: number }> = {};
-    
+
     salesData.forEach(day => {
       const date = new Date(day.date);
       const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
       const monthName = date.toLocaleDateString(undefined, { month: 'short' });
-      
+
       if (!months[monthKey]) {
         months[monthKey] = { month: monthName, quantity: 0, revenue: 0, profit: 0 };
       }
-      
+
       months[monthKey].quantity += day.quantity;
       months[monthKey].revenue += day.revenue;
       months[monthKey].profit += day.profit;
     });
-    
+
     return Object.values(months);
   }, [salesData]);
 
@@ -122,14 +129,14 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
           <p className="font-medium mb-1">{label}</p>
           <div className="space-y-1">
             {payload.map((entry: any, index: number) => (
-              <p 
+              <p
                 key={`item-${index}`}
                 className="text-sm flex justify-between"
                 style={{ color: entry.color }}
               >
-                <span>{entry.name}:</span> 
+                <span>{entry.name}:</span>
                 <span className="font-medium ml-4">
-                  {entry.name.includes('Revenue') || entry.name.includes('Profit') 
+                  {entry.name.includes('Revenue') || entry.name.includes('Profit')
                     ? formatCurrency(entry.value)
                     : entry.value}
                 </span>
@@ -164,13 +171,13 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
               }}
             >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis 
-                dataKey={timeRange === '365' ? "month" : "formattedDate"} 
-                tick={{ fontSize: 12 }} 
+              <XAxis
+                dataKey={timeRange === '365' ? "month" : "formattedDate"}
+                tick={{ fontSize: 12 }}
                 tickLine={false}
                 axisLine={{ stroke: 'hsl(var(--muted))' }}
               />
-              <YAxis 
+              <YAxis
                 yAxisId="left"
                 tickFormatter={(value) => `${value}`}
                 tick={{ fontSize: 12 }}
@@ -178,7 +185,7 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
                 axisLine={{ stroke: 'hsl(var(--muted))' }}
                 label={{ value: 'Units', angle: -90, position: 'insideLeft', fontSize: 12 }}
               />
-              <YAxis 
+              <YAxis
                 yAxisId="right"
                 orientation="right"
                 tickFormatter={(value) => formatCurrency(value)}
@@ -189,30 +196,30 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
-              <Bar 
+              <Bar
                 yAxisId="left"
-                dataKey="quantity" 
-                name="Units Sold" 
-                fill="hsl(var(--primary))" 
+                dataKey="quantity"
+                name="Units Sold"
+                fill="hsl(var(--primary))"
                 radius={[4, 4, 0, 0]}
                 barSize={20}
               />
-              <Line 
+              <Line
                 yAxisId="right"
-                type="monotone" 
-                dataKey="revenue" 
-                name="Revenue" 
-                stroke="hsl(var(--success))" 
+                type="monotone"
+                dataKey="revenue"
+                name="Revenue"
+                stroke="hsl(var(--success))"
                 strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6 }}
               />
-              <Line 
+              <Line
                 yAxisId="right"
-                type="monotone" 
-                dataKey="profit" 
-                name="Profit" 
-                stroke="hsl(var(--destructive))" 
+                type="monotone"
+                dataKey="profit"
+                name="Profit"
+                stroke="hsl(var(--destructive))"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={{ r: 4 }}
@@ -244,13 +251,13 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
                 }}
               >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey={timeRange === '365' ? "month" : "formattedDate"} 
-                  tick={{ fontSize: 12 }} 
+                <XAxis
+                  dataKey={timeRange === '365' ? "month" : "formattedDate"}
+                  tick={{ fontSize: 12 }}
                   tickLine={false}
                   axisLine={{ stroke: 'hsl(var(--muted))' }}
                 />
-                <YAxis 
+                <YAxis
                   tickFormatter={(value) => `${value}`}
                   tick={{ fontSize: 12 }}
                   tickLine={false}
@@ -326,13 +333,13 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
               }}
             >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis 
-                dataKey={timeRange === '365' ? "month" : "formattedDate"} 
-                tick={{ fontSize: 12 }} 
+              <XAxis
+                dataKey={timeRange === '365' ? "month" : "formattedDate"}
+                tick={{ fontSize: 12 }}
                 tickLine={false}
                 axisLine={{ stroke: 'hsl(var(--muted))' }}
               />
-              <YAxis 
+              <YAxis
                 tickFormatter={(value) => formatCurrency(value)}
                 tick={{ fontSize: 12 }}
                 tickLine={false}
@@ -340,18 +347,18 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
-              <Bar 
-                dataKey="revenue" 
-                name="Revenue" 
+              <Bar
+                dataKey="revenue"
+                name="Revenue"
                 stackId="a"
-                fill="hsl(var(--success))" 
+                fill="hsl(var(--success))"
                 radius={[4, 4, 0, 0]}
               />
-              <Bar 
-                dataKey="profit" 
-                name="Profit" 
+              <Bar
+                dataKey="profit"
+                name="Profit"
                 stackId="a"
-                fill="hsl(var(--primary))" 
+                fill="hsl(var(--primary))"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -362,4 +369,4 @@ export function SalesStatsCharts({ product, timeRange = '90d' }: SalesStatsChart
   );
 }
 
-export default SalesStatsCharts; 
+export default SalesStatsCharts;

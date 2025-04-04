@@ -25,13 +25,13 @@ import { DataTable } from "@/components/ui/data-table";
 import { useFinance } from "../context/FinanceContext";
 import { useTax } from "../context/TaxContext";
 import { TaxCalculator } from "../components";
-import { 
-  Download, 
-  Filter, 
-  Plus, 
-  Search, 
-  Percent, 
-  FileText, 
+import {
+  Download,
+  Filter,
+  Plus,
+  Search,
+  Percent,
+  FileText,
   Settings,
   Calendar,
   RefreshCw,
@@ -39,18 +39,18 @@ import {
   Building,
   CheckCircle
 } from "lucide-react";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { ErrorBoundary } from '@/components/unified-error-boundary';
 
 const TaxesPageContent: React.FC = () => {
   const { settings } = useFinance();
-  const { 
-    taxRates, 
-    taxCategories, 
-    taxReports, 
+  const {
+    taxRates,
+    taxCategories,
+    taxReports,
     collectedTaxes,
-    loading 
+    loading
   } = useTax();
-  
+
   const [dateRange, setDateRange] = useState({ from: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), to: new Date() });
   const [selectedTaxType, setSelectedTaxType] = useState("all");
 
@@ -264,8 +264,8 @@ const TaxesPageContent: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {loading ? "Loading..." : taxReports.filter(report => 
-                  report.status === 'pending' && 
+                {loading ? "Loading..." : taxReports.filter(report =>
+                  report.status === 'pending' &&
                   new Date(report.dueDate) > new Date()
                 ).length}
               </div>
@@ -300,7 +300,7 @@ const TaxesPageContent: React.FC = () => {
             <TabsTrigger value="calculator">Tax Calculator</TabsTrigger>
             <TabsTrigger value="settings">Fiscalization</TabsTrigger>
           </TabsList>
-          
+
           {/* Tax Rates Tab */}
           <TabsContent value="rates">
             <Card>
@@ -320,11 +320,11 @@ const TaxesPageContent: React.FC = () => {
                 {loading ? (
                   <p>Loading tax rates...</p>
                 ) : (
-                  <DataTable 
-                    columns={taxRateColumns} 
-                    data={taxRates.filter(tax => 
+                  <DataTable
+                    columns={taxRateColumns}
+                    data={taxRates.filter(tax =>
                       selectedTaxType === 'all' || tax.category.toLowerCase() === selectedTaxType
-                    )} 
+                    )}
                   />
                 )}
               </CardContent>
@@ -334,7 +334,7 @@ const TaxesPageContent: React.FC = () => {
               </CardFooter>
             </Card>
           </TabsContent>
-          
+
           {/* Tax Reports Tab */}
           <TabsContent value="reports">
             <Card>
@@ -354,11 +354,11 @@ const TaxesPageContent: React.FC = () => {
                 {loading ? (
                   <p>Loading tax reports...</p>
                 ) : (
-                  <DataTable 
-                    columns={taxReportColumns} 
-                    data={taxReports.filter(report => 
+                  <DataTable
+                    columns={taxReportColumns}
+                    data={taxReports.filter(report =>
                       selectedTaxType === 'all' || report.taxType.toLowerCase() === selectedTaxType
-                    )} 
+                    )}
                   />
                 )}
               </CardContent>
@@ -367,7 +367,7 @@ const TaxesPageContent: React.FC = () => {
                 <Button>Generate New Report</Button>
               </CardFooter>
             </Card>
-            
+
             <div className="grid gap-4 md:grid-cols-2 mt-4">
               <Card>
                 <CardHeader>
@@ -405,7 +405,7 @@ const TaxesPageContent: React.FC = () => {
                   <Button variant="outline" className="w-full">Manage Templates</Button>
                 </CardFooter>
               </Card>
-              
+
               <Card>
                 <CardHeader>
                   <CardTitle>Filing Calendar</CardTitle>
@@ -442,7 +442,7 @@ const TaxesPageContent: React.FC = () => {
               </Card>
             </div>
           </TabsContent>
-          
+
           {/* Tax Calculator Tab */}
           <TabsContent value="calculator">
             <Card>
@@ -457,7 +457,7 @@ const TaxesPageContent: React.FC = () => {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           {/* Fiscalization Tab */}
           <TabsContent value="settings">
             <Card>
@@ -480,7 +480,7 @@ const TaxesPageContent: React.FC = () => {
                           Enable fiscal receipt generation and reporting
                         </p>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="fiscalRegion">Fiscal Region</Label>
                         <Select defaultValue="us">
@@ -496,13 +496,13 @@ const TaxesPageContent: React.FC = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="fiscalId">Tax ID / VAT Number</Label>
                         <Input id="fiscalId" placeholder="Enter your tax ID" defaultValue="US123456789" />
                       </div>
                     </div>
-                    
+
                     <div className="space-y-4">
                       <div>
                         <div className="flex items-center justify-between mb-2">
@@ -513,7 +513,7 @@ const TaxesPageContent: React.FC = () => {
                           Digitally sign fiscal receipts
                         </p>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="reportingFrequency">Reporting Frequency</Label>
                         <Select defaultValue="monthly">
@@ -528,7 +528,7 @@ const TaxesPageContent: React.FC = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="fiscalDevice">Fiscal Device</Label>
                         <Select defaultValue="integrated">
@@ -544,7 +544,7 @@ const TaxesPageContent: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="border-t pt-6">
                     <h3 className="text-lg font-medium mb-4">Fiscal Authority Connection</h3>
                     <div className="flex items-center gap-4 p-4 bg-muted rounded-md">
@@ -585,4 +585,4 @@ export const TaxesPage: React.FC = () => {
       <TaxesPageContent />
     </ErrorBoundary>
   );
-}; 
+};

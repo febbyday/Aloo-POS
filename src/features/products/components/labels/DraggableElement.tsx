@@ -1,169 +1,196 @@
 // 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-import { useDrag } from 'react-dnd'
 import { useRef, useState } from 'react'
+import { useDrag, useDrop } from 'react-dnd'
+import { LucideIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { TemplateElement } from '../../services/templateStorage'
 
 interface DraggableElementProps {
-  id: string
-  type: 'barcode' | 'text' | 'image'
-  content: string
-  position: { x: number; y: number }
-  size: { width: number; height: number }
-  rotation: number
-  zIndex?: number
-  isSelected: boolean
-  snapToGrid: boolean
-  gridSize: number
-  onSelect: (event: React.MouseEvent) => void
-  onResize: (size: { width: number; height: number }) => void
-  onRotate: (rotation: number) => void
+  element: TemplateElement
+  isSelected?: boolean
+  previewMode?: boolean
+  onSelect?: (id: string) => void
+  onUpdate?: (id: string, updates: Partial<TemplateElement>) => void
+  onDelete?: (id: string) => void
+  icon?: LucideIcon
 }
 
 export function DraggableElement({
-  id,
-  type,
-  content,
-  position,
-  size,
-  rotation,
-  zIndex = 0,
-  isSelected,
-  snapToGrid,
-  gridSize,
+  element,
+  isSelected = false,
+  previewMode = false,
   onSelect,
-  onResize,
-  onRotate
+  onUpdate,
+  onDelete,
+  icon: Icon
 }: DraggableElementProps) {
+  const elementRef = useRef<HTMLDivElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const [isRotating, setIsRotating] = useState(false)
-  const elementRef = useRef<HTMLDivElement>(null)
-  const initialMousePos = useRef({ x: 0, y: 0 })
-  const initialSize = useRef(size)
-  const initialRotation = useRef(rotation)
 
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'element',
-    item: { id, type, position },
+  const [{ isDragging: isOver }, drop] = useDrop(() => ({
+    accept: 'element',
+    drop: (item: { id: string; type: string; content: string }) => {
+      if (item.id === element.id) {
+        onUpdate?.(element.id, { position: element.position })
+      }
+    },
     collect: (monitor) => ({
-      isDragging: !!monitor.isDragging()
-    })
-  }), [id, position])
+      isDragging: monitor.isOver(),
+    }),
+  }))
 
-  const handleMouseDown = (e: React.MouseEvent, action: 'resize' | 'rotate') => {
-    if (action === 'resize') {
-      setIsResizing(true)
-      initialMousePos.current = { x: e.clientX, y: e.clientY }
-      initialSize.current = size
-    } else {
-      setIsRotating(true)
-      initialMousePos.current = { x: e.clientX, y: e.clientY }
-      initialRotation.current = rotation
+  const [{ isDragging: isDraggingElement }, drag] = useDrag(() => ({
+    type: 'element',
+    item: { id: element.id, type: element.type, content: element.content },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  }))
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (previewMode) return
+    e.stopPropagation()
+    onSelect?.(element.id)
+  }
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    if (previewMode) return
+    e.stopPropagation()
+    setIsResizing(true)
+    const startWidth = element.size.width
+    const startHeight = element.size.height
+    const initialX = element.position.x
+    const initialY = element.position.y
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return
+
+      const deltaX = e.clientX - initialX
+      const deltaY = e.clientY - initialY
+
+      onUpdate?.(element.id, {
+        size: {
+          width: Math.max(20, startWidth + deltaX),
+          height: Math.max(20, startHeight + deltaY),
+        },
+      })
     }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
   }
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isResizing) {
-      const deltaX = e.clientX - initialMousePos.current.x
-      const deltaY = e.clientY - initialMousePos.current.y
-      
-      let newWidth = Math.max(50, initialSize.current.width + deltaX)
-      let newHeight = Math.max(50, initialSize.current.height + deltaY)
-      
-      if (snapToGrid) {
-        newWidth = Math.round(newWidth / gridSize) * gridSize
-        newHeight = Math.round(newHeight / gridSize) * gridSize
-      }
-      
-      onResize({ width: newWidth, height: newHeight })
-    } else if (isRotating) {
-      const element = elementRef.current
-      if (!element) return
+  const handleRotateStart = (e: React.MouseEvent) => {
+    if (previewMode) return
+    e.stopPropagation()
+    setIsRotating(true)
+    const startRotation = element.rotation
+    const centerX = element.position.x + element.size.width / 2
+    const centerY = element.position.y + element.size.height / 2
 
-      const rect = element.getBoundingClientRect()
-      const centerX = rect.left + rect.width / 2
-      const centerY = rect.top + rect.height / 2
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isRotating) return
 
-      const angle = Math.atan2(
-        e.clientY - centerY,
-        e.clientX - centerX
-      ) * 180 / Math.PI
+      const deltaX = e.clientX - centerX
+      const deltaY = e.clientY - centerY
+      const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI) - 90
 
-      // Snap to 15-degree increments
-      const snappedAngle = Math.round(angle / 15) * 15
-      onRotate(snappedAngle)
+      onUpdate?.(element.id, {
+        rotation: Math.round(angle),
+      })
     }
+
+    const handleMouseUp = () => {
+      setIsRotating(false)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
   }
 
-  const handleMouseUp = () => {
-    setIsResizing(false)
-    setIsRotating(false)
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
-  }
+  drag(drop(elementRef))
 
   return (
     <div
-      ref={(node) => {
-        drag(node)
-        if (elementRef.current) elementRef.current = node
-      }}
+      ref={elementRef}
       className={cn(
         'absolute cursor-move',
-        isSelected && 'outline outline-2 outline-blue-500',
-        isDragging && 'opacity-50'
+        isDraggingElement && 'opacity-50',
+        isOver && 'border-2 border-primary',
+        isSelected && 'ring-2 ring-primary ring-offset-2'
       )}
       style={{
-        left: position.x,
-        top: position.y,
-        width: size.width,
-        height: size.height,
-        transform: `rotate(${rotation}deg)`,
-        transformOrigin: 'center',
-        zIndex
+        left: element.position.x,
+        top: element.position.y,
+        width: element.size.width,
+        height: element.size.height,
+        fontSize: element.style?.fontSize || 14,
+        fontFamily: element.style?.fontFamily || 'Arial',
+        color: element.style?.color || '#000000',
+        backgroundColor: element.style?.backgroundColor || 'transparent',
+        border: `${element.style?.borderWidth || 0}px solid ${element.style?.borderColor || '#000000'}`,
+        transform: `rotate(${element.rotation || 0}deg)`,
+        zIndex: isDraggingElement || isOver ? 1000 : element.zIndex || 1,
       }}
-      onClick={onSelect}
+      onMouseDown={handleMouseDown}
     >
-      {/* Element Content */}
-      <div className="w-full h-full flex items-center justify-center">
-        {type === 'text' && (
-          <span>{content}</span>
-        )}
-        {type === 'barcode' && (
-          <div className="bg-gray-200 w-full h-full flex items-center justify-center">
-            Barcode
-          </div>
-        )}
-        {type === 'image' && (
-          <div className="bg-gray-200 w-full h-full flex items-center justify-center">
-            Image
-          </div>
-        )}
-      </div>
-
-      {/* Resize and Rotate Handles */}
-      {isSelected && (
+      {!previewMode && (
         <>
-          {/* Resize handle */}
+          {/* Resize handles */}
           <div
-            className="absolute bottom-0 right-0 w-4 h-4 bg-white border-2 border-blue-500 cursor-se-resize"
-            onMouseDown={(e) => {
-              e.stopPropagation()
-              handleMouseDown(e, 'resize')
-            }}
+            className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-se-resize"
+            onMouseDown={handleResizeStart}
           />
-          
+          <div
+            className="absolute bottom-0 left-0 w-3 h-3 bg-primary cursor-sw-resize"
+            onMouseDown={handleResizeStart}
+          />
+          <div
+            className="absolute top-0 right-0 w-3 h-3 bg-primary cursor-ne-resize"
+            onMouseDown={handleResizeStart}
+          />
+          <div
+            className="absolute top-0 left-0 w-3 h-3 bg-primary cursor-nw-resize"
+            onMouseDown={handleResizeStart}
+          />
+
           {/* Rotate handle */}
           <div
-            className="absolute -top-6 left-1/2 w-4 h-4 bg-white border-2 border-blue-500 cursor-pointer rounded-full"
-            onMouseDown={(e) => {
-              e.stopPropagation()
-              handleMouseDown(e, 'rotate')
-            }}
+            className="absolute -top-8 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-primary cursor-pointer"
+            onMouseDown={handleRotateStart}
           />
+
+          {/* Delete button */}
+          <Button
+            variant="destructive"
+            size="icon"
+            className="absolute -top-8 -right-8 h-4 w-4"
+            onClick={() => onDelete?.(element.id)}
+          >
+            ×
+          </Button>
         </>
       )}
+
+      {/* Content */}
+      <div className="w-full h-full flex items-center justify-center">
+        {Icon ? (
+          <Icon className="h-6 w-6" />
+        ) : (
+          <span>{element.content}</span>
+        )}
+      </div>
     </div>
   )
 }

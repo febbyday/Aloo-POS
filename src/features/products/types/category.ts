@@ -45,8 +45,15 @@ export interface CategoryFormData {
   name: string
   description?: string
   parentId?: string
+  slug?: string
   attributes?: Omit<CategoryAttribute, 'id'>[]
   status: 'active' | 'inactive'
+  inheritParentAttributes?: boolean
+  seo?: {
+    metaTitle?: string
+    metaDescription?: string
+    keywords?: string
+  }
 }
 
 export interface CategoryFilter {

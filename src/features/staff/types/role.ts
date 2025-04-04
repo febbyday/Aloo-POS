@@ -1,15 +1,25 @@
 import { z } from "zod"
 import { Permissions, getDefaultPermissions } from "./permissions"
 
-export interface Role {
+// Interface for Role that aligns with the backend schema
+export interface IRole {
   id: string
   name: string
   description: string
   staffCount: number
-  permissions: Permissions
-  createdAt?: string
-  updatedAt?: string
+  // Allow for both simple string array and complex permissions object
+  permissions: string[] | Permissions
+  isActive: boolean
+  isSystemRole?: boolean
+  createdAt: string
+  updatedAt: string
 }
+
+// Create a type for parameters used to create a new role
+export type CreateRoleData = Omit<IRole, 'id' | 'staffCount' | 'createdAt' | 'updatedAt'>;
+
+// Create a type for parameters used to update an existing role
+export type UpdateRoleData = Partial<CreateRoleData>;
 
 // Create a zod schema for permissions
 export const permissionItemSchema = z.object({
@@ -120,6 +130,7 @@ export const roleSchema = z.object({
 export type RolePermissions = z.infer<typeof roleSchema>
 export type Role = z.infer<typeof roleSchema>
 
+// List of permission options with icons
 export const permissionsList = [
   { id: "sales", label: "Sales Management", icon: "Receipt" },
   { id: "inventory", label: "Inventory Control", icon: "Package" },

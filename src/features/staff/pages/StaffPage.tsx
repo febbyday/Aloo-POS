@@ -1,180 +1,166 @@
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Plus, Search, Loader2 } from "lucide-react"
-import { StaffTable } from "../components/StaffTable"
-import { StaffModal } from "../components/StaffModal"
-import type { Staff } from "../types/staff"
-import { staffService } from "../services/staffService"
-import { useToast } from "@/components/ui/use-toast"
+import { useState, useEffect } from 'react';
+import { Staff } from '../types/staff.types';
+import { useStaff } from '../hooks/useStaff';
+import { StaffList } from '../components/StaffList';
+import { StaffForm } from '../components/StaffForm';
+import { StaffShiftManager } from '../components/StaffShiftManager';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
-export function StaffPage() {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [staffData, setStaffData] = useState<Staff[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [staffToEdit, setStaffToEdit] = useState<Staff | null>(null)
-  const { toast } = useToast()
+export const StaffPage = () => {
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [showStaffForm, setShowStaffForm] = useState(false);
+  const [showShiftManager, setShowShiftManager] = useState(false);
 
-  // Fetch staff data from API
+  const {
+    staff,
+    loading,
+    error,
+    fetchAll,
+    create,
+    update,
+    remove,
+  } = useStaff();
+
+  const { toast } = useToast();
+
   useEffect(() => {
-    const fetchStaff = async () => {
-      try {
-        setIsLoading(true)
-        const data = await staffService.fetchAll()
-        setStaffData(data)
-      } catch (error) {
-        console.error("Error fetching staff:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load staff data. Please try again.",
-          variant: "destructive"
-        })
-      } finally {
-        setIsLoading(false)
-      }
-    }
+    fetchAll();
+  }, [fetchAll]);
 
-    fetchStaff()
-  }, [toast])
-
-  // Filter staff based on search query
-  const filteredStaff = staffData.filter(staff => {
-    const fullName = `${staff.firstName} ${staff.lastName}`.toLowerCase()
-    const email = staff.email.toLowerCase()
-    const role = staff.role.toLowerCase()
-    const query = searchQuery.toLowerCase()
-
-    return fullName.includes(query) || email.includes(query) || role.includes(query)
-  })
-
-  const handleAdd = async (newStaffData: Staff) => {
+  const handleCreateStaff = async (data: any) => {
     try {
-      setIsLoading(true)
-      const createdStaff = await staffService.create(newStaffData)
-      setStaffData(prev => [...prev, createdStaff])
+      await create(data);
+      setShowStaffForm(false);
+      fetchAll();
       toast({
-        title: "Staff Added",
-        description: `${createdStaff.firstName} ${createdStaff.lastName} has been added successfully.`
-      })
+        title: 'Success',
+        description: 'Staff member created successfully',
+      });
     } catch (error) {
-      console.error("Error adding staff:", error)
       toast({
-        title: "Error",
-        description: "Failed to add staff member. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsLoading(false)
+        title: 'Error',
+        description: 'Failed to create staff member',
+        variant: 'destructive',
+      });
     }
-  }
+  };
 
-  const handleEdit = (staff: Staff) => {
-    setStaffToEdit(staff)
-  }
-
-  const handleUpdate = async (updatedStaffData: Staff) => {
-    if (!staffToEdit) return
-
+  const handleUpdateStaff = async (data: any) => {
+    if (!selectedStaff) return;
     try {
-      setIsLoading(true)
-      const updatedStaff = await staffService.update(staffToEdit.id, updatedStaffData)
-      setStaffData(prev => prev.map(staff => 
-        staff.id === updatedStaff.id ? updatedStaff : staff
-      ))
-      setStaffToEdit(null)
+      await update(selectedStaff.id, data);
+      setShowStaffForm(false);
+      setSelectedStaff(null);
+      fetchAll();
       toast({
-        title: "Staff Updated",
-        description: `${updatedStaff.firstName} ${updatedStaff.lastName}'s information has been updated.`
-      })
+        title: 'Success',
+        description: 'Staff member updated successfully',
+      });
     } catch (error) {
-      console.error("Error updating staff:", error)
       toast({
-        title: "Error",
-        description: "Failed to update staff member. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsLoading(false)
+        title: 'Error',
+        description: 'Failed to update staff member',
+        variant: 'destructive',
+      });
     }
-  }
+  };
 
-  const handleDelete = async (staffId: string) => {
+  const handleDeleteStaff = async (id: string) => {
     try {
-      setIsLoading(true)
-      const success = await staffService.delete(staffId)
-      
-      if (success) {
-        setStaffData(prev => prev.filter(staff => staff.id !== staffId))
-        toast({
-          title: "Staff Deleted",
-          description: "Staff member has been deleted successfully."
-        })
-      }
-    } catch (error) {
-      console.error("Error deleting staff:", error)
+      await remove(id);
+      fetchAll();
       toast({
-        title: "Error",
-        description: "Failed to delete staff member. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsLoading(false)
+        title: 'Success',
+        description: 'Staff member deleted successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete staff member',
+        variant: 'destructive',
+      });
     }
-  }
+  };
+
+  const handleEditStaff = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setShowStaffForm(true);
+  };
+
+  const handleManageShifts = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setShowShiftManager(true);
+  };
+
+  // Mock roles data - replace with real data from API
+  const roles = [
+    { id: '1', name: 'Manager' },
+    { id: '2', name: 'Cashier' },
+    { id: '3', name: 'Sales Associate' },
+  ];
 
   return (
-    <div className="w-full py-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Staff Management</h1>
-        <Button onClick={() => setIsAddModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
+        <Button onClick={() => setShowStaffForm(true)}>
+          <Plus className="h-4 w-4 mr-2" />
           Add Staff
         </Button>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search staff..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[200px]">
+          <div className="text-lg">Loading staff...</div>
         </div>
-      </div>
-
-      {isLoading && (
-        <div className="flex justify-center p-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      ) : error ? (
+        <div className="flex items-center justify-center min-h-[200px]">
+          <div className="text-red-500 text-lg">Error: {error.message}</div>
         </div>
-      )}
-
-      {!isLoading && (
-        <StaffTable
-          data={filteredStaff}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+      ) : (
+        <StaffList
+          staff={staff}
+          onEdit={handleEditStaff}
+          onDelete={handleDeleteStaff}
+          onManageShifts={handleManageShifts}
         />
       )}
 
-      {/* Add Staff Modal */}
-      <StaffModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSubmit={handleAdd}
-      />
+      <Dialog open={showStaffForm} onOpenChange={setShowStaffForm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedStaff ? 'Edit Staff' : 'Add Staff'}
+            </DialogTitle>
+          </DialogHeader>
 
-      {/* Edit Staff Modal */}
-      {staffToEdit && (
-        <StaffModal
-          isOpen={!!staffToEdit}
-          onClose={() => setStaffToEdit(null)}
-          onSubmit={handleUpdate}
-          initialData={staffToEdit}
+          <StaffForm
+            staff={selectedStaff}
+            onSubmit={selectedStaff ? handleUpdateStaff : handleCreateStaff}
+            onCancel={() => {
+              setShowStaffForm(false);
+              setSelectedStaff(null);
+            }}
+            roles={roles}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {selectedStaff && (
+        <StaffShiftManager
+          staff={selectedStaff}
+          open={showShiftManager}
+          onOpenChange={setShowShiftManager}
         />
       )}
     </div>
-  )
-}
+  );
+};

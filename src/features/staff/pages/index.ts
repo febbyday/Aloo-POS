@@ -11,4 +11,5 @@ export { RolesPage } from './RolesPage';
 export { PermissionsPage } from './PermissionsPage';
 export { PermissionsListPage } from './PermissionsListPage';
 export { EmploymentTypePage } from './EmploymentTypePage';
+export { EmploymentStatusPage } from './EmploymentStatusPage';
 export { PerformancePage } from './PerformancePage';

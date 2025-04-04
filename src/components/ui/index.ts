@@ -33,12 +33,12 @@ export * from './separator';
 export * from './skeleton';
 export * from './slider';
 export * from './switch';
-export * from './table';
 export * from './tabs';
 export * from './textarea';
 export * from './toast';
 export * from './toaster';
 export * from './tooltip';
+export * from './breadcrumb';
 
 // Export custom components
 export * from './action-feedback';
@@ -51,9 +51,17 @@ export * from './image';
 export * from './loading-state';
 export * from './shared-table-styles';
 
-// Re-export from folders with index files
+// Table components
 export * from './table';
+
+// Re-export from folders with index files
 export * from './toolbar';
+
+// File upload components 
+export * from './file-upload';
+export * from './file-upload-container';
+export * from './file-list';
+export * from './file-preview';
 
 // For components that might have hooks, export those as well
 export { useToast } from './use-toast'; 

@@ -1,117 +1,190 @@
 // 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
 
-import { Store, StoreType } from '@prisma/client';
-import { StoreDto } from '../dto/storeDto';
-import { Shop } from '../schemas/shopSchema';
+import { Shop, ShopStatus, ShopType, Prisma } from '@prisma/client';
+import { ShopDto } from '../dto/shopDto';
+import { FrontendShop } from '../schemas/shopSchema';
+const { Address, addressSchema } = require('../../../shared/schemas/shopSchema.cjs');
 
 /**
- * Maps a Store database entity to a StoreDto object
+ * Maps a Shop database entity to a ShopDto object
  * This handles the database-to-API transformation
  */
-export function mapStoreToDto(store: Store & { 
-  _count?: { productLocations: number; orders: number } 
-}): StoreDto {
+export function mapShopToDto(shop: Shop & {
+  _count?: { productLocations: number; orders: number; staff: number; assignments: number }
+}): ShopDto {
+  // Parse the address from JSON
+  let address: Address;
+  try {
+    address = typeof shop.address === 'object'
+      ? shop.address as Address
+      : JSON.parse(String(shop.address)) as Address;
+  } catch (error) {
+    console.error('Error parsing shop address:', error);
+    // Fallback to a basic valid address
+    address = {
+      street: 'Unknown',
+      city: 'Unknown',
+      state: 'Unknown',
+      postalCode: 'Unknown',
+      country: 'Unknown'
+    };
+  }
+
   return {
-    id: store.id,
-    name: store.name,
-    type: store.type,
-    address: store.address,
-    city: store.city,
-    state: store.state,
-    zipCode: store.postalCode, // Map from postalCode to zipCode for consistency
-    phone: store.phone,
-    isActive: store.isActive,
-    productCount: store._count?.productLocations ?? 0,
-    orderCount: store._count?.orders ?? 0,
-    createdAt: store.createdAt,
-    updatedAt: store.updatedAt
+    id: shop.id,
+    code: shop.code,
+    name: shop.name,
+    description: shop.description,
+    address,
+    phone: shop.phone,
+    email: shop.email,
+    status: shop.status,
+    type: shop.type,
+    manager: shop.manager,
+    operatingHours: shop.operatingHours,
+    lastSync: shop.lastSync,
+    isHeadOffice: shop.isHeadOffice,
+    licenseNumber: shop.licenseNumber,
+    logoUrl: shop.logoUrl,
+    taxId: shop.taxId,
+    timezone: shop.timezone,
+    website: shop.website,
+    settings: shop.settings,
+    salesLastMonth: shop.salesLastMonth ? Number(shop.salesLastMonth) : null,
+    inventoryCount: shop.inventoryCount,
+    averageOrderValue: shop.averageOrderValue ? Number(shop.averageOrderValue) : null,
+    staffCount: shop._count?.staff ?? shop.staffCount ?? 0,
+    createdAt: shop.createdAt,
+    updatedAt: shop.updatedAt
   };
 }
 
 /**
- * Maps between backend StoreDto and frontend Shop structure
+ * Maps between backend ShopDto and frontend Shop structure
  * This aligns the backend data structure with the frontend expectations
  */
-export function mapStoreDtoToShop(storeDto: StoreDto): Shop {
-  // Map store type to shop type expected by frontend
-  const mapStoreType = (type: StoreType): 'retail' | 'warehouse' | 'outlet' => {
-    switch (type) {
-      case 'RETAIL': return 'retail';
-      case 'WAREHOUSE': return 'warehouse';
-      case 'OUTLET': return 'outlet';
-      default: return 'retail'; // Default fallback
-    }
-  };
-  
+export function mapShopDtoToShop(shopDto: ShopDto): FrontendShop {
   return {
-    id: storeDto.id,
-    name: storeDto.name,
-    location: [storeDto.address, storeDto.city, storeDto.state, storeDto.zipCode]
-      .filter(Boolean)
-      .join(', '),
-    type: mapStoreType(storeDto.type),
-    status: storeDto.isActive ? 'active' : 'inactive',
-    staffCount: 0, // This would need to be populated from staff count query
-    lastSync: storeDto.updatedAt,
-    createdAt: storeDto.createdAt,
-    phone: storeDto.phone || '',
-    salesLastMonth: 0, // This would need to be populated with real data
-    inventoryCount: storeDto.productCount,
-    // Additional fields would be populated with real data in a production environment
-    email: '',
-    manager: '',
-    openingHours: '',
-    averageOrderValue: 0,
-    topSellingCategories: []
+    id: shopDto.id,
+    code: shopDto.code,
+    name: shopDto.name,
+    description: shopDto.description || undefined,
+    address: shopDto.address,
+    phone: shopDto.phone || undefined,
+    email: shopDto.email || undefined,
+    status: shopDto.status,
+    type: shopDto.type,
+    manager: shopDto.manager || undefined,
+    operatingHours: shopDto.operatingHours,
+    lastSync: shopDto.lastSync.toISOString(),
+    isHeadOffice: shopDto.isHeadOffice,
+    licenseNumber: shopDto.licenseNumber || undefined,
+    logoUrl: shopDto.logoUrl || undefined,
+    taxId: shopDto.taxId || undefined,
+    timezone: shopDto.timezone,
+    website: shopDto.website || undefined,
+    settings: shopDto.settings,
+    salesLastMonth: shopDto.salesLastMonth || undefined,
+    inventoryCount: shopDto.inventoryCount || undefined,
+    averageOrderValue: shopDto.averageOrderValue || undefined,
+    staffCount: shopDto.staffCount || undefined,
+    createdAt: shopDto.createdAt.toISOString(),
+    updatedAt: shopDto.updatedAt.toISOString()
   };
 }
 
 /**
- * Maps a frontend Shop object to a format ready for database persistence
- * This is used when creating or updating a shop/store
+ * Map a frontend Shop object to a Prisma Shop input
+ * @param shop The frontend Shop object to map
+ * @returns The mapped Prisma.ShopCreateInput or Prisma.ShopUpdateInput
  */
-export function mapShopToStoreInput(shop: Partial<Shop>): {
-  name: string; 
-  type: StoreType; 
-  isActive: boolean;
-  address: string | null;
-  city: string | null;
-  state: string | null;
-  postalCode: string | null; // Update property name to postalCode for consistency
-  phone: string | null;
-} {
-  // Map frontend shop type to backend store type
-  const mapShopType = (type?: 'retail' | 'warehouse' | 'outlet'): StoreType => {
-    switch (type) {
-      case 'retail': return 'RETAIL';
-      case 'warehouse': return 'WAREHOUSE';
-      case 'outlet': return 'OUTLET';
-      default: return 'RETAIL'; // Default fallback
+export function mapShopToShopInput(shop: any): Prisma.ShopCreateInput | Prisma.ShopUpdateInput {
+  // Map status string to ShopStatus enum
+  const mapStatus = (status: string): ShopStatus => {
+    switch (status.toUpperCase()) {
+      case 'ACTIVE': return ShopStatus.ACTIVE;
+      case 'INACTIVE': return ShopStatus.INACTIVE;
+      case 'MAINTENANCE': return ShopStatus.MAINTENANCE;
+      case 'CLOSED': return ShopStatus.CLOSED;
+      case 'PENDING': return ShopStatus.PENDING;
+      default: return ShopStatus.ACTIVE;
     }
   };
-  
-  // Parse location if it exists
-  let address = null;
-  let city = null;
-  let state = null;
-  let postalCode = null;
-  
-  if (shop.location) {
-    const locationParts = shop.location.split(',').map(part => part.trim());
-    if (locationParts.length >= 1) address = locationParts[0];
-    if (locationParts.length >= 2) city = locationParts[1];
-    if (locationParts.length >= 3) state = locationParts[2];
-    if (locationParts.length >= 4) postalCode = locationParts[3];
+
+  // Map type string to ShopType enum
+  const mapType = (type: string): ShopType => {
+    switch (type.toUpperCase()) {
+      case 'RETAIL': return ShopType.RETAIL;
+      case 'WAREHOUSE': return ShopType.WAREHOUSE;
+      case 'OUTLET': return ShopType.OUTLET;
+      case 'MARKET': return ShopType.MARKET;
+      case 'ONLINE': return ShopType.ONLINE;
+      default: return ShopType.RETAIL;
+    }
+  };
+
+  // Handle address properly
+  let address: Address;
+  try {
+    // If address is already an object, use it
+    if (typeof shop.address === 'object' && shop.address !== null) {
+      address = shop.address;
+    }
+    // If we have individual address fields, construct an address object
+    else if (shop.street || shop.city || shop.state || shop.postalCode || shop.country) {
+      address = {
+        street: shop.street || '',
+        street2: shop.street2 || undefined,
+        city: shop.city || '',
+        state: shop.state || '',
+        postalCode: shop.postalCode || '',
+        country: shop.country || 'Unknown',
+        latitude: shop.latitude || undefined,
+        longitude: shop.longitude || undefined
+      };
+    }
+    // Default empty address
+    else {
+      address = {
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'Unknown'
+      };
+    }
+
+    // Validate the address with Zod schema
+    addressSchema.parse(address);
+  } catch (error) {
+    console.error('Invalid address format:', error);
+    // Fallback to a basic valid address
+    address = {
+      street: 'Unknown',
+      city: 'Unknown',
+      state: 'Unknown',
+      postalCode: 'Unknown',
+      country: 'Unknown'
+    };
   }
-  
+
   return {
-    name: shop.name || '',  // Ensure name is never undefined
-    type: mapShopType(shop.type),
-    isActive: shop.status === 'active',
+    code: shop.code,
+    name: shop.name,
+    description: shop.description || null,
     address,
-    city,
-    state,
-    postalCode,
-    phone: shop.phone || null
+    phone: shop.phone || null,
+    email: shop.email || null,
+    status: shop.status ? mapStatus(shop.status) : ShopStatus.ACTIVE,
+    type: shop.type ? mapType(shop.type) : ShopType.RETAIL,
+    manager: shop.manager || null,
+    operatingHours: shop.operatingHours || null,
+    isHeadOffice: shop.isHeadOffice || false,
+    licenseNumber: shop.licenseNumber || null,
+    logoUrl: shop.logoUrl || null,
+    taxId: shop.taxId || null,
+    timezone: shop.timezone || 'UTC',
+    website: shop.website || null,
+    settings: shop.settings || null
   };
 }

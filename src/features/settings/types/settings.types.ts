@@ -14,6 +14,14 @@ export interface NotificationSettings {
         inventoryAlerts: boolean;
         systemAlerts: boolean;
     };
+    internal: {
+        enabled: boolean;
+        showBadge: boolean;
+        sound: boolean;
+        desktop: boolean;
+        autoRead: boolean;
+        keepDays: number;
+    };
     inventoryAlerts: {
         enabled: boolean;
         threshold: number;
@@ -28,6 +36,30 @@ export interface NotificationSettings {
         loginAttempts: boolean;
         systemChanges: boolean;
         backupStatus: boolean;
+    };
+}
+
+export interface EmailSettings {
+    server: {
+        host: string;
+        port: number;
+        secure: boolean;
+        useMock: boolean;
+    };
+    auth: {
+        user: string;
+        password: string;
+    };
+    sender: {
+        name: string;
+        email: string;
+    };
+    templates: {
+        welcomeEmail: boolean;
+        passwordReset: boolean;
+        orderConfirmation: boolean;
+        staffCredentials: boolean;
+        invoices: boolean;
     };
 }
 
@@ -256,4 +288,5 @@ export interface POSSettings {
     woocommerce: WooCommerceSettings;
     company: CompanySettings;
     payment: PaymentSettings;
+    email: EmailSettings;
 }

@@ -1,46 +1,39 @@
 /**
  * Shops Types
- * 
+ *
  * This module exports type definitions for the shops feature.
+ *
+ * Note: This file re-exports types from the shared schema to ensure consistency
+ * between frontend and backend.
  */
 
-export interface Shop {
-  id: string;
-  name: string;
-  location: string;
-  type: 'retail' | 'warehouse' | 'outlet';
-  status: 'active' | 'inactive' | 'maintenance';
-  staffCount: number;
-  lastSync: Date;
-  createdAt: Date;
-  
-  // Additional properties for detailed view
-  phone?: string;
-  email?: string;
-  manager?: string;
-  openingHours?: string;
-  salesLastMonth?: number;
-  inventoryCount?: number;
-  averageOrderValue?: number;
-  topSellingCategories?: string[];
-  
-  // Related entities
-  recentActivity?: ShopActivity[];
+import {
+  Shop as SharedShop,
+  ShopActivity as SharedShopActivity,
+  StaffAssignment,
+  SHOP_STATUS,
+  SHOP_TYPE,
+  Address,
+  OperatingHours as SharedOperatingHours,
+  ShopSettings as SharedShopSettings
+} from '../../../shared/schemas/shopSchema';
+
+// Re-export the shared types with frontend-specific extensions
+export interface Shop extends SharedShop {
+  // Add any frontend-specific properties here
   staffMembers?: ShopStaffMember[];
 }
 
-export interface ShopActivity {
-  type: 'inventory' | 'staff' | 'sales' | 'system';
-  message: string;
-  timestamp: Date;
-}
-
+// For backward compatibility
 export interface ShopStaffMember {
   id: string;
   name: string;
   position: string;
   email: string;
 }
+
+// Re-export ShopActivity from shared schema
+export type ShopActivity = SharedShopActivity;
 
 export interface Shops {
   shops: Shop[];
@@ -49,15 +42,38 @@ export interface Shops {
   limit: number;
 }
 
+// Re-export enums from shared schema
+export const ShopStatus = SHOP_STATUS;
+export type ShopStatus = SHOP_STATUS;
+
+export const ShopType = SHOP_TYPE;
+export type ShopType = SHOP_TYPE;
+
+// Re-export OperatingHours from shared schema
+export type OperatingHours = SharedOperatingHours;
+export type DayHours = SharedOperatingHours['monday'];
+
+// Re-export ShopSettings from shared schema
+export type ShopSettings = SharedShopSettings;
+
 export interface ShopsFormValues {
+  code: string;
   name: string;
-  location: string;
+  description?: string;
+  address: Address;
   type: Shop['type'];
   status: Shop['status'];
   phone?: string;
   email?: string;
   manager?: string;
-  openingHours?: string;
+  operatingHours?: OperatingHours;
+  settings?: ShopSettings;
+  isHeadOffice?: boolean;
+  timezone?: string;
+  taxId?: string;
+  licenseNumber?: string;
+  website?: string;
+  logoUrl?: string;
 }
 
 export interface ShopsFilterOptions {

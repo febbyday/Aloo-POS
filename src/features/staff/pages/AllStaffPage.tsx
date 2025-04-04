@@ -4,12 +4,16 @@ import { StaffToolbar } from "../components/StaffToolbar"
 import { Search, Plus, Download, Upload, Pencil, Trash2, Eye, UserCheck, UserX } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { StaffTable } from "../components/StaffTable"
-import { Staff } from "../types/staff"
+import { Staff, CreateStaff } from "../types/staff.types"
 import { useToast } from "@/components/ui/use-toast"
 import { StaffModal } from "../components/StaffModal"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { staffService } from "../services/staffService"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { z } from "zod"
+import { staffSchema } from "../types/staff"
+import { useRoles } from "../hooks/useRoles"
+import { useEmploymentTypes } from "../hooks/useEmploymentTypes"
 
 export function AllStaffPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -21,13 +25,15 @@ export function AllStaffPage() {
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
   const navigate = useNavigate()
+  const { roles, isLoading: isLoadingRoles } = useRoles()
+  const { data: employmentTypes } = useEmploymentTypes()
   
   // Fetch staff data on component mount
   useEffect(() => {
     const fetchStaffData = async () => {
       try {
         setIsLoading(true)
-        const data = await staffService.getAllStaff()
+        const data = await staffService.fetchAll()
         setStaffData(data)
         setError(null)
       } catch (err) {
@@ -45,10 +51,35 @@ export function AllStaffPage() {
     setIsAddModalOpen(true)
   }
 
-  const handleCreateStaff = async (newStaff: Omit<Staff, "id">) => {
+  const handleCreateStaff = async (newStaff: z.infer<typeof staffSchema>) => {
     try {
-      const createdStaff = await staffService.createStaff(newStaff)
-      setStaffData([...staffData, createdStaff])
+      // Convert from staffSchema format to CreateStaff format
+      const staffData: CreateStaff = {
+        code: `EMP${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+        firstName: newStaff.firstName,
+        lastName: newStaff.lastName,
+        email: newStaff.email,
+        phone: newStaff.phone,
+        roleId: roles.find(r => r.name === newStaff.role)?.id || '1', // Find roleId from role name
+        status: newStaff.status === 'active' ? 'ACTIVE' : 
+                newStaff.status === 'inactive' ? 'INACTIVE' : 'ON_LEAVE',
+        employmentStatusId: '1', // Default value, should be updated based on UI selection
+        
+        // Find employmentTypeId by matching against formatted name (converted to kebab case)
+        // This matches how we're storing the employment type value in the form
+        employmentTypeId: (() => {
+          // Find matching employment type by converted name
+          const selectedTypeName = newStaff.employmentType;
+          const matchingType = employmentTypes?.find(
+            (type) => type.name.toLowerCase().replace(/\s+/g, '-') === selectedTypeName
+          );
+          
+          return matchingType?.id || '1'; // Return ID if found, otherwise default
+        })(),
+      }
+      
+      const createdStaff = await staffService.create(staffData)
+      setStaffData(prevStaffData => [...prevStaffData, createdStaff])
       toast({
         title: "Staff Added",
         description: `${newStaff.firstName} ${newStaff.lastName} has been added to the staff list.`,
@@ -66,7 +97,7 @@ export function AllStaffPage() {
 
   const handleEditStaff = async (updatedStaff: Staff) => {
     try {
-      const result = await staffService.updateStaff(updatedStaff.id, updatedStaff)
+      const result = await staffService.update(updatedStaff.id, updatedStaff)
       setStaffData(staffData.map(staff => 
         staff.id === result.id ? result : staff
       ))
@@ -103,7 +134,7 @@ export function AllStaffPage() {
   const confirmDelete = async () => {
     if (staffToDelete) {
       try {
-        await staffService.deleteStaff(staffToDelete.id)
+        await staffService.delete(staffToDelete.id)
         setStaffData(staffData.filter(staff => staff.id !== staffToDelete.id))
         toast({
           title: "Staff Deleted",
@@ -162,7 +193,7 @@ export function AllStaffPage() {
           icon: Trash2,
           label: "Delete Staff",
           onClick: () => {
-            if (selectedStaff.length === 1) {
+            if (selectedStaff.length === 1 && selectedStaff[0]) {
               handleDeleteStaff(selectedStaff[0]);
             }
           },
@@ -245,7 +276,7 @@ export function AllStaffPage() {
         />
       )}
 
-      {/* Add Staff Modal */}
+      {/* Uncomment and fix the StaffModal component for adding new staff */}
       <StaffModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

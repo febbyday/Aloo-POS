@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { AttendanceRecord } from "../types/attendance"
 import { format, parseISO } from "date-fns"
-import { addNoteToAttendanceRecord } from "../services/attendanceService"
+import { attendanceService } from "../services/attendanceService"
 import { useToast } from "@/components/ui/use-toast"
 
 interface AttendanceNotesModalProps {

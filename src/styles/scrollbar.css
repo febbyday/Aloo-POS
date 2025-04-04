@@ -14,6 +14,7 @@
 /* For Webkit browsers like Chrome/Safari */
 .scrollbar-thin::-webkit-scrollbar {
   width: 8px;
+  height: 8px; /* For horizontal scrollbars */
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
@@ -28,15 +29,35 @@
   background-clip: content-box;
 }
 
-/* Dark mode adjustments */
+/* Dark mode adjustments based on .dark class */
+.dark .scrollbar-thin::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.3);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.5);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Also keep the media query for system preference */
 @media (prefers-color-scheme: dark) {
-  .scrollbar-thin::-webkit-scrollbar-track {
+  :not(.dark) .scrollbar-thin::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.05);
   }
   
-  .scrollbar-thin::-webkit-scrollbar-thumb {
+  :not(.dark) .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.2);
     border: 2px solid transparent;
     background-clip: content-box;
   }
+}
+
+/* Hover effects for better usability */
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--secondary) / 0.8);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.8);
 }

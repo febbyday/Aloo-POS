@@ -9,6 +9,9 @@ import { FINANCE_ROUTES, FINANCE_FULL_ROUTES, FINANCE_ROUTE_CONFIG } from './fin
 import { PRODUCTS_ROUTES, PRODUCTS_FULL_ROUTES, PRODUCTS_ROUTE_CONFIG } from './productRoutes';
 import { ORDERS_ROUTES, ORDERS_FULL_ROUTES, ORDERS_ROUTE_CONFIG } from './orderRoutes';
 import { CUSTOMERS_ROUTES, CUSTOMERS_FULL_ROUTES, CUSTOMERS_ROUTE_CONFIG } from './customerRoutes';
+import { SALES_ROUTES, SALES_FULL_ROUTES, SALES_ROUTE_CONFIG } from './salesRoutes';
+import { SUPPLIERS_ROUTES, SUPPLIERS_FULL_ROUTES, SUPPLIERS_ROUTE_CONFIG } from './supplierRoutes';
+import { SHOPS_ROUTES, SHOPS_FULL_ROUTES, SHOPS_ROUTE_CONFIG } from './shopRoutes';
 import { getIconByName } from './routeUtils';
 
 // Export all route definitions
@@ -33,6 +36,21 @@ export {
   CUSTOMERS_FULL_ROUTES,
   CUSTOMERS_ROUTE_CONFIG,
   
+  // Sales module routes
+  SALES_ROUTES,
+  SALES_FULL_ROUTES,
+  SALES_ROUTE_CONFIG,
+  
+  // Suppliers module routes
+  SUPPLIERS_ROUTES,
+  SUPPLIERS_FULL_ROUTES,
+  SUPPLIERS_ROUTE_CONFIG,
+  
+  // Shops module routes
+  SHOPS_ROUTES,
+  SHOPS_FULL_ROUTES,
+  SHOPS_ROUTE_CONFIG,
+  
   // Utilities
   getIconByName,
 };
@@ -44,6 +62,9 @@ export const validateRoutes = (): string[] => {
     ...Object.values(PRODUCTS_FULL_ROUTES),
     ...Object.values(ORDERS_FULL_ROUTES),
     ...Object.values(CUSTOMERS_FULL_ROUTES),
+    ...Object.values(SALES_FULL_ROUTES),
+    ...Object.values(SUPPLIERS_FULL_ROUTES),
+    ...Object.values(SHOPS_FULL_ROUTES).map(route => typeof route === 'function' ? route() : route),
     // Add routes from other modules as they're created
   ];
   
@@ -52,11 +73,11 @@ export const validateRoutes = (): string[] => {
   const routeMap = new Map<string, number>();
   
   allRoutes.forEach(route => {
-    const count = routeMap.get(route) || 0;
-    routeMap.set(route, count + 1);
+    const count = routeMap.get(route as string) || 0;
+    routeMap.set(route as string, count + 1);
     
     if (count > 0) {
-      duplicates.push(route);
+      duplicates.push(route as string);
     }
   });
   

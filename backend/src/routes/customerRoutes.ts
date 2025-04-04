@@ -32,10 +32,18 @@ router.get('/', async (req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     
+    // Extract query parameters
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
     const skip = (page - 1) * pageSize;
     const search = req.query.search as string;
+    
+    console.log('Customer API Request:', {
+      query: req.query,
+      page,
+      pageSize,
+      search
+    });
 
     // Build filter conditions
     const where = search ? {
@@ -323,57 +331,4 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-/**
- * GET /api/v1/customers/:id/purchase-history
- * Retrieve a customer's purchase history
- */
-router.get('/:id/purchase-history', async (req, res) => {
-  try {
-    // Verify customer exists
-    const customer = await prisma.customer.findUnique({
-      where: { id: req.params.id }
-    });
-    
-    if (!customer) {
-      return res.status(404).json({ 
-        error: 'Customer not found',
-        success: false,
-        message: 'Customer not found',
-        data: null
-      });
-    }
-    
-    // Fetch customer's orders with product details
-    const orders = await prisma.order.findMany({
-      where: { 
-        customerId: req.params.id 
-      },
-      include: { 
-        items: { 
-          include: { 
-            product: true 
-          } 
-        } 
-      },
-      orderBy: { 
-        createdAt: 'desc' 
-      }
-    });
-    
-    res.json({
-      data: orders,
-      message: 'Customer purchase history retrieved successfully',
-      success: true
-    });
-  } catch (error) {
-    console.error('Error fetching customer purchase history:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch purchase history',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      success: false,
-      data: []
-    });
-  }
-});
-
-export default router; 
+export default router;

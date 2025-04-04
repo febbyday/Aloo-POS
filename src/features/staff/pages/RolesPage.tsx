@@ -43,11 +43,13 @@ import {
   Truck,
 } from "lucide-react"
 import { useRoles } from "../hooks/useRoles.tsx"
-import { Role } from "../types/role"
+import type { IRole } from "../types/role"
+import { roleService } from "../services/roleService"
 import { toast } from "@/components/ui/use-toast"
 import { Link, useNavigate } from "react-router-dom"
 import { roleTemplateService } from "../services/roleTemplateService"
 import { getDefaultPermissions } from "../types/permissions"
+import type { Permissions } from "../types/permissions"
 import {
   Select,
   SelectContent,
@@ -56,9 +58,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { roleService } from "../services/roleService"
 
-// Define permission types for better type safety
+// Match role service's permission structure
+type Permissions = string[] | { modules: string[] };
+
 const permissionsList = [
   { id: "sales", label: "Sales Management", icon: Receipt },
   { id: "shops", label: "Shops Management", icon: Store },
@@ -81,19 +84,21 @@ export function RolesPage() {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<string>("none")
-  const [newRole, setNewRole] = useState<Omit<Role, "id" | "staffCount">>({
+  const [newRole, setNewRole] = useState<Omit<Role, "id" | "staffCount" | "createdAt" | "updatedAt">>({
     name: "",
     description: "",
-    permissions: getDefaultPermissions()
+    permissions: getDefaultPermissions(),
+    isActive: true
   })
-  
+  const [isLoading, setIsLoading] = useState(false)
+
   // Use the role hook to fetch and manage roles
-  const { 
-    roles, 
-    isLoading, 
-    error, 
-    refreshRoles, 
-    createRole, 
+  const {
+    roles,
+    isLoading: roleLoading,
+    error,
+    refreshRoles,
+    createRole,
     updateRole,
     deleteRole
   } = useRoles()
@@ -106,6 +111,11 @@ export function RolesPage() {
   // Add cleanupInProgress ref
   const cleanupInProgress = useRef(false);
 
+  // Add this to log mock data status
+  useEffect(() => {
+    console.log("Using mock data:", roleService.isUsingMockData());
+  }, []);
+
   // Reset form when dialog opens/closes
   useEffect(() => {
     if (!showAddRoleDialog) {
@@ -113,7 +123,8 @@ export function RolesPage() {
       setNewRole({
         name: "",
         description: "",
-        permissions: getDefaultPermissions()
+        permissions: getDefaultPermissions(),
+        isActive: true
       })
       setSelectedTemplate("none")
     }
@@ -124,7 +135,7 @@ export function RolesPage() {
     if (selectedTemplate && selectedTemplate !== "none") {
       // Get the permissions from the selected template
       const templatePermissions = roleTemplateService.getTemplateById(selectedTemplate)
-      
+
       if (templatePermissions) {
         // Apply the template permissions to the new role
         setNewRole(prev => ({
@@ -141,35 +152,58 @@ export function RolesPage() {
   )
 
   // Get the selected role for editing
-  const selectedRole = selectedRoleId 
-    ? roles.find(role => role.id === selectedRoleId) 
+  const selectedRole = selectedRoleId
+    ? roles.find(role => role.id === selectedRoleId)
     : null
 
   // Set up edit role form with current role data
   const handleEditClick = (roleId: string) => {
     setSelectedRoleId(roleId)
     const roleToEdit = roles.find(role => role.id === roleId)
-    
+
     if (roleToEdit) {
+      let rolePermissions = getDefaultPermissions();
+
+      // Handle both simple array and complex permissions object
+      if (Array.isArray(roleToEdit.permissions)) {
+        // Convert string array to permissions object for the UI
+        roleToEdit.permissions.forEach(permString => {
+          const permModule = permString.split('.')[0];
+          if (permModule && rolePermissions[permModule as keyof typeof rolePermissions]) {
+            const permAction = permString.split('.')[1];
+            if (permAction) {
+              const modulePerms = rolePermissions[permModule as keyof typeof rolePermissions];
+              if (typeof modulePerms === 'object' && permAction in modulePerms) {
+                (modulePerms as any)[permAction] = 'all';
+              }
+            }
+          }
+        });
+      } else if (typeof roleToEdit.permissions === 'object') {
+        // Complex permissions object
+        rolePermissions = roleToEdit.permissions as any;
+      }
+
       setNewRole({
         name: roleToEdit.name,
         description: roleToEdit.description,
-        permissions: { ...roleToEdit.permissions }
-      })
-      setShowEditRoleDialog(true)
+        permissions: rolePermissions,
+        isActive: roleToEdit.isActive
+      });
+      setShowEditRoleDialog(true);
     }
-  }
+  };
 
   // Check if a module has permissions enabled
   const hasModulePermissions = (moduleId: string) => {
-    const module = newRole.permissions[moduleId as keyof typeof newRole.permissions];
-    if (typeof module === 'object') {
+    const module = newRole.permissions[moduleId as keyof typeof newRole.permissions] as Record<string, unknown>;
+    if (typeof module === 'object' && module !== null) {
       // Check basic CRUD permissions
-      if (module.view !== 'none' || module.create !== 'none' || 
-          module.edit !== 'none' || module.delete !== 'none') {
+      if ((module.view as string) !== 'none' || (module.create as string) !== 'none' ||
+          (module.edit as string) !== 'none' || (module.delete as string) !== 'none') {
         return true;
       }
-      
+
       // Check other boolean permissions
       for (const [key, value] of Object.entries(module)) {
         if (typeof value === 'boolean' && value === true) {
@@ -183,29 +217,35 @@ export function RolesPage() {
   // Toggle basic module permissions
   const toggleModulePermissions = (moduleId: string, enabled: boolean) => {
     setNewRole(prev => {
-      const permissions = { ...prev.permissions };
-      const module = permissions[moduleId as keyof typeof permissions];
-      
-      if (typeof module === 'object') {
+      const permissions: Permissions = { ...prev.permissions };
+      const module = permissions[moduleId];
+
+      if (module) {
         // Create an updated module with all permissions either enabled or disabled
-        const updatedModule = { ...module };
-        
+        const updatedModule: PermissionModule = {
+          view: enabled ? 'all' : 'none',
+          create: enabled ? 'all' : 'none',
+          edit: enabled ? 'all' : 'none',
+          delete: enabled ? 'all' : 'none',
+          ...module
+        };
+
         // Set CRUD permissions
         updatedModule.view = enabled ? 'all' : 'none';
         updatedModule.create = enabled ? 'all' : 'none';
         updatedModule.edit = enabled ? 'all' : 'none';
         updatedModule.delete = enabled ? 'all' : 'none';
-        
+
         // Set boolean permissions
         for (const key in updatedModule) {
-          if (typeof updatedModule[key as keyof typeof updatedModule] === 'boolean') {
-            updatedModule[key as keyof typeof updatedModule] = enabled;
+          if (typeof updatedModule[key as keyof PermissionModule] === 'boolean') {
+            (updatedModule as Record<keyof PermissionModule, unknown>)[key] = enabled;
           }
         }
-        
+
         permissions[moduleId as keyof typeof permissions] = updatedModule;
       }
-      
+
       return {
         ...prev,
         permissions
@@ -215,35 +255,74 @@ export function RolesPage() {
 
   // Handle saving edited role
   const handleEditRole = async () => {
-    if (!selectedRoleId) return
-    
+    if (!selectedRoleId) return;
+
     // Validate role data
     if (!newRole.name.trim()) {
       toast({
         title: "Validation Error",
         description: "Role name is required",
         variant: "destructive"
-      })
-      return
+      });
+      return;
     }
-    
+
+    setIsLoading(true);
+
     try {
+      // Convert permissions to array format for API
+      const permissionsArray = [];
+
+      // Convert complex permissions object to string array for API
+      for (const [moduleName, modulePerms] of Object.entries(newRole.permissions)) {
+        if (hasModulePermissions(moduleName)) {
+          // Add basic module permission
+          permissionsArray.push(moduleName);
+
+          // Add specific permissions
+          if (typeof modulePerms === 'object') {
+            for (const [action, value] of Object.entries(modulePerms)) {
+              if (value === 'all' || value === true) {
+                permissionsArray.push(`${moduleName}.${action}`);
+              }
+            }
+          }
+        }
+      }
+
+      // Create update data
+      const updateData = {
+        name: newRole.name,
+        description: newRole.description,
+        permissions: permissionsArray,
+        isActive: newRole.isActive
+      };
+
       // Update role
-      await updateRole(selectedRoleId, newRole)
-      
+      await updateRole(selectedRoleId, updateData);
+
       // Close dialog and reset form
-      setShowEditRoleDialog(false)
-      setSelectedRoleId(null)
+      setShowEditRoleDialog(false);
+      setSelectedRoleId(null);
       setNewRole({
         name: "",
         description: "",
-        permissions: getDefaultPermissions()
-      })
+        permissions: getDefaultPermissions(),
+        isActive: true
+      });
     } catch (err) {
       // Don't throw the error, just log it
-      console.error("Error updating role:", err)
+      console.error("Error updating role:", err);
+
+      toast({
+        title: "Error updating role",
+        description: err instanceof Error ? err.message : "Unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   // Set up delete confirmation
   const handleDeleteClick = (roleId: string) => {
@@ -254,11 +333,11 @@ export function RolesPage() {
   // Handle confirming role deletion
   const handleDeleteConfirm = async () => {
     if (!selectedRoleId) return
-    
+
     try {
       // Delete role
       const success = await deleteRole(selectedRoleId)
-      
+
       if (success) {
         // Close dialog and reset state
         setShowDeleteConfirmation(false)
@@ -283,8 +362,6 @@ export function RolesPage() {
 
   // Handle dialog close with cleanup
   const handleDialogClose = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
-    // Prevent multiple closes
-    if (cleanupInProgress.current) return;
     setter(false);
   };
 
@@ -300,33 +377,67 @@ export function RolesPage() {
       });
       return;
     }
-    
+
+    // Set loading state
+    setIsLoading(true);
+
     try {
-      console.log("Creating role with data:", newRole);
-      // Adding new role
-      const roleToCreate = {
-        ...newRole,
-        staffCount: 0 // New roles start with 0 staff members
+      // Extract active modules into a simple string array of permissions
+      const permissionsArray = [];
+
+      // Convert complex permissions object to string array for API
+      for (const [moduleName, modulePerms] of Object.entries(newRole.permissions)) {
+        if (hasModulePermissions(moduleName)) {
+          // Add basic module permission
+          permissionsArray.push(moduleName);
+
+          // Add specific permissions
+          if (typeof modulePerms === 'object') {
+            for (const [action, value] of Object.entries(modulePerms)) {
+              if (value === 'all' || value === true) {
+                permissionsArray.push(`${moduleName}.${action}`);
+              }
+            }
+          }
+        }
+      }
+
+      // Create a simplified role object that matches the API expectations
+      const roleData = {
+        name: newRole.name,
+        description: newRole.description || '',
+        permissions: permissionsArray,
+        isActive: true
       };
-      
+
+      console.log("Creating role with data:", roleData);
+
       // Call the createRole function from useRoles
-      await createRole(roleToCreate);
-      
-      // Only update state if not cleaning up
+      await createRole(roleData);
+
+      // Show success message
+      toast({
+        title: "Success",
+        description: `Role "${newRole.name}" was created successfully.`,
+      });
+
+      // Always close the dialog immediately when successful
+      handleDialogClose(setShowAddRoleDialog);
+
+      // Only reset form state if component is still mounted
       if (!cleanupInProgress.current) {
-        // Close dialog and reset form - only do this if the request succeeds
-        setShowAddRoleDialog(false);
         setNewRole({
           name: "",
           description: "",
-          permissions: getDefaultPermissions()
+          permissions: getDefaultPermissions(),
+          isActive: true
         });
         setSelectedTemplate("none");
       }
     } catch (err) {
       // Only log the error, don't throw it further
       console.error("Error creating role:", err);
-      
+
       // Only show toast if not cleaning up
       if (!cleanupInProgress.current) {
         toast({
@@ -335,6 +446,9 @@ export function RolesPage() {
           variant: "destructive"
         });
       }
+    } finally {
+      // Always reset loading state
+      setIsLoading(false);
     }
   };
 
@@ -353,17 +467,14 @@ export function RolesPage() {
       {roleService.isUsingMockData() && (
         <Alert className="bg-amber-50 border-amber-300">
           <AlertTitle className="text-amber-700">
-            Using Mock Data (Backend Setup In Progress)
+            Using Mock Data
           </AlertTitle>
           <AlertDescription className="text-amber-700">
-            The system is currently using mock data while the backend is being set up. 
-            Changes you make will be temporarily stored in memory. Follow the setup instructions in
-            <code className="mx-1 p-1 bg-amber-100 rounded">BACKEND_STARTUP.md</code> 
-            to connect to the database for persistent storage.
+            The system is currently using mock data. Changes will persist in memory during this session.
           </AlertDescription>
         </Alert>
       )}
-      
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Staff Roles</h1>
@@ -371,15 +482,25 @@ export function RolesPage() {
             Manage roles and permissions for staff members
           </p>
         </div>
-        <Dialog 
-          open={showAddRoleDialog} 
+        <div className="flex space-x-2">
+          <Button
+            onClick={() => navigate('/staff/roles/new')}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Role
+          </Button>
+        </div>
+
+        {/* Keep the dialog for backward compatibility */}
+        <Dialog
+          open={showAddRoleDialog}
           onOpenChange={(open) => {
             if (!open) handleDialogClose(setShowAddRoleDialog);
             else setShowAddRoleDialog(true);
           }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <Button className="hidden">
               <Plus className="h-4 w-4 mr-2" />
               Add Role
             </Button>
@@ -410,7 +531,7 @@ export function RolesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Template (Optional)</Label>
-                <Select 
+                <Select
                   value={selectedTemplate}
                   onValueChange={setSelectedTemplate}
                 >
@@ -443,7 +564,7 @@ export function RolesPage() {
                         <Checkbox
                           id={`permission-${permission.id}`}
                           checked={hasModulePermissions(permission.id)}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             toggleModulePermissions(permission.id, !!checked)
                           }
                         />
@@ -464,11 +585,25 @@ export function RolesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddRoleDialog(false)}>
+              <Button
+                variant="outline"
+                onClick={() => handleDialogClose(setShowAddRoleDialog)}
+                disabled={isLoading}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleAddRole}>
-                Create Role
+              <Button
+                onClick={handleAddRole}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Role"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -489,13 +624,13 @@ export function RolesPage() {
                   className="pl-8"
                 />
               </div>
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => refreshRoles()}
-                disabled={isLoading}
+                disabled={roleLoading}
               >
-                {isLoading ? (
+                {roleLoading ? (
                   <span className="text-xs whitespace-nowrap px-2">Loading...</span>
                 ) : (
                   <RefreshCw className="h-4 w-4" />
@@ -505,7 +640,7 @@ export function RolesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {roleLoading ? (
             <div className="flex flex-col justify-center items-center py-10 space-y-4">
               <Shield className="h-12 w-12 text-muted-foreground" />
               <div className="text-center">
@@ -522,8 +657,8 @@ export function RolesPage() {
               <p className="text-muted-foreground mb-4">
                 There was an error loading the roles data
               </p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => refreshRoles()}
                 className="mx-auto"
               >
@@ -547,7 +682,7 @@ export function RolesPage() {
                   <p className="text-muted-foreground mb-4">
                     Create your first role to get started
                   </p>
-                  <Button 
+                  <Button
                     onClick={() => setShowAddRoleDialog(true)}
                     className="mx-auto"
                   >
@@ -563,6 +698,8 @@ export function RolesPage() {
                 <div
                   key={role.id}
                   className="p-6 border rounded-lg space-y-4"
+                  onClick={() => navigate(`/staff/roles/${role.id}`)}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
@@ -599,24 +736,33 @@ export function RolesPage() {
                     })}
                   </div>
                   <div className="flex justify-end space-x-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
-                      onClick={() => handleEditClick(role.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/staff/roles/${role.id}/edit`);
+                      }}
                     >
                       Edit Role
                     </Button>
-                    <Button 
-                      variant="secondary" 
+                    <Button
+                      variant="secondary"
                       size="sm"
-                      onClick={() => handleEditPermissions(role.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditPermissions(role.id);
+                      }}
                     >
                       Edit Permissions
                     </Button>
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       size="sm"
-                      onClick={() => handleDeleteClick(role.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(role.id);
+                      }}
                     >
                       Delete Role
                     </Button>
@@ -629,8 +775,8 @@ export function RolesPage() {
       </Card>
 
       {/* Edit Role Dialog */}
-      <Dialog 
-        open={showEditRoleDialog} 
+      <Dialog
+        open={showEditRoleDialog}
         onOpenChange={(open) => {
           if (!open) handleDialogClose(setShowEditRoleDialog);
           else setShowEditRoleDialog(true);
@@ -662,7 +808,7 @@ export function RolesPage() {
             </div>
             <div className="space-y-2">
               <Label>Apply Template</Label>
-              <Select 
+              <Select
                 onValueChange={(value) => {
                   if (value && value !== "none") {
                     // Apply the selected template to the role being edited
@@ -706,7 +852,7 @@ export function RolesPage() {
                       <Checkbox
                         id={`edit-permission-${permission.id}`}
                         checked={hasModulePermissions(permission.id)}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           toggleModulePermissions(permission.id, !!checked)
                         }
                       />
@@ -721,9 +867,9 @@ export function RolesPage() {
                   )
                 })}
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="mt-2"
                 onClick={() => {
                   if (selectedRoleId) {
@@ -747,8 +893,8 @@ export function RolesPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog 
-        open={showDeleteConfirmation} 
+      <Dialog
+        open={showDeleteConfirmation}
         onOpenChange={(open) => {
           if (!open) handleDialogClose(setShowDeleteConfirmation);
           else setShowDeleteConfirmation(true);

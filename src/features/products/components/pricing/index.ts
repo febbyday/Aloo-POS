@@ -1,6 +1,6 @@
 /**
  * Pricing Components
- * 
+ *
  * This module exports all pricing-related components for the products feature.
  */
 
@@ -22,4 +22,6 @@ export { PriceRulesDialog } from './PriceRulesDialog';
 export { PricingDashboard } from './PricingDashboard';
 export { PriceDetailsTable } from './PriceDetailsTable';
 export { ProductPriceHistoryTable } from './ProductPriceHistoryTable';
-export { PricingOverview } from './PricingOverview'; 
+export { PricingOverview } from './PricingOverview';
+export { default as ScheduledPriceManager } from './ScheduledPriceManager';
+export { default as PriceTierManager } from './PriceTierManager';

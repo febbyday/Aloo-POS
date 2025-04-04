@@ -1,178 +1,118 @@
 /**
+ * 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
+ * 
  * Staff Service
- * Connects to backend API endpoints with fallback to mock data when API fails
+ * Connects to backend API endpoints for staff management
  */
 
-import { Staff } from "../types/staff"
-import { getApiEndpoint } from '@/lib/api/config';
+import { Staff, CreateStaff, UpdateStaff, Shift, CreateShift, UpdateShift } from '../types/staff.types';
+import { apiClient } from '@/lib/api/api-client';
+import { apiConfig } from '@/lib/api/config';
+import { authService } from '@/features/auth/services/authService';
 
-// API URL for staff data
-const API_URL = getApiEndpoint('staff');
-console.log('Staff API URL:', API_URL);
+// API endpoint for staff data - use the correct endpoint path
+const API_ENDPOINT = 'staff';
 
-// Mock data for staff records
-const mockStaffData: Staff[] = [
-  {
-    id: "1",
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "123-456-7890",
-    role: "Manager",
-    status: "active",
-    hireDate: "2022-01-15",
-    department: "Sales",
-    position: "Sales Manager",
-    employmentType: "full-time",
-    bankingDetails: {
-      accountName: "John Doe",
-      accountNumber: "1234567890",
-      bankName: "Example Bank",
-      accountType: "Checking"
-    },
-    emergencyContact: {
-      name: "Jane Doe",
-      relationship: "Spouse",
-      phone: "098-765-4321",
-    },
-  },
-  {
-    id: "2",
-    firstName: "Jane",
-    lastName: "Smith",
-    email: "jane.smith@example.com",
-    phone: "234-567-8901",
-    role: "Cashier",
-    status: "active",
-    hireDate: "2022-03-10",
-    department: "Operations",
-    position: "Senior Cashier",
-    employmentType: "part-time",
-    bankingDetails: {
-      accountName: "Jane Smith",
-      accountNumber: "0987654321",
-      bankName: "Sample Bank",
-      accountType: "Savings"
-    },
-    emergencyContact: {
-      name: "John Smith",
-      relationship: "Spouse",
-      phone: "987-654-3210",
-    },
-  },
-  {
-    id: "3",
-    firstName: "Michael",
-    lastName: "Johnson",
-    email: "michael.johnson@example.com",
-    phone: "345-678-9012",
-    role: "Staff",
-    status: "active",
-    hireDate: "2022-05-20",
-    department: "IT",
-    position: "Support Specialist",
-    employmentType: "full-time",
-    bankingDetails: {
-      accountName: "Michael Johnson",
-      accountNumber: "2345678901",
-      bankName: "Tech Bank",
-      accountType: "Checking"
-    },
-    emergencyContact: {
-      name: "Sarah Johnson",
-      relationship: "Spouse",
-      phone: "456-789-0123",
-    },
-  },
-  {
-    id: "4",
-    firstName: "Emily",
-    lastName: "Brown",
-    email: "emily.brown@example.com",
-    phone: "456-789-0123",
-    role: "HR Manager",
-    status: "active",
-    hireDate: "2022-02-10",
-    department: "Human Resources",
-    position: "HR Manager",
-    employmentType: "full-time",
-    bankingDetails: {
-      accountName: "Emily Brown",
-      accountNumber: "3456789012",
-      bankName: "Global Bank",
-      accountType: "Checking"
-    },
-    emergencyContact: {
-      name: "David Brown",
-      relationship: "Spouse",
-      phone: "567-890-1234",
-    },
-  },
-  {
-    id: "5",
-    firstName: "Robert",
-    lastName: "Wilson",
-    email: "robert.wilson@example.com",
-    phone: "567-890-1234",
-    role: "Inventory Specialist",
-    status: "active",
-    hireDate: "2022-04-15",
-    department: "Warehouse",
-    position: "Inventory Lead",
-    employmentType: "full-time",
-    bankingDetails: {
-      accountName: "Robert Wilson",
-      accountNumber: "4567890123",
-      bankName: "City Bank",
-      accountType: "Savings"
-    },
-    emergencyContact: {
-      name: "Lisa Wilson",
-      relationship: "Spouse",
-      phone: "678-901-2345",
-    },
+// Track authentication failures to prevent repeated API calls when auth has failed
+let authenticationFailed = false;
+
+// Track if we're using mock data
+let usingMockData = false;
+
+/**
+ * Handle API errors and check for authentication issues
+ * @param error The error to handle
+ * @param message Custom error message
+ */
+const handleApiError = (error: unknown, message: string): never => {
+  // Check if this is an authentication error
+  if (error instanceof Error) {
+    const errorMessage = error.message.toLowerCase();
+    if (
+      errorMessage.includes('unauthorized') ||
+      errorMessage.includes('forbidden') ||
+      errorMessage.includes('authentication') ||
+      errorMessage.includes('token') ||
+      errorMessage.includes('login')
+    ) {
+      console.error('Authentication error in staff service:', error);
+      authenticationFailed = true;
+      throw new Error('Authentication required. Please log in to access staff data.');
+    }
+    
+    // Log the original error for debugging
+    console.error(`${message}:`, error);
+    throw new Error(`${message}: ${error.message}`);
   }
-]
-
-// Configure whether to use mock data by default
-// Set to false to use real API by default with fallback to mock data on failure
-let useMockData = false;
+  
+  // For unknown error types
+  console.error(`${message} (unknown error type):`, error);
+  throw new Error(`${message}: An unexpected error occurred`);
+};
 
 /**
  * Staff Service
- * Provides methods to interact with the staff API
+ * Provides methods for staff management
  */
 export const staffService = {
   /**
-   * Returns whether the service is currently using mock data
+   * Checks if the current user is authenticated
+   * @returns True if authenticated, false otherwise
+   */
+  isAuthenticated(): boolean {
+    return !authenticationFailed && authService.isAuthenticated();
+  },
+
+  /**
+   * Reset the authentication failed flag
+   */
+  resetAuthFailure(): void {
+    authenticationFailed = false;
+  },
+
+  /**
+   * Checks if the service is using mock data
+   * @returns True if using mock data, false if using real API
    */
   isUsingMockData(): boolean {
-    return useMockData
+    return usingMockData;
+  },
+
+  /**
+   * Set whether to use mock data
+   * @param useMock True to use mock data, false to use real API
+   */
+  setUseMockData(useMock: boolean): void {
+    usingMockData = useMock;
+    console.log(`Staff service is now ${useMock ? 'using mock data' : 'using real API'}`);
   },
 
   /**
    * Fetches all staff records
    * @returns Promise with array of staff members
    */
-  async getAllStaff(): Promise<Staff[]> {
-    // TEMPORARY: Skip API call and use mock data while backend is being set up
-    if (useMockData) {
-      console.log("Using mock data for staff (backend setup in progress)")
-      return Promise.resolve([...mockStaffData])
+  async fetchAll(): Promise<Staff[]> {
+    // If we already know authentication has failed, throw early
+    if (authenticationFailed) {
+      throw new Error('Authentication required. Please log in to access staff data.');
     }
 
     try {
-      const response = await fetch(API_URL)
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch staff data: ${response.statusText}`)
+      const response = await apiClient.get<Staff[]>(API_ENDPOINT);
+      
+      if (!response.success) {
+        // Handle authentication errors in the response
+        if (response.error && typeof response.error === 'string' && 
+            (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
+          authenticationFailed = true;
+          throw new Error('Authentication required. Please log in to access staff data.');
+        }
+        throw new Error(response.error || 'Failed to fetch staff');
       }
-
-      return response.json()
+      
+      return response.data;
     } catch (error) {
-      console.warn("API call failed, falling back to mock data:", error)
-      useMockData = true
-      return [...mockStaffData]
+      return handleApiError(error, 'Error fetching staff');
     }
   },
 
@@ -181,39 +121,28 @@ export const staffService = {
    * @param id Staff member ID
    * @returns Promise with the staff member details
    */
-  async getStaffById(id: string): Promise<Staff> {
-    // TEMPORARY: Skip API call and use mock data while backend is being set up
-    if (useMockData) {
-      console.log("Using mock data for staff details (backend setup in progress)")
-      const staff = mockStaffData.find(s => s.id === id)
-      
-      if (!staff) {
-        throw new Error("Staff member not found")
-      }
-      
-      return Promise.resolve({...staff})
+  async fetchById(id: string): Promise<Staff> {
+    // If we already know authentication has failed, throw early
+    if (authenticationFailed) {
+      throw new Error('Authentication required. Please log in to access staff data.');
     }
 
     try {
-      const response = await fetch(`${API_URL}/${id}`)
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch staff details: ${response.statusText}`)
+      const response = await apiClient.get<Staff>(`${API_ENDPOINT}/${id}`);
+      
+      if (!response.success) {
+        // Handle authentication errors in the response
+        if (response.error && typeof response.error === 'string' && 
+            (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
+          authenticationFailed = true;
+          throw new Error('Authentication required. Please log in to access staff data.');
+        }
+        throw new Error(response.error || 'Failed to fetch staff member');
       }
-
-      return response.json()
+      
+      return response.data;
     } catch (error) {
-      console.warn("API call failed, falling back to mock data:", error)
-      useMockData = true
-      
-      // Find the staff in mock data
-      const staff = mockStaffData.find(s => s.id === id)
-      
-      if (!staff) {
-        throw new Error("Staff member not found")
-      }
-      
-      return {...staff}
+      return handleApiError(error, `Error fetching staff member ${id}`);
     }
   },
 
@@ -222,45 +151,26 @@ export const staffService = {
    * @param data Staff data without ID
    * @returns Promise with the created staff
    */
-  async createStaff(data: Omit<Staff, "id">): Promise<Staff> {
-    // TEMPORARY: Skip API call and use mock data while backend is being set up
-    if (useMockData) {
-      console.log("Using mock data for staff creation (backend setup in progress)")
-      const newStaff: Staff = {
-        ...data,
-        id: Math.random().toString(36).substring(2, 9)
-      }
-      
-      mockStaffData.push(newStaff)
-      return Promise.resolve({...newStaff})
+  async create(data: CreateStaff): Promise<Staff> {
+    // If we already know authentication has failed, throw early
+    if (authenticationFailed) {
+      throw new Error('Authentication required. Please log in to access staff data.');
     }
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to create staff: ${response.statusText}`)
+      const response = await apiClient.post<Staff>(API_ENDPOINT, data);
+      if (!response.success) {
+        // Handle authentication errors in the response
+        if (response.error && typeof response.error === 'string' && 
+            (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
+          authenticationFailed = true;
+          throw new Error('Authentication required. Please log in to access staff data.');
+        }
+        throw new Error(response.error || 'Failed to create staff');
       }
-
-      return response.json()
+      return response.data;
     } catch (error) {
-      console.warn("API call failed, falling back to mock data:", error)
-      useMockData = true
-      
-      // Create with mock data instead
-      const newStaff: Staff = {
-        ...data,
-        id: Math.random().toString(36).substring(2, 9)
-      }
-      
-      mockStaffData.push(newStaff)
-      return newStaff
+      return handleApiError(error, 'Error creating staff');
     }
   },
 
@@ -270,57 +180,26 @@ export const staffService = {
    * @param data Updated staff data
    * @returns Promise with the updated staff
    */
-  async updateStaff(id: string, data: Partial<Staff>): Promise<Staff> {
-    // TEMPORARY: Skip API call and use mock data while backend is being set up
-    if (useMockData) {
-      console.log("Using mock data for staff update (backend setup in progress)")
-      const index = mockStaffData.findIndex(s => s.id === id)
-      
-      if (index === -1) {
-        throw new Error("Staff member not found")
-      }
-      
-      const updatedStaff = {
-        ...mockStaffData[index],
-        ...data
-      }
-      
-      mockStaffData[index] = updatedStaff
-      return Promise.resolve({...updatedStaff})
+  async update(id: string, data: UpdateStaff): Promise<Staff> {
+    // If we already know authentication has failed, throw early
+    if (authenticationFailed) {
+      throw new Error('Authentication required. Please log in to access staff data.');
     }
 
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to update staff: ${response.statusText}`)
+      const response = await apiClient.patch<Staff>(`${API_ENDPOINT}/${id}`, data);
+      if (!response.success) {
+        // Handle authentication errors in the response
+        if (response.error && typeof response.error === 'string' && 
+            (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
+          authenticationFailed = true;
+          throw new Error('Authentication required. Please log in to access staff data.');
+        }
+        throw new Error(response.error || 'Failed to update staff');
       }
-
-      return response.json()
+      return response.data;
     } catch (error) {
-      console.warn("API call failed, falling back to mock data:", error)
-      useMockData = true
-      
-      // Update with mock data instead
-      const index = mockStaffData.findIndex(s => s.id === id)
-      
-      if (index === -1) {
-        throw new Error("Staff member not found")
-      }
-      
-      const updatedStaff = {
-        ...mockStaffData[index],
-        ...data
-      }
-      
-      mockStaffData[index] = updatedStaff
-      return updatedStaff
+      return handleApiError(error, `Error updating staff ${id}`);
     }
   },
 
@@ -329,43 +208,140 @@ export const staffService = {
    * @param id Staff ID
    * @returns Promise with success status
    */
-  async deleteStaff(id: string): Promise<{ success: boolean }> {
-    // TEMPORARY: Skip API call and use mock data while backend is being set up
-    if (useMockData) {
-      console.log("Using mock data for staff deletion (backend setup in progress)")
-      const index = mockStaffData.findIndex(s => s.id === id)
-      
-      if (index === -1) {
-        throw new Error("Staff member not found")
-      }
-      
-      mockStaffData.splice(index, 1)
-      return Promise.resolve({ success: true })
+  async delete(id: string): Promise<void> {
+    // If we already know authentication has failed, throw early
+    if (authenticationFailed) {
+      throw new Error('Authentication required. Please log in to access staff data.');
     }
 
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: "DELETE"
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete staff: ${response.statusText}`)
+      const response = await apiClient.delete<void>(`${API_ENDPOINT}/${id}`);
+      if (!response.success) {
+        // Handle authentication errors in the response
+        if (response.error && typeof response.error === 'string' && 
+            (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
+          authenticationFailed = true;
+          throw new Error('Authentication required. Please log in to access staff data.');
+        }
+        throw new Error(response.error || 'Failed to delete staff');
       }
-
-      return { success: true }
     } catch (error) {
-      console.warn("API call failed, falling back to mock data:", error)
-      useMockData = true
-      
-      // Delete with mock data instead
-      const index = mockStaffData.findIndex(s => s.id === id)
-      
-      if (index === -1) {
-        throw new Error("Staff member not found")
+      handleApiError(error, `Error deleting staff ${id}`);
+    }
+  },
+
+  /**
+   * Fetches shifts for a staff member
+   * @param staffId Staff ID
+   * @returns Promise with array of shifts
+   */
+  async fetchShifts(staffId: string): Promise<Shift[]> {
+    // If we already know authentication has failed, throw early
+    if (authenticationFailed) {
+      throw new Error('Authentication required. Please log in to access staff data.');
+    }
+
+    try {
+      const response = await apiClient.get<Shift[]>(`${API_ENDPOINT}/${staffId}/shifts`);
+      if (!response.success) {
+        // Handle authentication errors in the response
+        if (response.error && typeof response.error === 'string' && 
+            (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
+          authenticationFailed = true;
+          throw new Error('Authentication required. Please log in to access staff data.');
+        }
+        throw new Error(response.error || 'Failed to fetch staff shifts');
       }
-      
-      mockStaffData.splice(index, 1)
-      return { success: true }
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, `Error fetching shifts for staff ${staffId}`);
+    }
+  },
+
+  /**
+   * Creates a new shift for a staff member
+   * @param staffId Staff ID
+   * @param data Shift data
+   * @returns Promise with the created shift
+   */
+  async createShift(staffId: string, data: CreateShift): Promise<Shift> {
+    // If we already know authentication has failed, throw early
+    if (authenticationFailed) {
+      throw new Error('Authentication required. Please log in to access staff data.');
+    }
+
+    try {
+      const response = await apiClient.post<Shift>(`${API_ENDPOINT}/${staffId}/shifts`, data);
+      if (!response.success) {
+        // Handle authentication errors in the response
+        if (response.error && typeof response.error === 'string' && 
+            (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
+          authenticationFailed = true;
+          throw new Error('Authentication required. Please log in to access staff data.');
+        }
+        throw new Error(response.error || 'Failed to create shift');
+      }
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, `Error creating shift for staff ${staffId}`);
+    }
+  },
+
+  /**
+   * Updates a shift for a staff member
+   * @param staffId Staff ID
+   * @param shiftId Shift ID
+   * @param data Updated shift data
+   * @returns Promise with the updated shift
+   */
+  async updateShift(staffId: string, shiftId: string, data: UpdateShift): Promise<Shift> {
+    // If we already know authentication has failed, throw early
+    if (authenticationFailed) {
+      throw new Error('Authentication required. Please log in to access staff data.');
+    }
+
+    try {
+      const response = await apiClient.put<Shift>(`${API_ENDPOINT}/${staffId}/shifts/${shiftId}`, data);
+      if (!response.success) {
+        // Handle authentication errors in the response
+        if (response.error && typeof response.error === 'string' && 
+            (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
+          authenticationFailed = true;
+          throw new Error('Authentication required. Please log in to access staff data.');
+        }
+        throw new Error(response.error || 'Failed to update shift');
+      }
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, `Error updating shift ${shiftId} for staff ${staffId}`);
+    }
+  },
+
+  /**
+   * Deletes a shift for a staff member
+   * @param staffId Staff ID
+   * @param shiftId Shift ID
+   * @returns Promise with success status
+   */
+  async deleteShift(staffId: string, shiftId: string): Promise<void> {
+    // If we already know authentication has failed, throw early
+    if (authenticationFailed) {
+      throw new Error('Authentication required. Please log in to access staff data.');
+    }
+
+    try {
+      const response = await apiClient.delete<void>(`${API_ENDPOINT}/${staffId}/shifts/${shiftId}`);
+      if (!response.success) {
+        // Handle authentication errors in the response
+        if (response.error && typeof response.error === 'string' && 
+            (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
+          authenticationFailed = true;
+          throw new Error('Authentication required. Please log in to access staff data.');
+        }
+        throw new Error(response.error || 'Failed to delete shift');
+      }
+    } catch (error) {
+      handleApiError(error, `Error deleting shift ${shiftId} for staff ${staffId}`);
     }
   }
-}
+};

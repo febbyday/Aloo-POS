@@ -1,18 +1,127 @@
 import { generateId } from '@/lib/utils';
+import { apiConfig } from './config';
+import { AUTH_CONFIG } from '@/features/auth/config/authConfig';
+import { isProduction } from '@/lib/utils/env';
+
+// Check if development mode
+const isDevelopment = import.meta.env.MODE === 'development';
+const isAuthBypassEnabled = AUTH_CONFIG.DEV_MODE.BYPASS_AUTH;
+
+// Development headers to include in every request in dev mode
+const DEV_HEADERS = {
+  'X-Development-Mode': 'true',
+  'X-Auth-Bypass': isAuthBypassEnabled ? 'true' : 'false'
+};
+
+/**
+ * Normalize URL to prevent issues with double slashes or missing prefixes
+ */
+const normalizeUrl = (path: string): string => {
+  // Remove leading slash if exists
+  const trimmedPath = path.startsWith('/') ? path.substring(1) : path;
+  
+  // Construct the full URL with the proper API base URL
+  return `${apiConfig.baseUrl}/${apiConfig.apiPrefix}/${trimmedPath}`.replace(/([^:]\/)\/+/g, '$1');
+};
+
+/**
+ * Get authentication token from storage
+ */
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+};
+
+/**
+ * Build headers with authentication token and content type
+ */
+const buildHeaders = (contentType: string = 'application/json'): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'Accept': 'application/json'
+  };
+  
+  // Only add Content-Type for non-empty values (allows FormData to set its own)
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
+  
+  // Add auth token if available
+  const token = getAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  // Add development headers in dev mode
+  if (isDevelopment) {
+    Object.assign(headers, DEV_HEADERS);
+  }
+  
+  return headers;
+};
+
+/**
+ * Process API response
+ */
+const processResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
+  // Handle 401 Unauthorized globally by dispatching an auth event
+  if (response.status === 401) {
+    console.error('[API] Unauthorized request');
+    
+    // Dispatch an unauthorized event that the auth system can listen for
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:unauthorized', {
+        detail: { timestamp: new Date().toISOString() }
+      }));
+    }
+  }
+  
+  // Handle 403 Forbidden (e.g., insufficient permissions)
+  if (response.status === 403) {
+    console.error('[API] Forbidden request - insufficient permissions');
+    
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:forbidden', {
+        detail: { timestamp: new Date().toISOString() }
+      }));
+    }
+  }
+
+  try {
+    // Try to parse JSON response
+    const data = await response.json();
+    
+    // Standard response format
+    return {
+      success: response.ok,
+      status: response.status,
+      data: response.ok ? data as T : null as unknown as T,
+      error: !response.ok ? (data.message || data.error || 'Unknown error') : null
+    };
+  } catch (error) {
+    // Handle non-JSON responses (e.g., server errors)
+    return {
+      success: false,
+      status: response.status,
+      data: null as unknown as T,
+      error: `Failed to parse response: ${response.statusText}`
+    };
+  }
+};
 
 // API response types
-export interface ApiResponse<T> {
-  data: T;
-  status: number;
-  message: string;
+export interface ApiResponse<T = any> {
   success: boolean;
+  status?: number;
+  data: T;
+  error?: string | null;
+  message?: string;
+  tokenRefreshed?: boolean;
 }
 
-export interface PaginatedApiResponse<T> extends ApiResponse<T[]> {
+export interface PaginatedApiResponse<T = any> extends ApiResponse<T[]> {
   pagination: {
     page: number;
-    pageSize: number;
-    totalItems: number;
+    limit: number;
+    total: number;
     totalPages: number;
   };
 }
@@ -20,433 +129,531 @@ export interface PaginatedApiResponse<T> extends ApiResponse<T[]> {
 export interface ApiError {
   status: number;
   message: string;
-  errors?: Record<string, string[]>;
+  errors?: Record<string, string[]> | null;
 }
 
-// API client configuration
 export interface ApiClientConfig {
   baseUrl: string;
   headers?: Record<string, string>;
   timeout?: number;
   mockDelay?: number;
   useMock?: boolean;
+  retryCount?: number;
+  retryDelay?: number;
+  withCredentials?: boolean;
+  apiPrefix?: string;
 }
 
-// Default configuration
-const defaultConfig: ApiClientConfig = {
-  baseUrl: '/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 30000, // 30 seconds
-  mockDelay: 300, // 300ms delay for mock responses
-  useMock: false, // Use real API calls for production
-};
+// API constants
+const DEFAULT_TIMEOUT = 30000;
+const DEFAULT_RETRY_COUNT = 3;
+const DEFAULT_RETRY_DELAY = 1000;
+const DEFAULT_API_PREFIX = 'api/v1';
 
-// API client class
+/**
+ * Handle API errors in a consistent way
+ * @param error Error object from catch block
+ * @param fallbackMessage Default message if error cannot be parsed
+ * @returns Formatted error message
+ */
+export function handleApiError(error: any, fallbackMessage = 'An unexpected error occurred'): string {
+  // Handle API error responses
+  if (error.response) {
+    // Try to extract error message from response
+    if (error.response.data?.message) return error.response.data.message;
+    if (error.response.data?.error) return error.response.data.error;
+    if (error.response.statusText) return `${error.response.status}: ${error.response.statusText}`;
+    return `Error ${error.response.status}`;
+  }
+
+  // Handle network errors
+  if (error.request) return 'Network error: Server not responding';
+
+  // Handle other errors
+  return error.message || fallbackMessage;
+}
+
+/**
+ * API Client class for making HTTP requests
+ */
 export class ApiClient {
   private config: ApiClientConfig;
+  private authToken?: string;
+  private connectionFailed: boolean = false;
 
   constructor(config: Partial<ApiClientConfig> = {}) {
-    this.config = { ...defaultConfig, ...config };
-  }
-
-  // Set configuration
-  public setConfig(config: Partial<ApiClientConfig>): void {
-    this.config = { ...this.config, ...config };
-  }
-
-  // Toggle mock mode (older method name - kept for backward compatibility)
-  public useMock(useMock: boolean): void {
-    this.config.useMock = useMock;
-  }
-
-  // Toggle mock mode (new method name)
-  public setMockMode(useMock: boolean): void {
-    this.config.useMock = useMock;
-    console.log(`API client mock mode ${useMock ? 'enabled' : 'disabled'}`);
-  }
-  
-  // Set authentication token in headers
-  public setAuthToken(token: string): void {
-    this.config.headers = {
-      ...this.config.headers,
-      'Authorization': `Bearer ${token}`
+    // Set default config values
+    this.config = {
+      baseUrl: config.baseUrl || 'http://localhost:5000',
+      headers: config.headers || {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: config.timeout || DEFAULT_TIMEOUT,
+      mockDelay: config.mockDelay || 500,
+      useMock: config.useMock ?? false,
+      retryCount: config.retryCount || DEFAULT_RETRY_COUNT,
+      retryDelay: config.retryDelay || DEFAULT_RETRY_DELAY,
+      withCredentials: config.withCredentials ?? true,
+      apiPrefix: config.apiPrefix || DEFAULT_API_PREFIX
     };
   }
-  
-  // Clear authentication token from headers
-  public clearAuthToken(): void {
-    const { Authorization, ...headers } = this.config.headers || {};
-    this.config.headers = headers;
-  }
-  
-  // Update client configuration
-  public updateConfig(config: Partial<ApiClientConfig>): void {
+
+  /**
+   * Set configuration options
+   */
+  setConfig(config: Partial<ApiClientConfig>) {
     this.config = { ...this.config, ...config };
   }
 
-  // GET request
-  public async get<T>(
-    endpoint: string,
-    params?: Record<string, any>,
-    mockResponse?: T | ((params?: Record<string, any>) => T)
-  ): Promise<ApiResponse<T>> {
-    if (this.config.useMock && mockResponse) {
-      return this.mockRequest<T>(mockResponse, params);
-    }
-
-    const url = this.buildUrl(endpoint, params);
-    return this.fetchRequest<T>('GET', url);
+  /**
+   * Alias for setConfig for backward compatibility
+   */
+  updateConfig(config: Partial<ApiClientConfig>) {
+    this.setConfig(config);
   }
 
-  // GET paginated request
-  public async getPaginated<T>(
-    endpoint: string,
-    params?: Record<string, any> & { page?: number; pageSize?: number },
-    mockResponse?: T[] | ((params?: Record<string, any>) => T[])
-  ): Promise<PaginatedApiResponse<T>> {
-    if (this.config.useMock && mockResponse) {
-      return this.mockPaginatedRequest<T>(mockResponse, params);
-    }
-
-    const url = this.buildUrl(endpoint, params);
-    return this.fetchRequest<T[]>('GET', url) as Promise<PaginatedApiResponse<T>>;
+  /**
+   * Get the current configuration
+   */
+  getConfig(): ApiClientConfig {
+    return { ...this.config };
   }
 
-  // POST request
-  public async post<T, U = any>(
-    endpoint: string,
-    data?: U,
-    mockResponse?: T | ((data?: U) => T)
-  ): Promise<ApiResponse<T>> {
-    if (this.config.useMock && mockResponse) {
-      return this.mockRequest<T>(mockResponse, data);
-    }
-
-    const url = this.buildUrl(endpoint);
-    return this.fetchRequest<T>('POST', url, data);
+  /**
+   * Set connection failed state
+   */
+  setConnectionFailed(failed: boolean) {
+    this.connectionFailed = failed;
   }
 
-  // PUT request
-  public async put<T, U = any>(
-    endpoint: string,
-    data?: U,
-    mockResponse?: T | ((data?: U) => T)
-  ): Promise<ApiResponse<T>> {
-    if (this.config.useMock && mockResponse) {
-      return this.mockRequest<T>(mockResponse, data);
-    }
-
-    const url = this.buildUrl(endpoint);
-    return this.fetchRequest<T>('PUT', url, data);
+  /**
+   * Check if connection has failed
+   */
+  hasConnectionFailed(): boolean {
+    return this.connectionFailed;
   }
 
-  // PATCH request
-  public async patch<T, U = any>(
-    endpoint: string,
-    data?: U,
-    mockResponse?: T | ((data?: U) => T)
-  ): Promise<ApiResponse<T>> {
-    if (this.config.useMock && mockResponse) {
-      return this.mockRequest<T>(mockResponse, data);
-    }
-
-    const url = this.buildUrl(endpoint);
-    return this.fetchRequest<T>('PATCH', url, data);
+  /**
+   * Set authentication token for API requests
+   * Note: This is only used for non-cookie authentication as a fallback
+   * The primary authentication method is HttpOnly cookies
+   */
+  setAuthToken(token: string | undefined) {
+    this.authToken = token;
   }
 
-  // DELETE request
-  public async delete<T>(
-    endpoint: string,
-    mockResponse?: T | (() => T)
-  ): Promise<ApiResponse<T>> {
-    if (this.config.useMock && mockResponse) {
-      return this.mockRequest<T>(mockResponse);
-    }
-
-    const url = this.buildUrl(endpoint);
-    return this.fetchRequest<T>('DELETE', url);
+  /**
+   * Get the current auth token
+   * Note: This doesn't reflect HttpOnly cookie state, only the fallback token
+   */
+  getAuthToken(): string | undefined {
+    return this.authToken;
   }
 
-  // Build URL with query parameters
+  /**
+   * Check if auth token exists
+   * Note: This doesn't check HttpOnly cookie state, only the fallback token
+   */
+  hasAuthToken(): boolean {
+    return !!this.authToken;
+  }
+
+  /**
+   * Clear authentication token
+   * Note: This doesn't clear HttpOnly cookies, only the fallback token
+   */
+  clearAuthToken() {
+    this.authToken = undefined;
+  }
+
+  /**
+   * Build the complete URL for an API request
+   */
   private buildUrl(endpoint: string, params?: Record<string, any>): string {
-    // Ensure baseUrl ends with a slash if it doesn't include one and endpoint doesn't start with one
-    let baseUrl = this.config.baseUrl;
-    if (!baseUrl.endsWith('/') && !endpoint.startsWith('/')) {
-      baseUrl = `${baseUrl}/`;
-    }
-    
-    // If endpoint already starts with the baseUrl, don't prepend baseUrl again
-    const url = endpoint.startsWith(baseUrl) 
-      ? endpoint 
-      : `${baseUrl}${endpoint.startsWith('/') ? endpoint.substring(1) : endpoint}`;
-    
-    // Create a new params object with the original params
-    const paramsWithCache = params ? { ...params } : {};
-    
-    // Add a cache-busting parameter for GET requests to prevent browser caching
-    if (!params?.disableCacheBusting) {
-      paramsWithCache._t = Date.now();
-    }
-    
-    // Remove the disableCacheBusting parameter if it exists
-    delete paramsWithCache.disableCacheBusting;
-    
-    if (Object.keys(paramsWithCache).length === 0) {
-      return url;
+    // Remove any leading slashes from the endpoint
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+
+    // Ensure the base URL doesn't have a trailing slash
+    const baseUrl = this.config.baseUrl.endsWith('/')
+      ? this.config.baseUrl.slice(0, -1)
+      : this.config.baseUrl;
+
+    // Ensure the API prefix has leading slash but no trailing slash
+    let apiPrefix = this.config.apiPrefix || '';
+    if (!apiPrefix.startsWith('/')) apiPrefix = `/${apiPrefix}`;
+    if (apiPrefix.endsWith('/')) apiPrefix = apiPrefix.slice(0, -1);
+
+    // Construct the full URL
+    let url = `${baseUrl}${apiPrefix}/${cleanEndpoint}`;
+
+    // Add query parameters if provided
+    if (params && Object.keys(params).length > 0) {
+      const queryString = new URLSearchParams(params as Record<string, string>).toString();
+      url += `?${queryString}`;
     }
 
-    const queryParams = Object.entries(paramsWithCache)
-      .filter(([_, value]) => value !== undefined && value !== null)
-      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
-      .join('&');
+    // Add cache-busting parameter in development
+    if (!isProduction) {
+      const separator = url.includes('?') ? '&' : '?';
+      url += `${separator}_=${Date.now()}`;
+    }
 
-    return queryParams ? `${url}?${queryParams}` : url;
+    return url;
   }
 
-  // Fetch request implementation
-  private async fetchRequest<T>(
-    method: string,
-    url: string,
-    data?: any
-  ): Promise<ApiResponse<T>> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+  /**
+   * Process API response
+   */
+  private async processResponse<T>(response: Response): Promise<ApiResponse<T>> {
+    // Handle 401 Unauthorized globally by attempting token refresh
+    if (response.status === 401) {
+      console.log('[API] Unauthorized request, attempting token refresh');
+
+      // Import dynamically to avoid circular dependency
+      const { authService } = await import('../../features/auth/services/authService');
+
+      try {
+        // Attempt to refresh the token
+        const refreshResult = await authService.refreshToken();
+
+        if (refreshResult) {
+          console.log('[API] Token refreshed successfully, dispatching token refreshed event');
+          // Dispatch token refreshed event
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:token:refreshed', {
+              detail: { timestamp: new Date().toISOString() }
+            }));
+          }
+
+          // Return a special response indicating token was refreshed
+          return {
+            success: false,
+            status: 401,
+            data: null as unknown as T,
+            error: 'Token refreshed. Please retry the request.',
+            tokenRefreshed: true
+          };
+        } else {
+          console.error('[API] Token refresh failed');
+          // Dispatch an unauthorized event that the auth system can listen for
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:unauthorized', {
+              detail: { timestamp: new Date().toISOString() }
+            }));
+          }
+        }
+      } catch (refreshError) {
+        console.error('[API] Error during token refresh:', refreshError);
+        // Dispatch an unauthorized event that the auth system can listen for
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized', {
+            detail: { timestamp: new Date().toISOString(), error: refreshError }
+          }));
+        }
+      }
+    }
+
+    // Handle 403 Forbidden (e.g., insufficient permissions)
+    if (response.status === 403) {
+      console.error('[API] Forbidden request - insufficient permissions');
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:forbidden', {
+          detail: { timestamp: new Date().toISOString() }
+        }));
+      }
+    }
 
     try {
-      // Log request for debugging
-      console.log(`API Request:`, {
-        method,
-        url,
-        headers: this.config.headers,
-        mockMode: this.config.useMock
-      });
+      // Try to parse JSON response
+      const data = await response.json();
+      
+      // Log the response structure in development mode for debugging
+      if (isDevelopment) {
+        console.debug(`[API] Response structure for ${response.url}:`, {
+          status: response.status,
+          ok: response.ok,
+          dataType: typeof data,
+          isArray: Array.isArray(data),
+          keys: data && typeof data === 'object' ? Object.keys(data) : 'N/A'
+        });
+      }
+
+      // Standard response format
+      return {
+        success: response.ok,
+        status: response.status,
+        data: response.ok ? data as T : null as unknown as T,
+        error: !response.ok ? (data.message || data.error || 'Unknown error') : null
+      };
+    } catch (error) {
+      // Handle non-JSON responses (e.g., server errors)
+      console.error(`[API] Failed to parse JSON response from ${response.url}:`, error);
+      return {
+        success: false,
+        status: response.status,
+        data: null as unknown as T,
+        error: `Failed to parse response: ${response.statusText}`
+      };
+    }
+  }
+
+  /**
+   * Make a GET request
+   * @param path API endpoint path
+   * @param options Optional fetch options
+   * @param retryCount Number of retries attempted (internal use)
+   * @returns Promise with standardized response
+   */
+  async get<T = any>(path: string, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
+    try {
+      const url = this.buildUrl(path);
+      const headers = { ...this.config.headers };
+
+      // Only add Authorization header if an auth token is explicitly set
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+      }
       
       const response = await fetch(url, {
-        method,
-        headers: this.config.headers,
-        body: data ? JSON.stringify(data) : undefined,
-        signal: controller.signal,
-        // Add credentials to handle CORS issues
+        method: 'GET',
+        headers,
         credentials: 'include',
-      });
-
-      clearTimeout(timeoutId);
-
-      // Handle response
-      const contentType = response.headers.get('content-type');
-      let responseData;
-      
-      try {
-        // Try to parse as JSON if appropriate content type
-        if (contentType && contentType.includes('application/json')) {
-          responseData = await response.json();
-        } else {
-          const textData = await response.text();
-          console.warn('Non-JSON response received:', textData);
-          responseData = { message: textData };
-        }
-      } catch (parseError) {
-        // Handle JSON parsing errors
-        const textData = await response.text();
-        console.error('Failed to parse response:', textData);
-        responseData = { message: 'Invalid response format from server' };
-      }
-
-      if (!response.ok) {
-        console.error('API Error Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          data: responseData
-        });
-        
-        throw {
-          status: response.status,
-          message: responseData.message || response.statusText,
-          errors: responseData.errors,
-        };
-      }
-
-      return {
-        data: responseData.data || responseData,
-        status: response.status,
-        message: responseData.message || 'Success',
-        success: true,
-      };
-    } catch (error: any) {
-      clearTimeout(timeoutId);
-      
-      // Handle request timeout
-      if (error.name === 'AbortError') {
-        console.error('API request timed out');
-        throw {
-          status: 408,
-          message: 'Request timeout',
-          errors: undefined,
-        };
-      }
-
-      console.error('API Request Failed:', {
-        method,
-        url,
-        error: error.message || error
+        ...options
       });
       
-      throw {
-        status: error.status || 500,
-        message: error.message || 'Unknown error',
-        errors: error.errors,
-      };
-    }
-  }
+      const processedResponse = await this.processResponse<T>(response);
 
-  // Mock request implementation
-  private async mockRequest<T>(
-    mockResponse: T | ((params?: any) => T),
-    params?: any
-  ): Promise<ApiResponse<T>> {
-    await this.delay();
+      // If token was refreshed and we haven't exceeded retry limit, retry the request
+      if (processedResponse.tokenRefreshed && retryCount < 1) {
+        console.log(`[API] Retrying GET ${path} after token refresh`);
+        return this.get<T>(path, options, retryCount + 1);
+      }
 
-    try {
-      const data = typeof mockResponse === 'function'
-        ? (mockResponse as Function)(params)
-        : mockResponse;
-
-      return {
-        data,
-        status: 200,
-        message: 'Success',
-        success: true,
-      };
+      return processedResponse;
     } catch (error: any) {
-      throw {
-        status: 500,
-        message: error.message || 'Mock error occurred',
-      };
-    }
-  }
-
-  // Mock paginated request implementation
-  private async mockPaginatedRequest<T>(
-    mockResponse: T[] | ((params?: any) => T[]),
-    params?: Record<string, any> & { page?: number; pageSize?: number }
-  ): Promise<PaginatedApiResponse<T>> {
-    await this.delay();
-
-    try {
-      const page = params?.page || 1;
-      const pageSize = params?.pageSize || 10;
-
-      const allData = typeof mockResponse === 'function'
-        ? (mockResponse as Function)(params)
-        : mockResponse;
-
-      // Apply filtering if search param is provided
-      let filteredData = [...allData];
-      if (params?.search) {
-        const searchTerm = String(params.search).toLowerCase();
-        filteredData = allData.filter(item => {
-          return Object.values(item as object).some(value => {
-            if (value === null || value === undefined) return false;
-            return String(value).toLowerCase().includes(searchTerm);
-          });
-        });
-      }
-
-      // Apply sorting if sortBy and sortOrder params are provided
-      if (params?.sortBy) {
-        const sortBy = params.sortBy as keyof T;
-        const sortOrder = params?.sortOrder === 'desc' ? -1 : 1;
-        
-        filteredData.sort((a, b) => {
-          const aValue = a[sortBy];
-          const bValue = b[sortBy];
-          
-          if (aValue === bValue) return 0;
-          if (aValue === null || aValue === undefined) return -1 * sortOrder;
-          if (bValue === null || bValue === undefined) return 1 * sortOrder;
-          
-          return aValue < bValue ? -1 * sortOrder : 1 * sortOrder;
-        });
-      }
-
-      const totalItems = filteredData.length;
-      const totalPages = Math.ceil(totalItems / pageSize);
+      console.error(`[API] GET ${path} failed:`, error);
       
-      // Apply pagination
-      const startIndex = (page - 1) * pageSize;
-      const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
-
       return {
-        data: paginatedData,
-        status: 200,
-        message: 'Success',
-        success: true,
-        pagination: {
-          page,
-          pageSize,
-          totalItems,
-          totalPages,
-        },
-      };
-    } catch (error: any) {
-      throw {
-        status: 500,
-        message: error.message || 'Mock pagination error occurred',
+        success: false,
+        status: 0,
+        data: null as unknown as T,
+        error: error.message || 'Network error'
       };
     }
   }
+  
+  /**
+   * Make a POST request
+   * @param path API endpoint path
+   * @param data Request body data
+   * @param options Optional fetch options
+   * @param retryCount Number of retries attempted (internal use)
+   * @returns Promise with standardized response
+   */
+  async post<T = any>(path: string, data: any = {}, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
+    try {
+      const url = this.buildUrl(path);
+      const headers = { ...this.config.headers };
 
-  // Delay helper for mock responses
-  private async delay(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, this.config.mockDelay));
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+        credentials: 'include',
+        ...options
+      });
+      
+      const processedResponse = await this.processResponse<T>(response);
+
+      // If token was refreshed and we haven't exceeded retry limit, retry the request
+      if (processedResponse.tokenRefreshed && retryCount < 1) {
+        console.log(`[API] Retrying POST ${path} after token refresh`);
+        return this.post<T>(path, data, options, retryCount + 1);
+      }
+
+      return processedResponse;
+    } catch (error: any) {
+      console.error(`[API] POST ${path} failed:`, error);
+      
+      return {
+        success: false,
+        status: 0,
+        data: null as unknown as T,
+        error: error.message || 'Network error'
+      };
+    }
+  }
+  
+  /**
+   * Make a PUT request
+   * @param path API endpoint path
+   * @param data Request body data
+   * @param options Optional fetch options
+   * @param retryCount Number of retries attempted (internal use)
+   * @returns Promise with standardized response
+   */
+  async put<T = any>(path: string, data: any = {}, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
+    try {
+      const url = this.buildUrl(path);
+      const headers = { ...this.config.headers };
+
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(data),
+        credentials: 'include',
+        ...options
+      });
+      
+      const processedResponse = await this.processResponse<T>(response);
+
+      // If token was refreshed and we haven't exceeded retry limit, retry the request
+      if (processedResponse.tokenRefreshed && retryCount < 1) {
+        console.log(`[API] Retrying PUT ${path} after token refresh`);
+        return this.put<T>(path, data, options, retryCount + 1);
+      }
+
+      return processedResponse;
+    } catch (error: any) {
+      console.error(`[API] PUT ${path} failed:`, error);
+      
+      return {
+        success: false,
+        status: 0,
+        data: null as unknown as T,
+        error: error.message || 'Network error'
+      };
+    }
+  }
+  
+  /**
+   * Make a DELETE request
+   * @param path API endpoint path
+   * @param options Optional fetch options
+   * @param retryCount Number of retries attempted (internal use)
+   * @returns Promise with standardized response
+   */
+  async delete<T = any>(path: string, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
+    try {
+      const url = this.buildUrl(path);
+      const headers = { ...this.config.headers };
+
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers,
+        credentials: 'include',
+        ...options
+      });
+      
+      const processedResponse = await this.processResponse<T>(response);
+
+      // If token was refreshed and we haven't exceeded retry limit, retry the request
+      if (processedResponse.tokenRefreshed && retryCount < 1) {
+        console.log(`[API] Retrying DELETE ${path} after token refresh`);
+        return this.delete<T>(path, options, retryCount + 1);
+      }
+
+      return processedResponse;
+    } catch (error: any) {
+      console.error(`[API] DELETE ${path} failed:`, error);
+      
+      return {
+        success: false,
+        status: 0,
+        data: null as unknown as T,
+        error: error.message || 'Network error'
+      };
+    }
+  }
+  
+  /**
+   * Make a PATCH request
+   * @param path API endpoint path
+   * @param data Request body data
+   * @param options Optional fetch options
+   * @param retryCount Number of retries attempted (internal use)
+   * @returns Promise with standardized response
+   */
+  async patch<T = any>(path: string, data: any = {}, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
+    try {
+      const url = this.buildUrl(path);
+      const headers = { ...this.config.headers };
+
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+        credentials: 'include',
+        ...options
+      });
+      
+      const processedResponse = await this.processResponse<T>(response);
+
+      // If token was refreshed and we haven't exceeded retry limit, retry the request
+      if (processedResponse.tokenRefreshed && retryCount < 1) {
+        console.log(`[API] Retrying PATCH ${path} after token refresh`);
+        return this.patch<T>(path, data, options, retryCount + 1);
+      }
+
+      return processedResponse;
+    } catch (error: any) {
+      console.error(`[API] PATCH ${path} failed:`, error);
+      
+      return {
+        success: false,
+        status: 0,
+        data: null as unknown as T,
+        error: error.message || 'Network error'
+      };
+    }
   }
 }
 
-// Create and export a singleton instance
+// Create a default instance
 export const apiClient = new ApiClient();
 
-// Error handling utility
-export async function handleApiError<T>(
-  apiPromise: Promise<ApiResponse<T>>
-): Promise<ApiResponse<T>> {
-  try {
-    return await apiPromise;
-  } catch (error: any) {
-    console.error('API Error:', error);
-    
-    // Rethrow with consistent format
-    throw {
-      status: error.status || 500,
-      message: error.message || 'An unknown error occurred',
-      errors: error.errors || {},
-    };
-  }
+// Helper functions for mocking API (needed by some imports)
+export function createMockEntity<T>(data: T): ApiResponse<T> {
+      return {
+    success: true,
+    status: 201,
+    data
+  };
 }
 
-// Helper to create a mock entity with ID
-export function createMockEntity<T extends { id?: string }>(data: Omit<T, 'id'>): T {
+export function updateMockEntity<T>(data: T): ApiResponse<T> {
   return {
-    ...data as any,
-    id: generateId(),
-  } as T;
+    success: true,
+    status: 200,
+    data
+  };
 }
 
-// Helper to update a mock entity
-export function updateMockEntity<T extends { id: string }>(
-  entities: T[],
-  updatedEntity: T
-): T[] {
-  return entities.map(entity => 
-    entity.id === updatedEntity.id ? updatedEntity : entity
-  );
+export function deleteMockEntity(): ApiResponse<void> {
+  return {
+    success: true,
+    status: 204,
+    data: undefined as any
+  };
 }
 
-// Helper to delete a mock entity
-export function deleteMockEntity<T extends { id: string }>(
-  entities: T[],
-  id: string
-): T[] {
-  return entities.filter(entity => entity.id !== id);
-}
+// Default export for compatibility
+export default apiClient;

@@ -1,7 +1,6 @@
 /**
- * Suppliers Services
- * 
- * This module exports all services for the suppliers feature.
+ * Suppliers Services Barrel File
+ * Exports all services related to supplier management
  */
 
-// Export all services here
+export { suppliersService } from './suppliersService';

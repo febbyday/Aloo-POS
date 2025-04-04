@@ -7,8 +7,14 @@ import {
   Filter,
   Users,
   Gift,
-  UserCog
+  UserCog,
+  Upload,
+  Trash2,
+  UserX,
+  Eye,
+  Edit
 } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import CustomersTable from '../components/CustomersTable'
@@ -22,7 +28,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { CustomerGroupsPage } from './CustomerGroupsPage'
 import { LoyaltyProgramPage } from './LoyaltyProgramPage'
 import { CustomerImportExportDialog } from '../components/CustomerImportExportDialog'
 import { exportCustomersToCSV, exportCustomersToExcel, exportCustomersToPDF, validateAndProcessCustomerImport } from '../utils/exportUtils'
@@ -31,6 +36,7 @@ import { generateId } from '@/lib/utils'
 import { useCustomers } from '../hooks/useCustomers'
 import { apiClient } from '@/lib/api/api-config'
 import { LoadingState } from '@/components/ui/loading-state'
+import { Toolbar } from "@/components/ui/toolbar/toolbar"
 
 import { Customer as BaseCustomer, ApiCustomer } from '../types/customer.types'
 
@@ -69,6 +75,19 @@ export type CustomerFilter = {
 
 // Helper function to map API Customer to UI Customer
 function mapApiToUiCustomer(apiCustomer: ExtendedApiCustomer): Customer {
+  // Convert createdAt string to Date, default to current date if missing or invalid
+  let createdAt;
+  try {
+    createdAt = apiCustomer.created_at ? new Date(apiCustomer.created_at) : new Date();
+    // Check if date is valid
+    if (isNaN(createdAt.getTime())) {
+      createdAt = new Date(); // Use current date as fallback
+    }
+  } catch (error) {
+    console.error('Error parsing createdAt date:', error);
+    createdAt = new Date();
+  }
+
   return {
     id: apiCustomer.id || '',
     firstName: apiCustomer.first_name,
@@ -82,7 +101,8 @@ function mapApiToUiCustomer(apiCustomer: ExtendedApiCustomer): Customer {
     isActive: apiCustomer.isActive ?? true,
     lastPurchase: apiCustomer.lastOrderDate ? new Date(apiCustomer.lastOrderDate) : null,
     status: apiCustomer.status || 'active',
-    createdAt: apiCustomer.created_at || new Date().toISOString(),
+    createdAt: createdAt,
+    updatedAt: apiCustomer.updated_at ? new Date(apiCustomer.updated_at) : new Date(),
     address: apiCustomer.address || {
       street: '',
       city: '',
@@ -95,32 +115,58 @@ function mapApiToUiCustomer(apiCustomer: ExtendedApiCustomer): Customer {
 
 // Helper function to map UI Customer to API format
 function mapUiToApiCustomer(uiCustomer: Customer): ExtendedApiCustomer {
+  // Helper to safely convert Date to string
+  const dateToString = (date: Date | string | null | undefined): string | undefined => {
+    if (!date) return undefined;
+    
+    try {
+      // If it's already a string, return it
+      if (typeof date === 'string') return date;
+      
+      // Check if date is valid before converting
+      if (date instanceof Date && !isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+      
+      return undefined;
+    } catch (error) {
+      console.error('Error converting date to string:', error);
+      return undefined;
+    }
+  };
+
+  // Debug logging
+  console.log('Converting UI customer to API format:', uiCustomer);
+
   const apiCustomer: ExtendedApiCustomer = {
     id: uiCustomer.id,
     first_name: uiCustomer.firstName,
     last_name: uiCustomer.lastName,
     email: uiCustomer.email,
     phone: uiCustomer.phone,
-    loyalty_points: uiCustomer.loyaltyPoints,
-    membershipLevel: uiCustomer.tier?.toUpperCase(),
-    totalSpent: uiCustomer.totalSpent,
-    total_purchases: uiCustomer.totalOrders,
-    lastOrderDate: uiCustomer.lastPurchase?.toISOString(),
-    created_at: uiCustomer.createdAt.toISOString(),
-    updated_at: uiCustomer.updatedAt.toISOString(),
-    isActive: uiCustomer.isActive,
-    status: uiCustomer.status
+    loyalty_points: uiCustomer.loyaltyPoints || 0,
+    membershipLevel: uiCustomer.tier?.toUpperCase() || 'BRONZE',
+    totalSpent: uiCustomer.totalSpent || 0,
+    total_purchases: uiCustomer.totalOrders || 0,
+    lastOrderDate: dateToString(uiCustomer.lastPurchase),
+    created_at: dateToString(uiCustomer.createdAt) || new Date().toISOString(),
+    updated_at: dateToString(uiCustomer.updatedAt) || new Date().toISOString(),
+    isActive: uiCustomer.isActive !== undefined ? uiCustomer.isActive : true,
+    status: uiCustomer.status || 'active'
   };
 
   if (uiCustomer.address) {
     apiCustomer.address = {
-      street: uiCustomer.address.street,
-      city: uiCustomer.address.city,
-      state: uiCustomer.address.state,
+      street: uiCustomer.address.street || '',
+      city: uiCustomer.address.city || '',
+      state: uiCustomer.address.state || '',
       zip_code: uiCustomer.address.zipCode || '',
-      country: uiCustomer.address.country
+      country: uiCustomer.address.country || ''
     };
   }
+
+  // Debug logging
+  console.log('Converted to API customer:', apiCustomer);
 
   return apiCustomer;
 }
@@ -128,10 +174,13 @@ function mapUiToApiCustomer(uiCustomer: Customer): ExtendedApiCustomer {
 export function CustomersPage() {
   const [filters, setFilters] = useState<CustomerFilter>({})
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [importExportDialogOpen, setImportExportDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const { toast } = useToast()
+  const navigate = useNavigate();
   
   // Use the customers hook for real API data
   const { 
@@ -334,6 +383,47 @@ export function CustomersPage() {
     setDialogOpen(true)
   }
 
+  const handleViewSelectedCustomer = () => {
+    // Find the first selected customer
+    if (selectedCustomers.length > 0) {
+      const customerId = selectedCustomers[0];
+      const customerToView = uiCustomers.find(c => c.id === customerId);
+      if (customerToView) {
+        navigate(`/customers/${customerId}`);
+      }
+    }
+  }
+
+  const handleEditSelectedCustomer = () => {
+    // Find the first selected customer
+    if (selectedCustomers.length > 0) {
+      const customerId = selectedCustomers[0];
+      const customerToEdit = uiCustomers.find(c => c.id === customerId);
+      if (customerToEdit) {
+        setSelectedCustomer(customerToEdit);
+        setDialogOpen(true);
+      }
+    }
+  }
+
+  const handleSearch = () => {
+    // Implement search functionality
+    console.log("Searching for:", searchQuery);
+    setFilters(prev => ({ ...prev, search: searchQuery }));
+    toast({
+      title: "Search",
+      description: `Searching for "${searchQuery}"`
+    });
+  }
+
+  const handleFilter = () => {
+    // Implement filter functionality
+    toast({
+      title: "Filter Customers",
+      description: "Filter dialog would open here"
+    });
+  }
+
   // Map API customers to UI format
   const uiCustomers = customers.map(mapApiToUiCustomer);
   
@@ -360,135 +450,116 @@ export function CustomersPage() {
     );
   }
 
-  return (
-    <div className="space-y-4">
-      {/* Header Actions */}
-      <div className="bg-zinc-900 px-4 py-2 flex items-center gap-2 -mx-4 -mt-4">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-white/10"
-          onClick={handleRefresh}
-        >
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+  // Configure toolbar groups for the Toolbar component
+  const toolbarGroups = [
+    {
+      buttons: [
+        { 
+          icon: RefreshCw, 
+          label: "Refresh", 
+          onClick: handleRefresh 
+        },
+        { 
+          icon: Filter, 
+          label: "Filter", 
+          onClick: handleFilter 
+        }
+      ]
+    },
+    {
+      buttons: [
+        { 
+          icon: UserPlus, 
+          label: "Add Customer", 
+          onClick: handleNewCustomer 
+        },
+        { 
+          icon: Eye, 
+          label: "View Details", 
+          onClick: handleViewSelectedCustomer,
+          disabled: selectedCustomers.length !== 1,
+          title: selectedCustomers.length === 1 ? 'View customer details' : 'Select a customer to view details'
+        },
+        { 
+          icon: Edit, 
+          label: "Edit Customer", 
+          onClick: handleEditSelectedCustomer,
+          disabled: selectedCustomers.length !== 1,
+          title: selectedCustomers.length === 1 ? 'Edit customer' : 'Select a customer to edit'
+        },
+        { 
+          icon: UserX, 
+          label: `Delete${selectedCustomers.length > 0 ? ` (${selectedCustomers.length})` : ''}`, 
+          onClick: () => {
+            toast({
+              title: "Delete Selected",
+              description: "This would delete selected customers"
+            });
+          },
+          disabled: selectedCustomers.length === 0,
+          title: selectedCustomers.length > 0 ? 'Delete selected customers' : 'Select customers to delete'
+        }
+      ]
+    },
+    {
+      buttons: [
+        { 
+          icon: Upload, 
+          label: "Import", 
+          onClick: () => setImportExportDialogOpen(true) 
+        },
+        { 
+          icon: Download, 
+          label: "Export", 
+          onClick: () => setImportExportDialogOpen(true) 
+        }
+      ]
+    }
+  ]
 
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-white/10"
-          onClick={() => setImportExportDialogOpen(true)}
-        >
-          <Download className="h-4 w-4" />
-        </Button>
-
-        <div className="relative ml-auto">
-          <Search className="h-4 w-4 absolute left-2.5 top-2.5 text-zinc-400" />
-          <Input 
-            type="search"
-            placeholder="Search customers..."
-            className="w-64 pl-9 bg-zinc-800 border-zinc-700 h-9 focus:border-zinc-600"
-            value={filters.search || ''}
-            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-          />
-        </div>
-
-        <Button 
-          variant="secondary" 
-          size="sm"
-          className="ml-2"
-          onClick={handleNewCustomer}
-        >
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Customer
-        </Button>
-      </div>
-
-      {/* Main Content */}
-      <Tabs 
-        value={activeTab} 
-        onValueChange={setActiveTab}
-        className="w-full"
+  // Search input for the right side of the toolbar
+  const rightContent = (
+    <div className="flex items-center gap-2">
+      <Input
+        className="h-8 w-[180px] bg-background"
+        placeholder="Search customers..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+      />
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8" 
+        onClick={handleSearch}
       >
-        <TabsList className="mb-4 bg-zinc-800 p-1 gap-1">
-          <TabsTrigger 
-            value="all"
-            className="data-[state=active]:bg-zinc-700 rounded px-4 py-2 text-sm"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            All Customers
-          </TabsTrigger>
-          <TabsTrigger 
-            value="groups"
-            className="data-[state=active]:bg-zinc-700 rounded px-4 py-2 text-sm"
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Groups
-          </TabsTrigger>
-          <TabsTrigger 
-            value="loyalty"
-            className="data-[state=active]:bg-zinc-700 rounded px-4 py-2 text-sm"
-          >
-            <Gift className="h-4 w-4 mr-2" />
-            Loyalty Program
-          </TabsTrigger>
-        </TabsList>
+        <Search className="h-4 w-4" />
+      </Button>
+    </div>
+  )
 
+  return (
+    <div className="space-y-6">
+      {/* Toolbar - using the Toolbar component */}
+      <Toolbar 
+        groups={toolbarGroups}
+        rightContent={rightContent}
+        variant="default"
+        size="default"
+      />
+
+      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
         <TabsContent value="all" className="p-0">
           <div className="grid grid-cols-1 gap-4">
-            {/* Filters */}
-            <div className="bg-zinc-800 p-4 rounded-lg">
-              <div className="flex items-center gap-4">
-                <div>
-                  <label className="text-xs text-zinc-400 block mb-1">Membership Tier</label>
-                  <Select 
-                    value={filters.tier || "all"}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, tier: value as Customer["tier"] || undefined }))}
-                  >
-                    <SelectTrigger className="w-32 bg-zinc-900 border-zinc-700">
-                      <SelectValue placeholder="All Tiers" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Tiers</SelectItem>
-                      <SelectItem value="bronze">Bronze</SelectItem>
-                      <SelectItem value="silver">Silver</SelectItem>
-                      <SelectItem value="gold">Gold</SelectItem>
-                      <SelectItem value="platinum">Platinum</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-xs text-zinc-400 block mb-1">Status</label>
-                  <Select 
-                    value={filters.status || "all"}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as Customer["status"] || undefined }))}
-                  >
-                    <SelectTrigger className="w-32 bg-zinc-900 border-zinc-700">
-                      <SelectValue placeholder="All Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
             {/* Customer Table */}
             <CustomersTable 
               filters={filters} 
               customers={uiCustomers}
               onEdit={handleEditCustomer}
               isLoading={loading}
+              onSelectionChange={setSelectedCustomers}
             />
           </div>
-        </TabsContent>
-
-        <TabsContent value="groups" className="p-0">
-          <CustomerGroupsPage />
         </TabsContent>
 
         <TabsContent value="loyalty" className="p-0">
@@ -502,16 +573,25 @@ export function CustomersPage() {
         onOpenChange={setDialogOpen}
         customer={selectedCustomer}
         onCustomerAdded={(customer) => {
+          console.log('CustomerDialog onCustomerAdded called with:', customer);
+          
           // Convert UI customer to API format
           const apiCustomer = mapUiToApiCustomer(customer);
+          console.log('Mapped to API format:', apiCustomer);
           
           // If editing an existing customer
           if (customer.id && selectedCustomer?.id) {
-            updateCustomer(customer.id, apiCustomer);
+            console.log('Updating existing customer');
+            updateCustomer(customer.id, apiCustomer)
+              .then(result => console.log('Customer update result:', result))
+              .catch(err => console.error('Customer update error:', err));
           } 
           // If creating a new customer
           else {
-            createCustomer(apiCustomer);
+            console.log('Creating new customer');
+            createCustomer(apiCustomer)
+              .then(result => console.log('Customer creation result:', result))
+              .catch(err => console.error('Customer creation error:', err));
           }
         }}
       />

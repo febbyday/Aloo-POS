@@ -5,3 +5,10 @@
  */
 
 // Export all pages here
+
+export * from './ShopsPage';
+export * from './ShopDetailsPage';
+export * from './ShopConnectionPage';
+export * from './ShopStaffPage';
+export * from './ShopReportsPage';
+export * from './ShopApiTest';

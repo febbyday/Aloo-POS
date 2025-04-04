@@ -5,7 +5,7 @@ import staffRoutes from './staffRoutes';
 import roleRoutes from './roleRoutes';
 import shopRoutes from './shopRoutes';
 import storeRoutes from './storeRoutes';
-import authRoutes from './authRoutes';
+import authRoutes from './auth.routes';
 import employmentTypeRoutes from './employmentTypeRoutes';
 import employmentStatusRoutes from './employmentStatusRoutes';
 import productRoutes from './productRoutes';

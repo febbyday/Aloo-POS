@@ -1,23 +1,24 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Role } from '../types/role';
+import { useCallback, useState, useRef, useEffect } from 'react';
+import { useToast } from '@/components/ui/use-toast';
 import { roleService } from '../services/roleService';
-import { toast } from '@/components/ui/use-toast';
+import { IRole as Role, CreateRoleData, UpdateRoleData } from '../types/role';
 
 interface UseRolesReturn {
   roles: Role[];
   isLoading: boolean;
-  error: Error | null;
+  error: string | null;
   refreshRoles: () => Promise<void>;
-  getRoleById: (id: string | number) => Role | undefined;
-  createRole: (roleData: Omit<Role, "id">) => Promise<Role>;
-  updateRole: (id: string | number, roleData: Partial<Role>) => Promise<Role>;
-  deleteRole: (id: string | number) => Promise<boolean>;
+  getRoleById: (id: string) => Role | undefined;
+  createRole: (roleData: CreateRoleData) => Promise<Role>;
+  updateRole: (id: string, roleData: UpdateRoleData) => Promise<Role>;
+  deleteRole: (id: string) => Promise<boolean>;
 }
 
-export function useRoles(): UseRolesReturn {
+export const useRoles = (): UseRolesReturn => {
   const [roles, setRoles] = useState<Role[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   // Add a mounted ref to track component lifecycle
   const isMounted = useRef(true);
 
@@ -32,200 +33,182 @@ export function useRoles(): UseRolesReturn {
     };
   }, []);
 
-  /**
-   * Fetches all roles from the API
-   */
-  const fetchRoles = useCallback(async () => {
+  // Fetch all roles
+  const fetchRoles = useCallback(async (): Promise<Role[]> => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const rolesData = await roleService.getAllRoles();
-      // Only update state if component is still mounted
+      const data = await roleService.getAllRoles();
       if (isMounted.current) {
-        setRoles(rolesData);
+        setRoles(data);
       }
-      return rolesData;
+      return data;
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to fetch roles');
-      // Only update state if component is still mounted
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch roles';
+      console.error('Role fetch error:', err); // Add detailed logging
       if (isMounted.current) {
-        setError(error);
+        setError(errorMessage);
         toast({
           title: 'Error fetching roles',
-          description: error.message,
+          description: `${errorMessage}. Please check server connection.`,
           variant: 'destructive',
         });
       }
-      return [];
+      throw err;
     } finally {
-      // Only update state if component is still mounted
       if (isMounted.current) {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [toast]);
 
-  /**
-   * Fetch roles on component mount
-   */
-  useEffect(() => {
-    fetchRoles();
+  // Refresh roles
+  const refreshRoles = useCallback(async (): Promise<void> => {
+    try {
+      await fetchRoles();
+    } catch (error) {
+      // Error is already handled in fetchRoles
+    }
   }, [fetchRoles]);
 
   /**
    * Get a role by its ID
    */
-  const getRoleById = useCallback((id: string | number) => {
+  const getRoleById = useCallback((id: string) => {
     return roles.find(role => role.id === id);
   }, [roles]);
 
-  /**
-   * Create a new role
-   */
-  const createRole = useCallback(async (roleData: Omit<Role, "id">) => {
+  // Create a new role
+  const createRole = useCallback(async (roleData: CreateRoleData) => {
+    setIsLoading(true);
+    
     try {
-      console.log("useRoles: Creating role with data:", roleData);
-      
-      // Add the new role to the UI immediately with a temporary ID
-      // This ensures users see instant feedback while the API request is processing
-      const tempRole: Role = {
-        ...roleData,
-        id: `temp_${Math.random().toString(36).substring(2, 9)}`,
-        staffCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      // Update the UI immediately with the temporary role
-      if (isMounted.current) {
-        setRoles(prevRoles => [...prevRoles, tempRole]);
-        
-        toast({
-          title: 'Creating role...',
-          description: `Adding "${roleData.name}" role.`,
-        });
-      }
-      
-      // Make the actual API call to create the role
       const newRole = await roleService.createRole(roleData);
-      console.log("useRoles: Role service returned new role:", newRole);
       
-      // Update the local state with the real role from the API (replacing the temp one)
       if (isMounted.current) {
-        console.log("useRoles: Component is mounted, updating roles state");
-        setRoles(prevRoles => {
-          // Remove the temporary role and add the real one
-          const filteredRoles = prevRoles.filter(role => role.id !== tempRole.id);
-          const updatedRoles = [...filteredRoles, newRole];
-          console.log("useRoles: Updated roles state:", updatedRoles);
-          return updatedRoles;
-        });
+        setRoles(prevRoles => [...prevRoles, newRole]);
         
         toast({
-          title: 'Role created',
-          description: `Role "${newRole.name}" created successfully.`,
+          title: 'Role Created',
+          description: `Role "${newRole.name}" has been created successfully.`,
         });
-      } else {
-        console.log("useRoles: Component is not mounted, skipping state update");
       }
       
       return newRole;
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to create role');
-      console.error('Error creating role:', error);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create role';
       
-      // Keep the temporary role in the UI if we failed to get the real one
-      // This ensures users don't lose their data if the API call fails
+      if (isMounted.current) {
+        setError(errorMessage);
+        toast({
+          title: 'Error creating role',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
       
-      toast({
-        title: 'Error creating role',
-        description: error.message,
-        variant: 'destructive',
-      });
-      
-      throw error;
+      throw err;
+    } finally {
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
-  }, []);
+  }, [toast]);
 
-  /**
-   * Update an existing role
-   */
-  const updateRole = useCallback(async (id: string | number, roleData: Partial<Role>) => {
+  // Update an existing role
+  const updateRole = useCallback(async (id: string, roleData: UpdateRoleData) => {
+    setIsLoading(true);
+    
     try {
       const updatedRole = await roleService.updateRole(id, roleData);
       
-      // Update local state only if component is still mounted
       if (isMounted.current) {
         setRoles(prevRoles => 
-          prevRoles.map(role => role.id === id ? updatedRole : role)
+          prevRoles.map(role => 
+            role.id === id ? { ...role, ...updatedRole } : role
+          )
         );
         
         toast({
-          title: 'Role updated',
-          description: `Role "${updatedRole.name}" updated successfully.`,
+          title: 'Role Updated',
+          description: `Role "${updatedRole.name}" has been updated successfully.`,
         });
       }
       
       return updatedRole;
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to update role');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update role';
       
-      // Only show toast if component is still mounted
       if (isMounted.current) {
+        setError(errorMessage);
         toast({
           title: 'Error updating role',
-          description: error.message,
+          description: errorMessage,
           variant: 'destructive',
         });
       }
       
-      throw error;
+      throw err;
+    } finally {
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
-  }, []);
+  }, [toast]);
 
-  /**
-   * Delete a role
-   */
-  const deleteRole = useCallback(async (id: string | number) => {
+  // Delete a role
+  const deleteRole = useCallback(async (id: string) => {
+    setIsLoading(true);
+    
     try {
       await roleService.deleteRole(id);
       
-      // Update local state only if component is still mounted
       if (isMounted.current) {
         setRoles(prevRoles => prevRoles.filter(role => role.id !== id));
         
         toast({
-          title: 'Role deleted',
-          description: 'Role deleted successfully.',
+          title: 'Role Deleted',
+          description: 'The role has been deleted successfully.',
         });
       }
       
       return true;
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to delete role');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete role';
       
-      // Only show toast if component is still mounted
       if (isMounted.current) {
+        setError(errorMessage);
         toast({
           title: 'Error deleting role',
-          description: error.message,
+          description: errorMessage,
           variant: 'destructive',
         });
       }
       
-      return false;
+      throw err;
+    } finally {
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
-  }, []);
+  }, [toast]);
+
+  // Fetch roles on component mount
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
 
   return {
     roles,
     isLoading,
     error,
-    refreshRoles: fetchRoles,
+    refreshRoles,
     getRoleById,
     createRole,
     updateRole,
     deleteRole,
   };
-} 
+}; 
+
+

@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils"
 // Ensure any SelectItem has a non-empty string value
 const ensureNonEmptyValue = (value: string | undefined): string => {
   if (value === undefined || value === '') {
-    console.warn('SelectItem must have a non-empty value prop. Using "default" instead.');
-    return 'default';
+    console.warn('SelectItem must have a non-empty value prop. Using a generated unique value instead.');
+    return `empty-${Math.random().toString(36).substring(2, 9)}`;
   }
   return value;
 };
@@ -16,13 +16,13 @@ const ensureNonEmptyValue = (value: string | undefined): string => {
 // Wrapper component to add cleanup handling
 const useSelectCleanup = () => {
   const unmountedRef = React.useRef(false);
-  
+
   React.useEffect(() => {
     return () => {
       unmountedRef.current = true;
     };
   }, []);
-  
+
   return { unmountedRef };
 };
 
@@ -38,7 +38,7 @@ const SelectTrigger = React.forwardRef<
 >(({ className, children, ...props }, ref) => {
   // Use cleanup hook
   const { unmountedRef } = useSelectCleanup();
-  
+
   return (
     <SelectPrimitive.Trigger
       ref={ref}
@@ -103,7 +103,7 @@ const SelectContent = React.forwardRef<
 >(({ className, children, position = "popper", ...props }, ref) => {
   // Use cleanup hook
   const { unmountedRef } = useSelectCleanup();
-  
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -163,7 +163,7 @@ const SelectItem = React.forwardRef<
 >(({ className, children, value, ...props }, ref) => {
   // Ensure value is never empty
   const safeValue = ensureNonEmptyValue(value);
-  
+
   return (
     <SelectPrimitive.Item
       ref={ref}

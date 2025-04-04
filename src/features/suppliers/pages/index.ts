@@ -5,3 +5,5 @@
  */
 
 // Export all pages here
+
+export * from './SupplierConnectionPage';

@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/page-header";
 import { ProductEditPreview } from '../components/ProductPreview';
 import { useProductForm, ProductFormData } from '../context/ProductFormContext';
 import { PRODUCTS_FULL_ROUTES } from '@/routes/productRoutes';
+import { ProductFormAdapter } from '../components';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,15 +48,15 @@ export function ProductEditPage() {
   const { updateProduct, getProduct, deleteProduct } = useProducts();
   const { toast } = useToast();
   const showToast = useToastManager();
-  
+
   // Use the shared form context
-  const { 
-    form, 
-    technicalFields, 
-    setTechnicalFields, 
-    isLoading, 
+  const {
+    form,
+    technicalFields,
+    setTechnicalFields,
+    isLoading,
     setIsLoading,
-    isDescriptionExpanded, 
+    isDescriptionExpanded,
     setIsDescriptionExpanded,
     handleFieldChange,
     resetForm,
@@ -64,7 +65,7 @@ export function ProductEditPage() {
 
   // Preview dialog state
   const [previewOpen, setPreviewOpen] = useState(false);
-  
+
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -162,6 +163,22 @@ export function ProductEditPage() {
   const { items: stores, loading: loadingStores } = useShops({ autoLoad: true });
   const { items: suppliers, loading: loadingSuppliers } = useSuppliers({ autoLoad: true });
 
+  // Initialize locations based on stores
+  useEffect(() => {
+    if (stores && stores.length > 0 && (!product.locations || product.locations.length === 0)) {
+      setProduct(prev => ({
+        ...prev,
+        locations: stores.map(store => ({
+          locationId: store.id,
+          enabled: false,
+          stock: 0,
+          minStock: 0,
+          maxStock: 100
+        }))
+      }));
+    }
+  }, [stores]);
+
   // Load product data
   useEffect(() => {
     if (id) {
@@ -169,7 +186,7 @@ export function ProductEditPage() {
         try {
           setIsLoading(true);
           const productData = await getProduct(id);
-          
+
           if (productData) {
             // Set form data with all required fields
             resetForm({
@@ -184,7 +201,7 @@ export function ProductEditPage() {
               supplier: productData.supplier || undefined,
               shortDescription: productData.shortDescription || '',
             });
-            
+
             // Set technical fields
             setTechnicalFields({
               sku: productData.sku || '',
@@ -193,6 +210,30 @@ export function ProductEditPage() {
               updatedAt: productData.updatedAt || '',
               updatedBy: 'Current User' // This would come from auth context
             });
+
+            // Ensure locations are initialized
+            const productWithLocations = { ...productData };
+
+            // If the product doesn't have locations or they're empty, initialize them
+            if (!productWithLocations.locations || productWithLocations.locations.length === 0) {
+              if (stores && stores.length > 0) {
+                productWithLocations.locations = stores.map(store => ({
+                  locationId: store.id,
+                  name: store.name,
+                  type: store.type,
+                  enabled: false,
+                  stock: 0,
+                  minStock: 0,
+                  maxStock: 100
+                }));
+              } else {
+                // Initialize with an empty array to prevent null errors
+                productWithLocations.locations = [];
+              }
+            }
+
+            // Update the product state with the enhanced product data
+            setProduct(productWithLocations);
           } else {
             showToast.error('Error', 'Product not found');
             navigate(PRODUCTS_FULL_ROUTES.LIST);
@@ -204,10 +245,10 @@ export function ProductEditPage() {
           setIsLoading(false);
         }
       };
-      
+
       loadProduct();
     }
-  }, [id, getProduct, navigate, showToast, resetForm, setTechnicalFields, setIsLoading]);
+  }, [id, getProduct, navigate, showToast, resetForm, setTechnicalFields, setIsLoading, stores]);
 
   // Form submission handler
   const onSubmit = async (data: ProductFormData) => {
@@ -218,19 +259,19 @@ export function ProductEditPage() {
         ...data,
         updatedAt: new Date().toISOString(),
         // Include all product data from state
-        locations: product.locations.filter(loc => loc.enabled) || [],
+        locations: product.locations ? product.locations.filter(loc => loc.enabled) : [],
         attributes: product.attributes || [],
         variations: product.variations || [],
         gallery: product.gallery || [],
         featuredImage: product.featuredImage
       };
-      
+
       // Update the product
       await updateProduct(id!, updatedProduct);
-      
+
       // Show success message
       showToast.success('Success', 'Product updated successfully');
-      
+
       // Navigate to the product list
       navigate(PRODUCTS_FULL_ROUTES.LIST);
     } catch (error) {
@@ -242,7 +283,7 @@ export function ProductEditPage() {
   // Delete product handler
   const handleDeleteProduct = async () => {
     if (!id) return;
-    
+
     try {
       await deleteProduct(id);
       showToast.success('Success', 'Product deleted successfully');
@@ -255,11 +296,17 @@ export function ProductEditPage() {
 
   // Function to generate variations based on attributes
   const generateVariations = () => {
+    // Check if product.attributes exists
+    if (!product.attributes || product.attributes.length === 0) {
+      showToast.info('Info', 'No attributes available to generate variations');
+      return;
+    }
+
     // Filter attributes that are used for variations
     const variationAttributes = product.attributes.filter(attr => attr.isUsedForVariations);
-    
+
     if (variationAttributes.length === 0) return;
-    
+
     // Generate all possible combinations of attribute options
     const generateCombinations = (
       attributes: typeof variationAttributes,
@@ -271,7 +318,7 @@ export function ProductEditPage() {
         result.push({...currentCombination});
         return;
       }
-      
+
       const currentAttribute = attributes[currentIndex];
       if (currentAttribute) {
         for (const option of currentAttribute.options) {
@@ -280,10 +327,10 @@ export function ProductEditPage() {
         }
       }
     };
-    
+
     const combinations: Record<string, string>[] = [];
     generateCombinations(variationAttributes, 0, {}, combinations);
-    
+
     // Create variations based on combinations
     const newVariations = combinations.map((combination, index) => {
       // Check if this combination already exists
@@ -292,16 +339,16 @@ export function ProductEditPage() {
           ([attr, value]) => v.attributes[attr] === value
         );
       });
-      
+
       if (existingVariation) {
         return existingVariation;
       }
-      
+
       // Generate a unique SKU for the variation
       const baseSku = product.sku || 'PROD';
       const attributeString = Object.values(combination).join('-');
       const sku = `${baseSku}-${attributeString}`;
-      
+
       return {
         id: `${product.id}-var-${index}`,
         attributes: combination,
@@ -311,7 +358,7 @@ export function ProductEditPage() {
         image: ''
       };
     });
-    
+
     setProduct({
       ...product,
       variations: newVariations
@@ -324,12 +371,12 @@ export function ProductEditPage() {
       showToast.error('Error', 'Attribute name and at least one option are required');
       return;
     }
-    
+
     setProduct(prev => ({
       ...prev,
       attributes: [...prev.attributes, { ...newAttribute }]
     }));
-    
+
     // Reset the new attribute form
     setNewAttribute({
       name: '',
@@ -337,7 +384,7 @@ export function ProductEditPage() {
       isVisibleOnProductPage: true,
       isUsedForVariations: true
     });
-    
+
     // Close the dialog
     setAttributeDialogOpen(false);
   };
@@ -345,12 +392,12 @@ export function ProductEditPage() {
   // Add function to handle adding a new option to an attribute
   const handleAddOption = () => {
     if (!newOption.trim()) return;
-    
+
     setNewAttribute(prev => ({
       ...prev,
       options: [...prev.options, newOption.trim()]
     }));
-    
+
     setNewOption('');
   };
 
@@ -358,15 +405,31 @@ export function ProductEditPage() {
   const handleStoreChange = (store: { id: string; name: string; address: string; type: string }) => {
     // Get the current stock value from the form
     const currentStock = form.getValues('stock') || 0;
-    
+
+    // Check if product.locations exists
+    if (!product.locations || product.locations.length === 0) {
+      // Initialize locations if they don't exist
+      const initialLocations = stores?.map(s => ({
+        locationId: s.id,
+        enabled: s.id === store.id,
+        stock: s.id === store.id && store.name === "Main Store" ? currentStock : 0,
+        minStock: 0,
+        maxStock: 100
+      })) || [];
+
+      setProduct({ ...product, locations: initialLocations });
+      showToast.success('Store Selected', `${store.name} has been activated for this product`);
+      return;
+    }
+
     // Enable the selected store in the locations array
     const newLocations = product.locations.map(loc => {
       // If this is the selected store
       if (loc.locationId === store.id) {
         // If this is the Main Store, assign the current stock value to it
         if (store.name === "Main Store") {
-          return { 
-            ...loc, 
+          return {
+            ...loc,
             enabled: true,
             stock: currentStock
           };
@@ -376,7 +439,7 @@ export function ProductEditPage() {
       }
       return loc;
     });
-    
+
     setProduct({ ...product, locations: newLocations });
     showToast.success('Store Selected', `${store.name} has been activated for this product`);
   };
@@ -399,20 +462,12 @@ export function ProductEditPage() {
         description="Update product information"
         actions={
           <div className="flex items-center gap-2">
-            <StoreSelect onStoreChange={handleStoreChange} />
             <Button
               variant="outline"
               onClick={() => navigate(PRODUCTS_FULL_ROUTES.LIST)}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Products
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPreviewOpen(true)}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
             </Button>
             <Button
               variant="outline"
@@ -433,7 +488,22 @@ export function ProductEditPage() {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="w-full">
+        <ProductFormAdapter
+          product={product}
+          isEdit={true}
+          onSubmit={onSubmit}
+          onCancel={() => navigate(PRODUCTS_FULL_ROUTES.LIST)}
+          onSuccess={(product) => {
+            showToast.success('Success', 'Product updated successfully');
+            navigate(PRODUCTS_FULL_ROUTES.LIST);
+          }}
+          className="w-full"
+        />
+      </div>
+      
+      {/* Keeping the old form structure for reference - to be removed */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8" style={{display: 'none'}}>
         {/* Main Form */}
         <div className="lg:col-span-3 space-y-6">
           {/* Basic Information */}
@@ -442,7 +512,7 @@ export function ProductEditPage() {
               <div className="space-y-4 p-4">
                 <h3 className="text-lg font-medium">Basic Information</h3>
                 <Separator />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">
@@ -458,7 +528,7 @@ export function ProductEditPage() {
                       <p className="text-red-500 text-sm">{form.formState.errors.name.message}</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
                     <Select
@@ -476,7 +546,7 @@ export function ProductEditPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="brand">Brand</Label>
                     <Input
@@ -486,7 +556,7 @@ export function ProductEditPage() {
                       onChange={(e) => handleFieldChange('brand', e.target.value)}
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="supplier">Supplier</Label>
                     <Select
@@ -517,7 +587,7 @@ export function ProductEditPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="productType">
                       Product Type <span className="text-red-500">*</span>
@@ -549,7 +619,7 @@ export function ProductEditPage() {
               <div className="space-y-4 p-4">
                 <h3 className="text-lg font-medium">Pricing</h3>
                 <Separator />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="retailPrice">
@@ -570,7 +640,7 @@ export function ProductEditPage() {
                       <p className="text-red-500 text-sm">{form.formState.errors.retailPrice.message}</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="costPrice">
                       Cost Price
@@ -591,7 +661,7 @@ export function ProductEditPage() {
                       <p className="text-red-500 text-sm">{form.formState.errors.costPrice.message}</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="salePrice">
                       Sale Price
@@ -623,7 +693,7 @@ export function ProductEditPage() {
               <div className="space-y-4 p-4">
                 <h3 className="text-lg font-medium">Description</h3>
                 <Separator />
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="description">Full Description</Label>
                   <Textarea
@@ -634,7 +704,7 @@ export function ProductEditPage() {
                     onChange={(e) => handleFieldChange('description', e.target.value)}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="shortDescription">Short Description</Label>
                   <Textarea
@@ -655,7 +725,7 @@ export function ProductEditPage() {
               <div className="space-y-4 p-4">
                 <h3 className="text-lg font-medium">Inventory</h3>
                 <Separator />
-                
+
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
@@ -668,7 +738,7 @@ export function ProductEditPage() {
                         onChange={(e) => handleFieldChange('stock', parseInt(e.target.value) || 0)}
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="minStock">Min Stock</Label>
                       <Input
@@ -679,7 +749,7 @@ export function ProductEditPage() {
                         onChange={(e) => handleFieldChange('minStock', parseInt(e.target.value) || 0)}
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="maxStock">Max Stock</Label>
                       <Input
@@ -691,12 +761,12 @@ export function ProductEditPage() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label>Track Inventory</Label>
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="trackInventory" 
+                      <Checkbox
+                        id="trackInventory"
                         checked={form.getValues('trackInventory') !== false}
                         onCheckedChange={(checked) => handleFieldChange('trackInventory', !!checked)}
                       />
@@ -720,31 +790,33 @@ export function ProductEditPage() {
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-medium">Store Availability</h3>
                   <Badge variant="outline" className="px-3 py-1">
-                    {product.locations.filter(loc => loc.enabled).length} of {stores.length} stores selected
+                    {product.locations && product.locations.length > 0
+                      ? `${product.locations.filter(loc => loc.enabled).length} of ${stores?.length || 0} stores selected`
+                      : "0 stores selected"}
                   </Badge>
                 </div>
                 <Separator />
-                
+
                 {loadingStores ? (
                   <div className="p-8 text-center border border-dashed rounded-lg">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
                     <p className="text-muted-foreground">Loading stores...</p>
                   </div>
-                ) : product.locations.filter(loc => loc.enabled).length === 0 ? (
+                ) : !product.locations || product.locations.filter(loc => loc.enabled).length === 0 ? (
                   <div className="p-8 text-center border border-dashed rounded-lg">
                     <Store className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
                     <h3 className="text-lg font-medium mb-2">No Stores Selected</h3>
                     <p className="text-muted-foreground mb-4">
                       Use the store selector at the top of the page to activate stores for this product.
                     </p>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         // Enable all stores
-                        const newLocations = product.locations.map(loc => ({
+                        const newLocations = product.locations ? product.locations.map(loc => ({
                           ...loc,
                           enabled: true
-                        }));
+                        })) : [];
                         setProduct({ ...product, locations: newLocations });
                       }}
                       disabled={!stores || stores.length === 0}
@@ -757,7 +829,7 @@ export function ProductEditPage() {
                   <>
                     <div className="flex flex-wrap gap-4">
                       {stores && stores.length > 0 ? stores.map((store) => {
-                        const location = product.locations.find(loc => loc.locationId === store.id);
+                        const location = product.locations ? product.locations.find(loc => loc.locationId === store.id) : undefined;
                         const isEnabled = location?.enabled || false;
 
                         return (
@@ -790,18 +862,18 @@ export function ProductEditPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Stock Management Section - Only shown when stores are selected */}
                     <div className="mt-8 pt-4 border-t">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-medium">Stock Management</h3>
                         <Badge variant="outline" className="px-3 py-1">
-                          {product.locations.filter(loc => loc.enabled).length} stores enabled
+                          {product.locations ? product.locations.filter(loc => loc.enabled).length : 0} stores enabled
                         </Badge>
                       </div>
-                      
+
                       <div className="space-y-4">
-                        {product.locations.filter(loc => loc.enabled).map((location) => {
+                        {product.locations ? product.locations.filter(loc => loc.enabled).map((location) => {
                           const store = stores.find(s => s.id === location.locationId);
                           return (
                             <div key={location.locationId} className="grid grid-cols-4 gap-4 p-4 border rounded-lg">
@@ -870,7 +942,7 @@ export function ProductEditPage() {
                               </div>
                             </div>
                           );
-                        })}
+                        }) : null}
                       </div>
                     </div>
                   </>
@@ -878,7 +950,7 @@ export function ProductEditPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           {/* Attributes & Variations */}
           {form.getValues('productType') === 'variable' && (
             <Card>
@@ -886,9 +958,9 @@ export function ProductEditPage() {
                 <div className="space-y-4 p-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium">Attributes & Variations</h3>
-                    <Button 
+                    <Button
                       type="button"
-                      variant="outline" 
+                      variant="outline"
                       onClick={() => setAttributeDialogOpen(true)}
                       className="text-sm"
                     >
@@ -896,7 +968,7 @@ export function ProductEditPage() {
                     </Button>
                   </div>
                   <Separator />
-                  
+
                   {product.attributes.length > 0 ? (
                     <div className="space-y-4">
                       {product.attributes.map((attr, index) => (
@@ -954,7 +1026,7 @@ export function ProductEditPage() {
                           </div>
                         </div>
                       ))}
-                      
+
                       {/* Generate Variations Button */}
                       <div className="flex justify-end">
                         <Button
@@ -965,7 +1037,7 @@ export function ProductEditPage() {
                           Generate Variations
                         </Button>
                       </div>
-                      
+
                       {/* Variations Table */}
                       {product.variations.length > 0 && (
                         <div className="mt-6">
@@ -1062,7 +1134,7 @@ export function ProductEditPage() {
               <div className="space-y-4 p-4">
                 <h3 className="text-lg font-medium">Status</h3>
                 <Separator />
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="active">Active</Label>
@@ -1070,7 +1142,7 @@ export function ProductEditPage() {
                   </div>
                   <Switch id="active" defaultChecked />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="featured">Featured</Label>
@@ -1082,13 +1154,13 @@ export function ProductEditPage() {
             </CardContent>
           </Card>
 
-          {/* Product Gallery */}
+          {/* Product Image */}
           <Card>
             <CardContent className="p-0">
               <div className="space-y-4 p-4">
-                <h3 className="text-lg font-medium">Product Gallery</h3>
+                <h3 className="text-lg font-medium">Product Image</h3>
                 <Separator />
-                
+
                 <div className="grid grid-cols-1 gap-4">
                   {/* Featured Image */}
                   <div className="space-y-2">
@@ -1096,9 +1168,9 @@ export function ProductEditPage() {
                     <div className="border-2 border-dashed rounded-lg p-6 text-center">
                       {product.featuredImage ? (
                         <div className="relative">
-                          <img 
-                            src={product.featuredImage} 
-                            alt="Featured product" 
+                          <img
+                            src={product.featuredImage}
+                            alt="Featured product"
                             className="max-h-48 mx-auto rounded-md"
                           />
                           <Button
@@ -1117,9 +1189,9 @@ export function ProductEditPage() {
                           <p className="text-xs text-muted-foreground mt-1">
                             Drag & drop or click to upload
                           </p>
-                          <Input 
-                            type="file" 
-                            className="hidden" 
+                          <Input
+                            type="file"
+                            className="hidden"
                             id="featuredImage"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
@@ -1131,8 +1203,8 @@ export function ProductEditPage() {
                               }
                             }}
                           />
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="mt-4"
                             onClick={() => document.getElementById('featuredImage')?.click()}
                           >
@@ -1142,18 +1214,18 @@ export function ProductEditPage() {
                       )}
                     </div>
                   </div>
-                  
-                  {/* Gallery Images */}
+
+                  {/* Product Images */}
                   <div className="space-y-2">
-                    <Label>Gallery Images</Label>
+                    <Label>Product Images</Label>
                     <div className="border-2 border-dashed rounded-lg p-6">
                       {product.gallery.length > 0 ? (
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           {product.gallery.map((image, index) => (
                             <div key={index} className="relative">
-                              <img 
-                                src={image} 
-                                alt={`Product gallery ${index + 1}`} 
+                              <img
+                                src={image}
+                                alt={`Product image ${index + 1}`}
                                 className="h-24 w-full object-cover rounded-md"
                               />
                               <Button
@@ -1170,7 +1242,7 @@ export function ProductEditPage() {
                               </Button>
                             </div>
                           ))}
-                          <div 
+                          <div
                             className="h-24 border-2 border-dashed rounded-md flex items-center justify-center cursor-pointer"
                             onClick={() => document.getElementById('galleryImages')?.click()}
                           >
@@ -1180,22 +1252,22 @@ export function ProductEditPage() {
                       ) : (
                         <div className="text-center">
                           <Plus className="h-8 w-8 text-muted-foreground mb-2 mx-auto" />
-                          <p className="text-sm font-medium">Add Gallery Images</p>
+                          <p className="text-sm font-medium">Add Product Images</p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Drag & drop or click to upload
                           </p>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="mt-4"
                             onClick={() => document.getElementById('galleryImages')?.click()}
                           >
-                            Select Images
+                            Select Image
                           </Button>
                         </div>
                       )}
-                      <Input 
-                        type="file" 
-                        className="hidden" 
+                      <Input
+                        type="file"
+                        className="hidden"
                         id="galleryImages"
                         multiple
                         onChange={(e) => {
@@ -1205,7 +1277,7 @@ export function ProductEditPage() {
                             // For now, we'll create local URLs
                             const newImages = Array.from(files).map(file => URL.createObjectURL(file));
                             setProduct({
-                              ...product, 
+                              ...product,
                               gallery: [...product.gallery, ...newImages]
                             });
                           }
@@ -1224,18 +1296,18 @@ export function ProductEditPage() {
               <div className="space-y-4 p-4">
                 <h3 className="text-lg font-medium">Actions</h3>
                 <Separator />
-                
+
                 <div className="grid grid-cols-1 gap-3">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     className="w-full"
                     onClick={() => setPreviewOpen(true)}
                   >
                     <Eye className="h-4 w-4 mr-2" />
                     Preview Product
                   </Button>
-                  
+
                   <OperationButton
                     onClick={form.handleSubmit(onSubmit)}
                     disabled={Object.values(form.formState.errors).some(error => error !== undefined)}
@@ -1247,7 +1319,7 @@ export function ProductEditPage() {
                     <Save className="h-4 w-4 mr-2" />
                     Save Changes
                   </OperationButton>
-                  
+
                   <Button
                     type="button"
                     variant="destructive"
@@ -1319,7 +1391,7 @@ export function ProductEditPage() {
                 placeholder="e.g., Size, Color, Material"
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="attributeOptions">Options</Label>
               <div className="flex gap-2">
@@ -1337,7 +1409,7 @@ export function ProductEditPage() {
                 />
                 <Button type="button" onClick={handleAddOption}>Add</Button>
               </div>
-              
+
               <div className="flex flex-wrap gap-2 mt-2">
                 {newAttribute.options.map((option, index) => (
                   <Badge key={index} variant="secondary" className="px-2 py-1">
@@ -1362,23 +1434,23 @@ export function ProductEditPage() {
                 )}
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isVisibleOnProductPage"
                 checked={newAttribute.isVisibleOnProductPage}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked) =>
                   setNewAttribute(prev => ({ ...prev, isVisibleOnProductPage: !!checked }))
                 }
               />
               <Label htmlFor="isVisibleOnProductPage">Visible on product page</Label>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isUsedForVariations"
                 checked={newAttribute.isUsedForVariations}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked) =>
                   setNewAttribute(prev => ({ ...prev, isUsedForVariations: !!checked }))
                 }
               />
@@ -1393,4 +1465,4 @@ export function ProductEditPage() {
       </Dialog>
     </div>
   );
-} 
+}

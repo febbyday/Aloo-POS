@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
@@ -35,45 +35,11 @@ import {
   DollarSign,
   Users,
   ShoppingCart,
+  AlertCircle,
 } from "lucide-react"
+import { performanceService, StaffPerformance, PerformanceSummary } from "../services/performanceService"
 
-// Mock data for staff performance
-const mockPerformanceData = [
-  {
-    id: 1,
-    name: "John Smith",
-    role: "Store Manager",
-    metrics: {
-      salesTarget: 95,
-      customerSatisfaction: 92,
-      attendance: 98,
-      taskCompletion: 94,
-      teamManagement: 96
-    },
-    recentSales: 25000,
-    transactions: 150,
-    hoursWorked: 160,
-    rating: 4.8
-  },
-  {
-    id: 2,
-    name: "Sarah Johnson",
-    role: "Sales Associate",
-    metrics: {
-      salesTarget: 88,
-      customerSatisfaction: 95,
-      attendance: 96,
-      taskCompletion: 90,
-      teamManagement: 85
-    },
-    recentSales: 18500,
-    transactions: 120,
-    hoursWorked: 155,
-    rating: 4.5
-  },
-  // Add more mock data as needed
-]
-
+// Define the performance metrics and their icons
 const performanceMetrics = [
   { id: "salesTarget", name: "Sales Target", icon: Target },
   { id: "customerSatisfaction", name: "Customer Satisfaction", icon: Star },
@@ -83,18 +49,54 @@ const performanceMetrics = [
 ]
 
 export function PerformancePage() {
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>()
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({})
   const [selectedMetric, setSelectedMetric] = useState("overall")
   const [chartType, setChartType] = useState<"table" | "bar" | "line" | "pie">("table")
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [performanceData, setPerformanceData] = useState<StaffPerformance[]>([])
+  const [summaryData, setSummaryData] = useState<PerformanceSummary | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
+  // Load initial data
+  useEffect(() => {
+    loadPerformanceData();
+  }, []);
+
+  // Reload data when date range changes
+  useEffect(() => {
+    loadPerformanceData();
+  }, [dateRange]);
+
+  // Handle data refresh
   const handleRefresh = () => {
-    setIsLoading(true)
-    // Simulate data refresh
-    setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
+    loadPerformanceData();
   }
+
+  // Load performance data from API
+  const loadPerformanceData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Fetch performance data
+      const staffData = await performanceService.getStaffPerformance(
+        dateRange?.from,
+        dateRange?.to
+      );
+      setPerformanceData(staffData);
+
+      // Fetch summary data
+      const summary = await performanceService.getPerformanceSummary(
+        dateRange?.from,
+        dateRange?.to
+      );
+      setSummaryData(summary);
+    } catch (error) {
+      console.error("Error loading performance data:", error);
+      setError("Failed to load performance data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getPerformanceColor = (value: number) => {
     if (value >= 90) return "text-green-500"
@@ -102,11 +104,27 @@ export function PerformancePage() {
     return "text-red-500"
   }
 
-  const getPerformanceBadge = (value: number) => {
+  const getPerformanceBadge = (value: number): "default" | "destructive" | "outline" | "secondary" => {
     if (value >= 90) return "default"
-    if (value >= 75) return "warning"
+    if (value >= 75) return "secondary"
     return "destructive"
   }
+
+  // Display a message when no data is available
+  const NoDataDisplay = () => (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+      <h3 className="text-lg font-medium">No performance data available</h3>
+      <p className="text-sm text-muted-foreground mt-2 mb-6 max-w-md">
+        There is no performance data available for the selected time period. 
+        Try selecting a different date range or refreshing.
+      </p>
+      <Button onClick={handleRefresh} variant="outline">
+        <RefreshCw className="h-4 w-4 mr-2" />
+        Refresh Data
+      </Button>
+    </div>
+  );
 
   return (
     <div className="w-full py-6 space-y-6">
@@ -136,10 +154,13 @@ export function PerformancePage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$43,500</div>
-            <div className="flex items-center pt-1 text-green-500">
-              <TrendingUp className="h-4 w-4 mr-1" />
-              <span className="text-xs">+12.5% from last month</span>
+            <div className="text-2xl font-bold">${summaryData?.totalSales.toLocaleString() || 0}</div>
+            <div className={`flex items-center pt-1 ${summaryData?.salesGrowth && summaryData.salesGrowth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {summaryData?.salesGrowth && summaryData.salesGrowth >= 0 ? 
+                <TrendingUp className="h-4 w-4 mr-1" /> : 
+                <TrendingDown className="h-4 w-4 mr-1" />
+              }
+              <span className="text-xs">{summaryData?.salesGrowth ? `${Math.abs(summaryData.salesGrowth).toFixed(1)}% from last month` : 'N/A'}</span>
             </div>
           </CardContent>
         </Card>
@@ -150,10 +171,13 @@ export function PerformancePage() {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">270</div>
-            <div className="flex items-center pt-1 text-green-500">
-              <TrendingUp className="h-4 w-4 mr-1" />
-              <span className="text-xs">+8.2% from last month</span>
+            <div className="text-2xl font-bold">{summaryData?.transactions || 0}</div>
+            <div className={`flex items-center pt-1 ${summaryData?.transactionsGrowth && summaryData.transactionsGrowth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {summaryData?.transactionsGrowth && summaryData.transactionsGrowth >= 0 ? 
+                <TrendingUp className="h-4 w-4 mr-1" /> : 
+                <TrendingDown className="h-4 w-4 mr-1" />
+              }
+              <span className="text-xs">{summaryData?.transactionsGrowth ? `${Math.abs(summaryData.transactionsGrowth).toFixed(1)}% from last month` : 'N/A'}</span>
             </div>
           </CardContent>
         </Card>
@@ -164,10 +188,13 @@ export function PerformancePage() {
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4.6</div>
-            <div className="flex items-center pt-1 text-yellow-500">
+            <div className="text-2xl font-bold">{summaryData?.averageRating || 0}</div>
+            <div className={`flex items-center pt-1 ${summaryData?.ratingChange && summaryData.ratingChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {summaryData?.ratingChange && summaryData.ratingChange >= 0 ? 
+                <TrendingUp className="h-4 w-4 mr-1" /> : 
               <TrendingDown className="h-4 w-4 mr-1" />
-              <span className="text-xs">-0.2 from last month</span>
+              }
+              <span className="text-xs">{summaryData?.ratingChange ? `${Math.abs(summaryData.ratingChange).toFixed(1)} from last month` : 'N/A'}</span>
             </div>
           </CardContent>
         </Card>
@@ -178,10 +205,13 @@ export function PerformancePage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">315</div>
-            <div className="flex items-center pt-1 text-green-500">
-              <TrendingUp className="h-4 w-4 mr-1" />
-              <span className="text-xs">+5.8% from last month</span>
+            <div className="text-2xl font-bold">{summaryData?.hoursWorked || 0}</div>
+            <div className={`flex items-center pt-1 ${summaryData?.hoursGrowth && summaryData.hoursGrowth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {summaryData?.hoursGrowth && summaryData.hoursGrowth >= 0 ? 
+                <TrendingUp className="h-4 w-4 mr-1" /> : 
+                <TrendingDown className="h-4 w-4 mr-1" />
+              }
+              <span className="text-xs">{summaryData?.hoursGrowth ? `${Math.abs(summaryData.hoursGrowth).toFixed(1)}% from last month` : 'N/A'}</span>
             </div>
           </CardContent>
         </Card>
@@ -214,7 +244,10 @@ export function PerformancePage() {
                   <SelectItem value="pie">Pie Chart</SelectItem>
                 </SelectContent>
               </Select>
-              <DateRangePicker value={dateRange} onChange={setDateRange} />
+              <DateRangePicker 
+                date={dateRange} 
+                onChange={setDateRange} 
+              />
               <Button
                 variant="outline"
                 size="icon"
@@ -227,7 +260,21 @@ export function PerformancePage() {
           </div>
         </CardHeader>
         <CardContent>
-          {chartType === "table" ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-64 text-destructive">
+              <AlertCircle className="h-8 w-8 mb-4" />
+              <p>{error}</p>
+              <Button className="mt-4" variant="outline" onClick={handleRefresh}>
+                Try Again
+              </Button>
+            </div>
+          ) : performanceData.length === 0 ? (
+            <NoDataDisplay />
+          ) : chartType === "table" ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -240,25 +287,16 @@ export function PerformancePage() {
                   {performanceMetrics.map((metric) => (
                     <TableHead key={metric.id}>
                       <div className="flex items-center space-x-1">
-                        {metric.id === 'salesTarget' && <ShoppingCart className="h-4 w-4" />}
-                        {metric.id === 'customerSatisfaction' && <Star className="h-4 w-4" />}
-                        {metric.id === 'attendance' && <Clock className="h-4 w-4" />}
-                        {metric.id === 'taskCompletion' && <Target className="h-4 w-4" />}
-                        {metric.id === 'teamManagement' && <Users className="h-4 w-4" />}
+                        <metric.icon className="h-4 w-4" />
                         <span>{metric.name}</span>
                       </div>
                     </TableHead>
                   ))}
-                  <TableHead>
-                    <div className="flex items-center space-x-1">
-                      <BarChart className="h-4 w-4" />
-                      <span>Overall</span>
-                    </div>
-                  </TableHead>
+                  <TableHead>Overall</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockPerformanceData.map((staff) => {
+                {performanceData.map((staff) => {
                   const overallScore = Object.values(staff.metrics).reduce((a, b) => a + b, 0) / Object.values(staff.metrics).length
                   return (
                     <TableRow key={staff.id}>
@@ -294,26 +332,30 @@ export function PerformancePage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="h-[400px] flex items-center justify-center border rounded-lg">
-              <div className="text-center">
-                {chartType === "bar" && <BarChart className="h-16 w-16 text-muted-foreground mb-4" />}
-                {chartType === "line" && <LineChart className="h-16 w-16 text-muted-foreground mb-4" />}
-                {chartType === "pie" && <PieChart className="h-16 w-16 text-muted-foreground mb-4" />}
-                <p className="text-muted-foreground">Chart visualization will be implemented here</p>
+            <div className="h-64 flex items-center justify-center text-muted-foreground border rounded-md p-8">
+              {chartType === "bar" && <BarChart className="h-24 w-24" />}
+              {chartType === "line" && <LineChart className="h-24 w-24" />}
+              {chartType === "pie" && <PieChart className="h-24 w-24" />}
+              <div className="ml-4 text-center">
+                <h3 className="text-lg font-medium">Chart Visualization</h3>
+                <p className="text-sm text-muted-foreground">
+                  Chart visualization for {selectedMetric} data would be rendered here
+                </p>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-4">
+      {performanceData.length > 0 && (
+        <div className="grid grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Top Performers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockPerformanceData
+                {performanceData
                 .sort((a, b) => {
                   const aScore = Object.values(a.metrics).reduce((x, y) => x + y, 0) / Object.values(a.metrics).length
                   const bScore = Object.values(b.metrics).reduce((x, y) => x + y, 0) / Object.values(b.metrics).length
@@ -352,7 +394,12 @@ export function PerformancePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockPerformanceData.map((staff) => {
+                {performanceData.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No performance data available
+                  </div>
+                ) : (
+                  performanceData.map((staff) => {
                 const lowestMetric = Object.entries(staff.metrics).reduce((a, b) =>
                   a[1] < b[1] ? a : b
                 )
@@ -378,11 +425,13 @@ export function PerformancePage() {
                   )
                 }
                 return null
-              })}
+                  })
+                )}
             </div>
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   )
 }

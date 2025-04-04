@@ -27,7 +27,30 @@ import {
   SupplierTableCell,
   SupplierTableFooter 
 } from "@/components/ui/table/SupplierTable"
-import { Eye, Filter, Plus, Search, RefreshCw, FileDown, Upload, FileText, Pencil } from "lucide-react"
+import { 
+  Eye, 
+  Filter, 
+  Plus, 
+  Search, 
+  RefreshCw, 
+  FileDown, 
+  Upload, 
+  FileText, 
+  Pencil, 
+  ShoppingCart, 
+  Calendar, 
+  Building2, 
+  Package, 
+  DollarSign, 
+  CheckCircle, 
+  Clock, 
+  XCircle, 
+  ChevronUp, 
+  ChevronDown, 
+  ChevronsUpDown,
+  MoreHorizontal,
+  Trash2
+} from "lucide-react"
 import { CreateOrderModal } from '../components/CreateOrderModal'
 import { ViewOrderModal } from '../components/ViewOrderModal'
 import { EditOrderModal } from '../components/EditOrderModal'
@@ -37,6 +60,15 @@ import { cn } from "@/lib/utils"
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { format } from 'date-fns'
+import { 
+  Table,
+  TableHeader,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow
+} from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // Mock data for orders
 const mockOrders = [
@@ -82,6 +114,47 @@ const companyDetails = {
   logo: "path/to/logo.png" // In a real app, this would be your company logo
 }
 
+// Add columns definition
+const columns = [
+  { 
+    id: 'orderNumber', 
+    label: 'Order #',
+    icon: ShoppingCart,
+    width: 'w-[180px]'
+  },
+  { 
+    id: 'supplier', 
+    label: 'Supplier',
+    icon: Building2,
+    width: 'w-[250px]'
+  },
+  { 
+    id: 'date', 
+    label: 'Date',
+    icon: Calendar,
+    width: 'w-[150px]'
+  },
+  { 
+    id: 'items', 
+    label: 'Items',
+    icon: Package,
+    width: 'w-[120px]'
+  },
+  { 
+    id: 'total', 
+    label: 'Total',
+    icon: DollarSign,
+    width: 'w-[150px]',
+    align: 'text-right'
+  },
+  { 
+    id: 'status', 
+    label: 'Status',
+    icon: CheckCircle,
+    width: 'w-[150px]'
+  }
+]
+
 export function SupplierOrders() {
   const { toast } = useToast()
   const [orders, setOrders] = useState(mockOrders)
@@ -92,6 +165,9 @@ export function SupplierOrders() {
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [selectedOrder, setSelectedOrder] = useState<typeof mockOrders[0] | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [sortConfig, setSortConfig] = useState<{ column: string; direction: 'asc' | 'desc' } | null>(null)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [itemsPerPage] = useState(10)
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -102,6 +178,15 @@ export function SupplierOrders() {
     
     return matchesSearch && matchesStatus
   })
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
+  const startIndex = currentPage * itemsPerPage
+  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
 
   const handleCreateOrder = (data: any) => {
     console.log('Creating order:', data)
@@ -156,7 +241,7 @@ export function SupplierOrders() {
     ], 14, 80)
 
     // Prepare table data
-    const tableData = filteredOrders.map(order => [
+    const tableData = paginatedOrders.map(order => [
       order.orderNumber,
       order.supplier,
       order.date,
@@ -183,13 +268,13 @@ export function SupplierOrders() {
     })
 
     // Add summary
-    const totalAmount = filteredOrders.reduce((sum, order) => sum + order.total, 0)
-    const totalItems = filteredOrders.reduce((sum, order) => sum + order.items, 0)
+    const totalAmount = paginatedOrders.reduce((sum, order) => sum + order.total, 0)
+    const totalItems = paginatedOrders.reduce((sum, order) => sum + order.items, 0)
     
     const finalY = (doc as any).lastAutoTable.finalY || 90
     doc.setFontSize(10)
     doc.text([
-      `Total Orders: ${filteredOrders.length}`,
+      `Total Orders: ${paginatedOrders.length}`,
       `Total Items: ${totalItems}`,
       `Total Amount: $${totalAmount.toFixed(2)}`
     ], 14, finalY + 10)
@@ -258,6 +343,32 @@ export function SupplierOrders() {
     handleViewOrder(order)
   }
 
+  const handleSort = (column: string) => {
+    if (sortConfig?.column === column) {
+      setSortConfig({
+        column,
+        direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'
+      })
+    } else {
+      setSortConfig({
+        column,
+        direction: 'asc'
+      })
+    }
+  }
+
+  const handleDeleteOrder = () => {
+    if (selectedItems.length === 0) return
+    
+    // Add your delete logic here
+    setOrders(orders.filter(order => !selectedItems.includes(order.id)))
+    setSelectedItems([])
+    toast({
+      title: "Success",
+      description: "Selected orders have been deleted"
+    })
+  }
+
   const toolbarGroups = [
     {
       buttons: [
@@ -270,6 +381,19 @@ export function SupplierOrders() {
           icon: Plus,
           label: "Create Order",
           onClick: () => setOrderModalOpen(true)
+        },
+        {
+          icon: Pencil,
+          label: "Edit Order",
+          onClick: () => {
+            if (selectedItems.length === 1) {
+              const order = orders.find(o => o.id === selectedItems[0])
+              if (order) {
+                handleEditOrder(order)
+              }
+            }
+          },
+          disabled: selectedItems.length !== 1
         },
         {
           icon: Eye,
@@ -285,17 +409,10 @@ export function SupplierOrders() {
           disabled: selectedItems.length !== 1
         },
         {
-          icon: Pencil,
-          label: "Edit Order",
-          onClick: () => {
-            if (selectedItems.length === 1) {
-              const order = orders.find(o => o.id === selectedItems[0])
-              if (order) {
-                handleEditOrder(order)
-              }
-            }
-          },
-          disabled: selectedItems.length !== 1
+          icon: Trash2,
+          label: "Delete Order",
+          onClick: handleDeleteOrder,
+          disabled: selectedItems.length === 0
         }
       ]
     },
@@ -319,23 +436,21 @@ export function SupplierOrders() {
     <div className="space-y-6">
       <Toolbar groups={toolbarGroups} />
       
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <Card className="border-0">
+        <CardHeader className="p-0">
+          <div className="flex items-center justify-between pb-6">
             <div>
-              <CardTitle>Orders List</CardTitle>
-              <CardDescription>View and manage supplier orders</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
+              <div className="flex items-center gap-2 w-full">
                 <Input
                   placeholder="Search orders..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-[200px]"
+                  className="flex-1"
                 />
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[130px]">
+                  <SelectTrigger className="w-[200px]">
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Filter" />
                   </SelectTrigger>
@@ -350,101 +465,165 @@ export function SupplierOrders() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <SupplierTable>
-            <SupplierTableHeader>
-              <SupplierTableRow>
-                <SupplierTableHead className="w-[50px]">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.length === filteredOrders.length}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedItems(filteredOrders.map(order => order.id))
-                      } else {
-                        setSelectedItems([])
-                      }
-                    }}
-                  />
-                </SupplierTableHead>
-                <SupplierTableHead>Order #</SupplierTableHead>
-                <SupplierTableHead>Supplier</SupplierTableHead>
-                <SupplierTableHead>Date</SupplierTableHead>
-                <SupplierTableHead>Items</SupplierTableHead>
-                <SupplierTableHead className="text-right">Total</SupplierTableHead>
-                <SupplierTableHead>Status</SupplierTableHead>
-                <SupplierTableHead className="text-right">Actions</SupplierTableHead>
-              </SupplierTableRow>
-            </SupplierTableHeader>
-            <SupplierTableBody>
-              {filteredOrders.map((order) => (
-                <SupplierTableRow 
+        <CardContent className="p-0 pb-6">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[50px] p-3">
+                  <div className="flex items-center justify-center">
+                    <Checkbox
+                      checked={selectedItems.length === paginatedOrders.length && paginatedOrders.length > 0}
+                      onCheckedChange={() => {
+                        setSelectedItems(
+                          selectedItems.length === paginatedOrders.length
+                            ? []
+                            : paginatedOrders.map(order => order.id)
+                        )
+                      }}
+                      aria-label="Select all orders"
+                    />
+                  </div>
+                </TableHead>
+                {columns.map((column) => (
+                  <TableHead
+                    key={column.id}
+                    className={cn(
+                      "h-12 px-4 cursor-pointer hover:bg-muted/50",
+                      column.width,
+                      column.align
+                    )}
+                    onClick={() => handleSort(column.id)}
+                  >
+                    <div className={cn(
+                      "flex items-center gap-2",
+                      column.align === 'text-right' && "justify-end"
+                    )}>
+                      <column.icon className="h-4 w-4 text-muted-foreground" />
+                      <span>{column.label}</span>
+                      <div className="w-4">
+                        {sortConfig?.column === column.id ? (
+                          sortConfig.direction === 'desc' ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronUp className="h-4 w-4" />
+                          )
+                        ) : (
+                          <ChevronsUpDown className="h-4 w-4 opacity-30" />
+                        )}
+                      </div>
+                    </div>
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedOrders.map((order) => (
+                <TableRow 
                   key={order.id}
+                  className={cn(
+                    "transition-colors hover:bg-muted/50 cursor-pointer",
+                    selectedItems.includes(order.id) && "bg-muted"
+                  )}
                   onClick={(e) => handleRowClick(order.id, e)}
                   onDoubleClick={(e) => handleRowDoubleClick(order, e)}
-                  className={cn(
-                    "cursor-pointer",
-                    selectedItems.includes(order.id) && "bg-muted/50"
-                  )}
                 >
-                  <SupplierTableCell>
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.includes(order.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedItems([...selectedItems, order.id])
-                        } else {
-                          setSelectedItems(selectedItems.filter(id => id !== order.id))
-                        }
-                      }}
-                      onClick={(e) => e.stopPropagation()} // Prevent row click when clicking checkbox
-                    />
-                  </SupplierTableCell>
-                  <SupplierTableCell className="font-medium">{order.orderNumber}</SupplierTableCell>
-                  <SupplierTableCell>{order.supplier}</SupplierTableCell>
-                  <SupplierTableCell>{order.date}</SupplierTableCell>
-                  <SupplierTableCell>{order.items}</SupplierTableCell>
-                  <SupplierTableCell className="text-right">${order.total.toFixed(2)}</SupplierTableCell>
-                  <SupplierTableCell>
+                  <TableCell className="w-[50px] p-3">
+                    <div className="flex items-center justify-center">
+                      <Checkbox
+                        checked={selectedItems.includes(order.id)}
+                        onCheckedChange={() => {
+                          setSelectedItems(current =>
+                            current.includes(order.id)
+                              ? current.filter(id => id !== order.id)
+                              : [...current, order.id]
+                          )
+                        }}
+                        aria-label={`Select order ${order.id}`}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{order.orderNumber}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span>{order.supplier}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>{order.date}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span>{order.items}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span>${order.total.toFixed(2)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-6 py-4">
                     <Badge 
                       variant={
-                        order.status === 'Delivered' ? "default" : 
-                        order.status === 'Processing' ? "secondary" : 
-                        "outline"
+                        order.status === 'Delivered' ? 'default' : 
+                        order.status === 'Processing' ? 'secondary' : 
+                        'outline'
                       }
                     >
                       {order.status}
                     </Badge>
-                  </SupplierTableCell>
-                  <SupplierTableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleViewOrder(order)
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEditOrder(order)
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </SupplierTableCell>
-                </SupplierTableRow>
+                  </TableCell>
+                </TableRow>
               ))}
-            </SupplierTableBody>
-          </SupplierTable>
+            </TableBody>
+          </Table>
+          
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between px-4 py-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredOrders.length)} of {filteredOrders.length} entries
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 0}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <Button
+                    key={i}
+                    variant={currentPage === i ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(i)}
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages - 1}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

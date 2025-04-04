@@ -25,31 +25,31 @@ import { DataTable } from "@/components/ui/data-table";
 import { useExpense } from "../context/ExpenseContext";
 import { useFinance } from "../context/FinanceContext";
 import { ExpenseTable } from "../components";
-import { 
-  Download, 
-  Filter, 
-  Plus, 
-  Search, 
-  Calendar, 
-  DollarSign, 
-  TrendingUp, 
+import {
+  Download,
+  Filter,
+  Plus,
+  Search,
+  Calendar,
+  DollarSign,
+  TrendingUp,
   TrendingDown,
   BarChart,
   FileText,
   RefreshCw
 } from "lucide-react";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { ErrorBoundary } from '@/components/unified-error-boundary';
 
 const ExpenseManagementPageContent: React.FC = () => {
-  const { 
-    expenses, 
+  const {
+    expenses,
     expenseCategories,
-    totalExpenses, 
+    totalExpenses,
     expensesByCategory,
     upcomingRecurringExpenses,
-    loading 
+    loading
   } = useExpense();
-  
+
   const { settings } = useFinance();
   const [dateRange, setDateRange] = useState({ from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), to: new Date() });
   const [selectedView, setSelectedView] = useState("monthly");
@@ -215,9 +215,9 @@ const ExpenseManagementPageContent: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {loading ? "Loading..." : formatCurrency(totalExpenses / 
-                  (selectedView === "monthly" ? 1 : 
-                   selectedView === "quarterly" ? 3 : 
+                {loading ? "Loading..." : formatCurrency(totalExpenses /
+                  (selectedView === "monthly" ? 1 :
+                   selectedView === "quarterly" ? 3 :
                    selectedView === "yearly" ? 12 : 1))}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -234,13 +234,13 @@ const ExpenseManagementPageContent: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {loading || topCategories.length === 0 
-                  ? "Loading..." 
+                {loading || topCategories.length === 0
+                  ? "Loading..."
                   : topCategories[0].name}
               </div>
               <p className="text-xs text-muted-foreground">
-                {loading || topCategories.length === 0 
-                  ? "" 
+                {loading || topCategories.length === 0
+                  ? ""
                   : `${formatCurrency(topCategories[0].amount)} (${topCategories[0].percentage.toFixed(1)}%)`}
               </p>
             </CardContent>
@@ -274,10 +274,10 @@ const ExpenseManagementPageContent: React.FC = () => {
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Checkbox 
-                  id="showRecurring" 
-                  checked={showRecurring} 
-                  onCheckedChange={(checked) => setShowRecurring(!!checked)} 
+                <Checkbox
+                  id="showRecurring"
+                  checked={showRecurring}
+                  onCheckedChange={(checked) => setShowRecurring(!!checked)}
                 />
                 <Label htmlFor="showRecurring" className="text-sm">Show recurring only</Label>
               </div>
@@ -292,12 +292,12 @@ const ExpenseManagementPageContent: React.FC = () => {
               {loading ? (
                 <p>Loading expense data...</p>
               ) : (
-                <DataTable 
-                  columns={columns} 
-                  data={showRecurring 
+                <DataTable
+                  columns={columns}
+                  data={showRecurring
                     ? expenses.filter(e => e.recurring)
                     : expenses
-                  } 
+                  }
                 />
               )}
             </CardContent>
@@ -410,9 +410,9 @@ const ExpenseManagementPageContent: React.FC = () => {
                 )}
               </TabsContent>
               <TabsContent value="all">
-                <DataTable 
-                  columns={columns} 
-                  data={expenses.filter(e => e.recurring)} 
+                <DataTable
+                  columns={columns}
+                  data={expenses.filter(e => e.recurring)}
                 />
               </TabsContent>
               <TabsContent value="add">
@@ -527,4 +527,4 @@ export const ExpenseManagementPage: React.FC = () => {
       <ExpenseManagementPageContent />
     </ErrorBoundary>
   );
-}; 
+};

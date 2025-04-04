@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { useSafeRender } from '@/hooks/useSafeRender';
-import { ErrorBoundary } from '@/components/error-boundary';
+import { ErrorBoundary } from '@/components/unified-error-boundary';
 import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 
 /**

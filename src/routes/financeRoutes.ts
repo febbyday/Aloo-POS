@@ -1,6 +1,6 @@
 /**
  * Finance Module Route Configuration
- * 
+ *
  * This file centralizes all routes related to the Finance module to:
  * 1. Prevent naming conflicts with other modules
  * 2. Allow for easy route validation
@@ -15,25 +15,25 @@ export const FINANCE_BASE_PATH = '/finance';
 export const FINANCE_ROUTES = {
   // Main dashboard
   DASHBOARD: '',
-  
+
   // Revenue management
   REVENUE: 'revenue',
-  
+
   // Expense management
   EXPENSES: 'expenses',
-  
+
   // Profit and loss analysis
   PROFIT_LOSS: 'profit-loss',
-  
+
   // Tax management
   TAXES: 'taxes',
-  
+
   // Payment reconciliation
   RECONCILIATION: 'reconciliation',
-  
+
   // Financial reports
   REPORTS: 'reports',
-  
+
   // Module settings
   SETTINGS: 'settings',
 } as const;
@@ -73,15 +73,15 @@ export const FINANCE_ROUTE_CONFIG: Record<FinanceRouteKey, RouteConfig> = {
     fullPath: FINANCE_FULL_ROUTES.DASHBOARD,
     title: 'Finance Dashboard',
     description: 'Overview of financial performance',
-    icon: 'LayoutDashboard',
-    isIndex: true
+    icon: 'LayoutDashboard'
   },
   REVENUE: {
     path: FINANCE_ROUTES.REVENUE,
     fullPath: FINANCE_FULL_ROUTES.REVENUE,
     title: 'Revenue Tracking',
     description: 'Monitor and manage sales revenue',
-    icon: 'TrendingUp'
+    icon: 'TrendingUp',
+    isIndex: true
   },
   EXPENSES: {
     path: FINANCE_ROUTES.EXPENSES,
@@ -125,4 +125,4 @@ export const FINANCE_ROUTE_CONFIG: Record<FinanceRouteKey, RouteConfig> = {
     description: 'Configure finance module settings',
     icon: 'Settings'
   },
-}; 
+};

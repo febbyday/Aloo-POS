@@ -41,11 +41,12 @@ import {
   ChevronsUpDown
 } from 'lucide-react'
 import { MarketStockTransfer } from './MarketStockTransfer'
-import { MarketDetailsDialog } from './MarketDetailsDialog'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { Market, MarketFilter } from '../pages/MarketsPage'
 import { MarketsToolbar } from './MarketsToolbar'
+import { useNavigate } from 'react-router-dom'
+import { MARKETS_FULL_ROUTES } from '@/routes/marketRoutes'
 
 interface MarketsTableProps {
   filters: MarketFilter
@@ -127,11 +128,11 @@ export function MarketsTable({
   onExport,
   setFilters
 }: MarketsTableProps) {
+  const navigate = useNavigate()
   const [itemsPerPage] = useState(10)
   const [currentPage] = useState(0)
   const [sortConfig, setSortConfig] = useState<{column: string; direction: 'asc' | 'desc'} | null>(null)
   const [showStockTransfer, setShowStockTransfer] = useState(false)
-  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
   const startIndex = currentPage * itemsPerPage
   const endIndex = startIndex + itemsPerPage
@@ -162,14 +163,13 @@ export function MarketsTable({
   }
 
   const handleRowDoubleClick = (market: Market) => {
-    onViewDetails(market)
+    navigate(`${MARKETS_FULL_ROUTES.ROOT}/${market.id}`)
   }
 
   const handleViewDetails = () => {
     const selectedMarket = mockMarkets.find(m => m.id === selectedMarkets[0])
     if (selectedMarket) {
-      setShowDetailsDialog(true)
-      onViewDetails(selectedMarket)
+      navigate(`${MARKETS_FULL_ROUTES.ROOT}/${selectedMarket.id}`)
     }
   }
 
@@ -182,13 +182,6 @@ export function MarketsTable({
         />
       )}
 
-      {showDetailsDialog && selectedMarkets.length === 1 && (
-        <MarketDetailsDialog
-          market={mockMarkets.find(m => m.id === selectedMarkets[0])!}
-          open={showDetailsDialog}
-          onOpenChange={setShowDetailsDialog}
-        />
-      )}
       <MarketsToolbar 
         selectedMarkets={selectedMarkets}
         onRefresh={onRefresh}

@@ -163,3 +163,70 @@ export interface ReportSettings {
 }
 
 export type SupplierFormValues = z.infer<typeof supplierSchema>
+
+// Connection-related types
+export type ConnectionType = 'api' | 'sftp' | 'database' | 'webhook' | 'manual';
+
+export type SyncFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'manual';
+
+export interface ConnectionConfig {
+  type: ConnectionType;
+  name: string;
+  baseUrl?: string;
+  apiKey?: string;
+  username?: string;
+  password?: string;
+  hostName?: string;
+  port?: string;
+  databaseName?: string;
+  webhookUrl?: string;
+  sftpPath?: string;
+  syncFrequency: SyncFrequency;
+  enabled: boolean;
+  lastSynced: string | null;
+  fieldMapping: Record<string, string>;
+}
+
+export type ConnectionStatusType = 'connected' | 'disconnected' | 'error' | 'warning';
+
+export interface ConnectionStatus {
+  status: ConnectionStatusType;
+  lastChecked: string | null;
+  message: string;
+  latency: string | null;
+  health: number | null;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: Record<string, string>;
+  warnings: Record<string, string>;
+}
+
+export interface ConnectionHistoryItem {
+  id: string;
+  timestamp: string;
+  type: 'sync' | 'test' | 'config' | 'error';
+  status: 'success' | 'error' | 'warning';
+  message: string;
+  details?: Record<string, any>;
+}
+
+// Connection validation schemas
+export const connectionConfigSchema = z.object({
+  type: z.enum(['api', 'sftp', 'database', 'webhook', 'manual']),
+  name: z.string().min(1, 'Connection name is required'),
+  baseUrl: z.string().optional(),
+  apiKey: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  hostName: z.string().optional(),
+  port: z.string().optional(),
+  databaseName: z.string().optional(),
+  webhookUrl: z.string().optional(),
+  sftpPath: z.string().optional(),
+  syncFrequency: z.enum(['hourly', 'daily', 'weekly', 'monthly', 'manual']),
+  enabled: z.boolean(),
+  lastSynced: z.string().nullable(),
+  fieldMapping: z.record(z.string())
+});

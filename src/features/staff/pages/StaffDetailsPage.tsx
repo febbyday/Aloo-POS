@@ -121,6 +121,7 @@ export function StaffDetailsPage() {
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null)
   const [isEmergencyContactModalOpen, setIsEmergencyContactModalOpen] = useState(false)
   const [isIdentificationModalOpen, setIsIdentificationModalOpen] = useState(false)
+  const [isBankingDetailsModalOpen, setIsBankingDetailsModalOpen] = useState(false)
   const [emergencyContact, setEmergencyContact] = useState<{
     name: string;
     relationship: string;
@@ -653,16 +654,7 @@ export function StaffDetailsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
-      <Button 
-        variant="outline" 
-        onClick={() => navigate("/staff")} 
-        className="mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Staff List
-      </Button>
-
+    <div className="w-full">
       <LoadingState
         isLoading={isLoading}
         loadingText="Loading staff details..."
@@ -747,17 +739,15 @@ export function StaffDetailsPage() {
                           <Camera className="mr-2 h-4 w-4" />
                           Update Profile Image
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.preventDefault();
-                          navigate(`/staff/${staff.id}/documents`, { replace: true });
-                        }}>
+                        <DropdownMenuItem onClick={() => document.querySelector('[value="documents"]')?.dispatchEvent(
+                          new MouseEvent('click', { bubbles: true })
+                        )}>
                           <FileText className="mr-2 h-4 w-4" />
                           Manage Documents
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.preventDefault();
-                          navigate(`/staff/${staff.id}/attendance`, { replace: true });
-                        }}>
+                        <DropdownMenuItem onClick={() => document.querySelector('[value="attendance"]')?.dispatchEvent(
+                          new MouseEvent('click', { bubbles: true })
+                        )}>
                           <Calendar className="mr-2 h-4 w-4" />
                           Full Attendance History
                         </DropdownMenuItem>
@@ -954,14 +944,16 @@ export function StaffDetailsPage() {
                                   <Phone className="h-4 w-4 mr-2" />
                                   Emergency Contact
                                 </span>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => setIsEmergencyContactModalOpen(true)}
-                                >
-                                  <Edit className="h-3 w-3 mr-1" />
-                                  Edit
-                                </Button>
+                                {emergencyContact && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => setIsEmergencyContactModalOpen(true)}
+                                  >
+                                    <Edit className="h-3 w-3 mr-1" />
+                                    Edit
+                                  </Button>
+                                )}
                               </h3>
                               <div className="bg-muted/50 p-4 rounded-lg space-y-2">
                                 {emergencyContact ? (
@@ -992,7 +984,17 @@ export function StaffDetailsPage() {
                                     )}
                                   </>
                                 ) : (
-                                  <p className="text-sm text-muted-foreground">No emergency contact information available</p>
+                                  <div className="flex flex-col items-center justify-center py-4">
+                                    <p className="text-sm text-muted-foreground mb-3">No emergency contact information available</p>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => setIsEmergencyContactModalOpen(true)}
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add Emergency Contact
+                                    </Button>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -1040,14 +1042,16 @@ export function StaffDetailsPage() {
                                   <CreditCard className="h-4 w-4 mr-2" />
                                   Identification
                                 </span>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => setIsIdentificationModalOpen(true)}
-                                >
-                                  <Edit className="h-3 w-3 mr-1" />
-                                  Edit
-                                </Button>
+                                {identification && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => setIsIdentificationModalOpen(true)}
+                                  >
+                                    <Edit className="h-3 w-3 mr-1" />
+                                    Edit
+                                  </Button>
+                                )}
                               </h3>
                               <div className="bg-muted/50 p-4 rounded-lg space-y-2">
                                 {identification ? (
@@ -1080,7 +1084,17 @@ export function StaffDetailsPage() {
                                     )}
                                   </>
                                 ) : (
-                                  <p className="text-sm text-muted-foreground">No identification details available</p>
+                                  <div className="flex flex-col items-center justify-center py-4">
+                                    <p className="text-sm text-muted-foreground mb-3">No identification details available</p>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => setIsIdentificationModalOpen(true)}
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add Identification
+                                    </Button>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -1093,6 +1107,17 @@ export function StaffDetailsPage() {
                               <div className="bg-muted/50 p-4 rounded-lg space-y-2">
                                 {staff.bankingDetails ? (
                                   <>
+                                    <div className="flex items-center justify-between mb-3">
+                                      <span className="text-sm font-medium">Banking Information</span>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => setIsBankingDetailsModalOpen(true)}
+                                      >
+                                        <Edit className="h-3 w-3 mr-1" />
+                                        Edit
+                                      </Button>
+                                    </div>
                                     <div className="grid grid-cols-3">
                                       <span className="text-sm font-medium">Bank Name</span>
                                       <span className="text-sm col-span-2">{staff.bankingDetails.bankName}</span>
@@ -1123,7 +1148,17 @@ export function StaffDetailsPage() {
                                     )}
                                   </>
                                 ) : (
-                                  <p className="text-sm text-muted-foreground">No banking details available</p>
+                                  <div className="flex flex-col items-center justify-center py-4">
+                                    <p className="text-sm text-muted-foreground mb-3">No banking details available</p>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => setIsBankingDetailsModalOpen(true)}
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add Banking Details
+                                    </Button>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -1794,6 +1829,131 @@ export function StaffDetailsPage() {
                 Cancel
               </Button>
               <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Banking Details Modal */}
+      <Dialog open={isBankingDetailsModalOpen} onOpenChange={setIsBankingDetailsModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Banking Details</DialogTitle>
+            <DialogDescription>
+              {staff.bankingDetails 
+                ? "Update banking details for this staff member." 
+                : "Add banking details for this staff member."
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={(e) => {
+            e.preventDefault()
+            const formData = new FormData(e.currentTarget)
+            const newBankingDetails = {
+              accountName: formData.get('accountName') as string,
+              accountNumber: formData.get('accountNumber') as string,
+              bankName: formData.get('bankName') as string,
+              accountType: formData.get('accountType') as string,
+              branchLocation: formData.get('branchLocation') as string,
+              branchCode: formData.get('branchCode') as string || undefined,
+              swiftCode: formData.get('swiftCode') as string || undefined,
+            }
+            
+            if (staff) {
+              setStaff({
+                ...staff,
+                bankingDetails: newBankingDetails
+              })
+            }
+            
+            showToast.success("Banking details updated", "Banking information has been updated successfully")
+            
+            setIsBankingDetailsModalOpen(false)
+          }} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bankName">Bank Name *</Label>
+                <Input 
+                  id="bankName" 
+                  name="bankName" 
+                  defaultValue={staff?.bankingDetails?.bankName || ''} 
+                  required 
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="accountType">Account Type *</Label>
+                <Select defaultValue={staff?.bankingDetails?.accountType || 'checking'} name="accountType">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="checking">Checking</SelectItem>
+                    <SelectItem value="savings">Savings</SelectItem>
+                    <SelectItem value="business">Business</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="accountName">Account Holder Name *</Label>
+                <Input 
+                  id="accountName" 
+                  name="accountName" 
+                  defaultValue={staff?.bankingDetails?.accountName || ''} 
+                  required 
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="accountNumber">Account Number *</Label>
+                <Input 
+                  id="accountNumber" 
+                  name="accountNumber" 
+                  defaultValue={staff?.bankingDetails?.accountNumber || ''} 
+                  required 
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="branchLocation">Branch Location</Label>
+                <Input 
+                  id="branchLocation" 
+                  name="branchLocation" 
+                  defaultValue={staff?.bankingDetails?.branchLocation || ''} 
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="branchCode">Branch Code</Label>
+                <Input 
+                  id="branchCode" 
+                  name="branchCode" 
+                  defaultValue={staff?.bankingDetails?.branchCode || ''} 
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="swiftCode">SWIFT/BIC Code</Label>
+              <Input 
+                id="swiftCode" 
+                name="swiftCode" 
+                defaultValue={staff?.bankingDetails?.swiftCode || ''} 
+              />
+            </div>
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsBankingDetailsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">{staff?.bankingDetails ? 'Update' : 'Add'} Banking Details</Button>
             </DialogFooter>
           </form>
         </DialogContent>

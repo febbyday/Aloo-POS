@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import prisma from './lib/prisma'; // Import prisma from dedicated file
 import staffRoutes from './routes/staffRoutes';
+import staffRoutesV2 from './staff/routes/staff.routes'; // Import new staff routes
 import roleRoutes from './routes/roleRoutes';
 import employmentTypeRoutes from './routes/employmentTypeRoutes';
 import employmentStatusRoutes from './routes/employmentStatusRoutes';
@@ -18,6 +19,12 @@ import customerGroupRoutes from './routes/customerGroupRoutes';
 import customerAnalyticsRoutes from './routes/customerAnalyticsRoutes';
 import customerReportsRoutes from './routes/customerReportsRoutes';
 import loyaltyRoutes from './routes/loyaltyRoutes';
+import auditRoutes from './routes/auditRoutes';
+import userRoutes from './routes/userRoutes';
+import notificationRoutes from './routes/notificationRoutes';
+import { staffUserConnector } from './services/staffUserConnector';
+import { emailService } from './services/emailService';
+import { notificationService } from './services/notificationService';
 
 // Initialize environment variables
 dotenv.config();
@@ -65,13 +72,47 @@ if (authRoutes) app.use('/api/v1/auth', authRoutes);
 if (roleRoutes) app.use('/api/v1/roles', roleRoutes);
 if (employmentTypeRoutes) app.use('/api/v1/employment-types', employmentTypeRoutes);
 if (employmentStatusRoutes) app.use('/api/v1/employment-statuses', employmentStatusRoutes);
-if (staffRoutes) app.use('/api/v1/staff', staffRoutes);
+
+// Use the new staff routes from the staff directory
+if (staffRoutesV2) {
+  console.log('Registering staff routes V2...');
+  app.use('/api/v1/staff', staffRoutesV2);
+} else if (staffRoutes) {
+  console.log('Falling back to original staff routes...');
+  app.use('/api/v1/staff', staffRoutes);
+}
+
 if (customerRoutes) app.use('/api/v1/customers', customerRoutes);
+
 // Customer-related routes
 if (customerGroupRoutes) app.use('/api/v1/customer-groups', customerGroupRoutes);
 if (customerAnalyticsRoutes) app.use('/api/v1/customer-analytics', customerAnalyticsRoutes);
 if (customerReportsRoutes) app.use('/api/v1/customer-reports', customerReportsRoutes);
-if (loyaltyRoutes) app.use('/api/v1/loyalty', loyaltyRoutes);
+
+// Loyalty routes - ensure proper registration
+if (loyaltyRoutes) {
+  console.log('Registering loyalty routes...');
+  app.use('/api/v1/loyalty', loyaltyRoutes);
+} else {
+  console.error('Loyalty routes not found!');
+}
+
+// Audit logs routes
+if (auditRoutes) {
+  app.use('/api/v1/audit-logs', auditRoutes);
+}
+
+// User routes
+if (userRoutes) {
+  console.log('Registering user routes...');
+  app.use('/api/v1/users', userRoutes);
+}
+
+// Notification routes
+if (notificationRoutes) {
+  console.log('Registering notification routes...');
+  app.use('/api/v1/notifications', notificationRoutes);
+}
 
 // Root route
 app.get('/', (req, res) => {
@@ -95,7 +136,9 @@ app.get('/', (req, res) => {
       customerGroups: '/api/v1/customer-groups',
       customerAnalytics: '/api/v1/customer-analytics',
       customerReports: '/api/v1/customer-reports',
-      loyalty: '/api/v1/loyalty'
+      loyalty: '/api/v1/loyalty',
+      auditLogs: '/api/v1/audit-logs',
+      users: '/api/v1/users'
     }
   });
 });
@@ -114,7 +157,19 @@ async function startServer() {
   try {
     // Check database connection before starting the server
     await checkDatabaseConnection();
-    
+
+    // Initialize the staff-user connector service
+    staffUserConnector.initialize();
+    console.log('✅ Staff-User connector service initialized');
+
+    // Initialize the email service
+    emailService.initialize();
+    console.log('✅ Email service initialized');
+
+    // Initialize the notification service
+    notificationService.initialize();
+    console.log('✅ Notification service initialized');
+
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`API available at http://localhost:${PORT}/api/v1`);
@@ -130,4 +185,4 @@ if (require.main === module) {
   startServer();
 }
 
-export default app; 
+export default app;

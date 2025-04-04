@@ -40,7 +40,18 @@ export const formatCurrency = (value: number, options: CurrencyFormatOptions = {
 /**
  * Formats a date with various options
  */
-export const formatDate = (date: Date, options: DateFormatOptions = {}) => {
+export const formatDate = (date: Date | string | null | undefined, options: DateFormatOptions = {}) => {
+  // Return a placeholder for undefined, null or invalid dates
+  if (!date) return '-';
+  
+  // Try to convert string dates to Date objects
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  // Check if date is valid
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+    return '-';
+  }
+  
   const { format = 'short', includeTime = false, locale = 'en-US' } = options;
   
   const dateOptions: Intl.DateTimeFormatOptions = {
@@ -48,7 +59,12 @@ export const formatDate = (date: Date, options: DateFormatOptions = {}) => {
     ...(includeTime && { timeStyle: 'short' })
   };
   
-  return new Intl.DateTimeFormat(locale, dateOptions).format(date);
+  try {
+    return new Intl.DateTimeFormat(locale, dateOptions).format(dateObj);
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '-';
+  }
 };
 
 /**

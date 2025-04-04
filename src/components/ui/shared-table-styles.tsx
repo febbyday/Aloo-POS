@@ -6,7 +6,7 @@ export const tableStyles = {
   tableWrapper: "", 
   table: "w-full caption-bottom text-sm",
   header: "bg-muted/50",
-  headerRow: "hover:bg-transparent border-b border-border",
+  headerRow: "hover:bg-transparent",
   headerCell: "h-12 px-4 align-middle cursor-pointer hover:bg-muted/50 [&:has([role=checkbox])]:pr-0 w-[40px]",
   headerCellContent: "flex items-center gap-2",
   headerIcon: "h-4 w-4",

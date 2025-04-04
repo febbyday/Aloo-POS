@@ -1,25 +1,19 @@
-import { 
-  LayoutDashboard, 
-  Store, 
-  Tent, 
-  Package, 
-  Receipt, 
-  Users, 
+import {
+  LayoutDashboard,
+  Store,
+  Package,
+  Receipt,
+  Users,
   BarChart,
   UserCog,
   Settings,
   HelpCircle,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
-  Boxes,
   ArrowLeftRight,
   AlertTriangle,
   History,
-  Tags,
   Building2,
   LineChart,
-  PieChart,
   TrendingUp,
   LayoutGrid,
   ShoppingCart,
@@ -44,14 +38,13 @@ import {
   Cpu,
   DollarSign,
   FolderTree,
-  Upload,
-  Download,
   Plus,
   RotateCcw,
   Percent,
   CreditCard,
   Menu,
-  Briefcase
+  Briefcase,
+  LockIcon
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -72,28 +65,30 @@ interface NavigationItem {
 }
 
 const navigation: NavigationItem[] = [
-  { 
-    name: 'Dashboard', 
-    href: '/', 
-    icon: LayoutGrid 
+  {
+    name: 'Dashboard',
+    href: '/',
+    icon: LayoutGrid
   },
-  { 
-    name: 'Products', 
-    href: '/products', 
+  {
+    name: 'Products',
+    href: '/products',
     icon: Package,
     submenu: [
       { name: 'All Products', href: '/products', icon: Package },
       { name: 'Categories', href: '/products/categories', icon: FolderTree },
+      { name: 'Brands', href: '/products/brands', icon: Building },
+      { name: 'Variations & Attributes', href: '/products/variations', icon: LayoutGrid },
       { name: 'Pricing', href: '/products/pricing', icon: TrendingUp },
       { name: 'Stock Transfer', href: '/products/transfers', icon: ArrowLeftRight },
-      { name: 'Low Stock Alerts', href: '/products/low-stock', icon: AlertTriangle },
+      { name: 'Low Stock Alerts', href: '/products/stock/alerts', icon: AlertTriangle },
       { name: 'Stock History', href: '/products/history', icon: History },
       { name: 'Print Labels', href: '/products/labels', icon: Printer },
     ]
   },
-  { 
-    name: 'Sales', 
-    href: '/sales', 
+  {
+    name: 'Sales',
+    href: '/sales',
     icon: ShoppingCart,
     submenu: [
       { name: 'New Sale', href: '/sales/new', icon: Plus },
@@ -106,38 +101,37 @@ const navigation: NavigationItem[] = [
       { name: 'Analytics', href: '/sales/analytics', icon: LineChart },
     ]
   },
-  { 
-    name: 'Shops', 
-    href: '/shops', 
+  {
+    name: 'Shops',
+    href: '/shops',
     icon: Store,
     submenu: [
       { name: 'All Shops', href: '/shops', icon: Store },
       { name: 'Staff', href: '/shops/staff', icon: Users },
-      { name: 'Settings', href: '/shops/settings', icon: Settings2 },
       { name: 'Reports', href: '/shops/reports', icon: BarChart },
     ]
   },
-  { 
-    name: 'Markets', 
-    href: '/markets', 
+  {
+    name: 'Markets',
+    href: '/markets',
     icon: Building2,
     submenu: [
       { name: 'All Markets', href: '/markets', icon: Building },
       { name: 'Reports', href: '/markets/reports', icon: BarChart3 },
     ]
   },
-  { 
-    name: 'Expenses', 
-    href: '/expenses', 
+  {
+    name: 'Expenses',
+    href: '/expenses',
     icon: DollarSign,
     submenu: [
       { name: 'All Expenses', href: '/expenses', icon: FileText },
       { name: 'Categories', href: '/expenses/categories', icon: FolderTree },
     ]
   },
-  { 
-    name: 'Repairs', 
-    href: '/repairs', 
+  {
+    name: 'Repairs',
+    href: '/repairs',
     icon: Wrench,
     submenu: [
       { name: 'All Repairs', href: '/repairs', icon: ClipboardList },
@@ -145,9 +139,9 @@ const navigation: NavigationItem[] = [
       { name: 'Reports', href: '/repairs/reports', icon: ScrollText },
     ]
   },
-  { 
-    name: 'Suppliers', 
-    href: '/suppliers', 
+  {
+    name: 'Suppliers',
+    href: '/suppliers',
     icon: Users,
     submenu: [
       { name: 'All Suppliers', href: '/suppliers', icon: Users },
@@ -156,12 +150,11 @@ const navigation: NavigationItem[] = [
       { name: 'Reports', href: '/suppliers/reports', icon: FileText },
     ]
   },
-  { 
-    name: 'Finance', 
-    href: '/finance', 
+  {
+    name: 'Finance',
+    href: '/finance/revenue',
     icon: DollarSign,
     submenu: [
-      { name: 'Dashboard', href: '/finance', icon: LayoutDashboard },
       { name: 'Sales & Revenue', href: '/finance/revenue', icon: TrendingUp },
       { name: 'Expenses', href: '/finance/expenses', icon: FileText },
       { name: 'Profit & Loss', href: '/finance/profit-loss', icon: BarChart },
@@ -171,9 +164,9 @@ const navigation: NavigationItem[] = [
       { name: 'Settings', href: '/finance/settings', icon: Settings },
     ]
   },
-  { 
-    name: 'Reports', 
-    href: '/reports', 
+  {
+    name: 'Reports',
+    href: '/reports',
     icon: BarChart,
     submenu: [
       { name: 'Sales Reports', href: '/reports/sales', icon: Receipt },
@@ -183,52 +176,62 @@ const navigation: NavigationItem[] = [
       { name: 'Custom Reports', href: '/reports/custom', icon: FileText },
     ]
   },
-  { 
-    name: 'Staff', 
-    href: '/staff', 
-    icon: Users,
-    submenu: [
-      { name: 'All Staff', href: '/staff', icon: UserCircle },
-      { name: 'Roles', href: '/staff/roles', icon: Shield },
-      { name: 'Permissions', href: '/staff/permissions', icon: Shield },
-      { name: 'Employment Types', href: '/staff/employment-types', icon: Clock },
-      { name: 'Employment Status', href: '/staff/employment-status', icon: Briefcase },
-      { name: 'Performance', href: '/staff/performance', icon: Target },
-    ]
-  },
-  { 
-    name: 'Customers', 
-    href: '/customers', 
+  {
+    name: 'Customers',
+    href: '/customers',
     icon: Users,
     submenu: [
       { name: 'All Customers', href: '/customers', icon: Users },
+      { name: 'Groups', href: '/customers/groups', icon: Users },
       { name: 'Loyalty Program', href: '/customers/loyalty', icon: Gift },
       { name: 'History', href: '/customers/history', icon: History },
       { name: 'Analytics', href: '/customers/analytics', icon: BarChart },
       { name: 'Reports', href: '/customers/reports', icon: FileText },
     ]
   },
+  {
+    name: 'Users',
+    href: '/users',
+    icon: UserCircle,
+    submenu: [
+      { name: 'All Users', href: '/users', icon: UserCircle },
+      { name: 'User Roles', href: '/roles', icon: Shield },
+      { name: 'Permissions', href: '/permissions', icon: LockIcon },
+    ]
+  },
+  {
+    name: 'Staff',
+    href: '/staff',
+    icon: Users,
+    submenu: [
+      { name: 'All Staff', href: '/staff', icon: UserCircle },
+      { name: 'Employment Types', href: '/staff/employment-types', icon: Clock },
+      { name: 'Employment Status', href: '/staff/employment-status', icon: Briefcase },
+      { name: 'Performance', href: '/staff/performance', icon: Target },
+    ]
+  },
 ]
 
 // Add Settings & Support at the bottom with a separator
 navigation.push(
-  { 
+  {
     name: 'Settings & Support',
     href: '/settings',
     icon: Settings,
     submenu: [
-      { 
-        name: 'System Settings', 
-        href: '/settings', 
+      {
+        name: 'System Settings',
+        href: '/settings',
         icon: Settings,
         submenu: [
           { name: 'Appearance', href: '/settings/appearance', icon: Palette },
-          { name: 'Notifications', href: '/settings/notifications', icon: Bell },
+          { name: 'Notification Settings', href: '/settings/notifications', icon: Bell },
           { name: 'Backup & Export', href: '/settings/backup', icon: Database },
           { name: 'Receipt Settings', href: '/settings/receipts', icon: Receipt },
           { name: 'Tax & Currency', href: '/settings/tax', icon: Calculator },
           { name: 'Security', href: '/settings/security', icon: Shield },
           { name: 'System Performance', href: '/settings/system', icon: Cpu },
+          { name: 'Notifications', href: '/notifications', icon: Bell },
           { name: 'Printer & Hardware', href: '/settings/hardware', icon: Printer },
           { name: 'WooCommerce', href: '/settings/woocommerce', icon: ShoppingCart }
         ]
@@ -238,11 +241,78 @@ navigation.push(
   }
 )
 
-function NavItem({ item, isOpen, isNested = false }: { item: NavigationItem; isOpen: boolean; isNested?: boolean }) {
-  const location = useLocation()
-  const [isSubmenuOpen, setIsSubmenuOpen] = useState(
-    location.pathname.startsWith(item.href)
+export function Sidebar({ isOpen, onToggle }: SidebarProps) {
+  const [openSubmenuHref, setOpenSubmenuHref] = useState<string | null>(null)
+
+  const handleSubmenuClick = (href: string) => {
+    setOpenSubmenuHref(openSubmenuHref === href ? null : href)
+  }
+
+  return (
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-background transition-all duration-300 ease-in-out",
+        isOpen ? "w-64" : "w-16"
+      )}
+    >
+      <div className="flex h-14 items-center border-b px-4">
+        <button
+          onClick={onToggle}
+          className="mr-2 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
+        {isOpen && (
+          <span className="font-semibold">POS System</span>
+        )}
+      </div>
+
+      <nav className="flex flex-col h-full">
+        <div className="space-y-1 p-2">
+          {navigation.slice(0, -1).map((item) => (
+            <NavItem
+              key={item.href}
+              item={item}
+              isOpen={isOpen}
+              isSubmenuOpen={openSubmenuHref === item.href}
+              onSubmenuClick={handleSubmenuClick}
+            />
+          ))}
+        </div>
+
+        {/* Auto-spacing to push Settings to the bottom */}
+        <div className="flex-grow"></div>
+
+        {/* Settings & Support at the bottom */}
+        <div className="p-2">
+          <div className="border-t border-border pt-2"></div>
+          <NavItem
+            key={navigation[navigation.length - 1].href}
+            item={navigation[navigation.length - 1]}
+            isOpen={isOpen}
+            isSubmenuOpen={openSubmenuHref === navigation[navigation.length - 1].href}
+            onSubmenuClick={handleSubmenuClick}
+          />
+        </div>
+      </nav>
+    </aside>
   )
+}
+
+function NavItem({
+  item,
+  isOpen,
+  isNested = false,
+  isSubmenuOpen,
+  onSubmenuClick
+}: {
+  item: NavigationItem;
+  isOpen: boolean;
+  isNested?: boolean;
+  isSubmenuOpen: boolean;
+  onSubmenuClick: (href: string) => void;
+}) {
+  const location = useLocation()
 
   const isActive = location.pathname === item.href ||
     (item.children && location.pathname.startsWith(item.href)) ||
@@ -261,7 +331,7 @@ function NavItem({ item, isOpen, isNested = false }: { item: NavigationItem; isO
         onClick={(e) => {
           if (hasChildren || hasSubmenu) {
             e.preventDefault()
-            setIsSubmenuOpen(!isSubmenuOpen)
+            onSubmenuClick(item.href)
           }
         }}
         className={cn(
@@ -301,6 +371,8 @@ function NavItem({ item, isOpen, isNested = false }: { item: NavigationItem; isO
                 item={child}
                 isOpen={isOpen}
                 isNested={true}
+                isSubmenuOpen={false}
+                onSubmenuClick={onSubmenuClick}
               />
             ))}
             {(item.submenu || []).map((subItem) => {
@@ -330,45 +402,5 @@ function NavItem({ item, isOpen, isNested = false }: { item: NavigationItem; isO
         </div>
       )}
     </div>
-  )
-}
-
-export function Sidebar({ isOpen, onToggle }: SidebarProps) {
-  return (
-    <aside
-      className={cn(
-        "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-background transition-all duration-300 ease-in-out",
-        isOpen ? "w-64" : "w-16"
-      )}
-    >
-      <div className="flex h-14 items-center border-b px-4">
-        <button
-          onClick={onToggle}
-          className="mr-2 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-        >
-          <Menu className="h-4 w-4" />
-        </button>
-        {isOpen && (
-          <span className="font-semibold">POS System</span>
-        )}
-      </div>
-
-      <nav className="flex flex-col h-full">
-        <div className="space-y-1 p-2">
-          {navigation.slice(0, -1).map((item) => (
-            <NavItem key={item.href} item={item} isOpen={isOpen} />
-          ))}
-        </div>
-        
-        {/* Auto-spacing to push Settings to the bottom */}
-        <div className="flex-grow"></div>
-        
-        {/* Settings & Support at the bottom */}
-        <div className="p-2">
-          <div className="border-t border-border pt-2"></div>
-          <NavItem key={navigation[navigation.length - 1].href} item={navigation[navigation.length - 1]} isOpen={isOpen} />
-        </div>
-      </nav>
-    </aside>
   )
 }

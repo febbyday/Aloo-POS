@@ -1,3 +1,5 @@
+// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
+
 /**
  * Shops Service
  * 
@@ -5,7 +7,16 @@
  */
 
 import { z } from 'zod';
-import { Shop } from '../types/shops.types';
+
+// Import types from the shared schema
+import {
+  Shop,
+  shopSchema,
+  createShopSchema,
+  updateShopSchema,
+  CreateShopInput as SharedCreateShopInput,
+  UpdateShopInput as SharedUpdateShopInput
+} from '../types';
 import { getApiEndpoint } from '@/lib/api/config';
 
 // API base URL - update to match the backend endpoint structure
@@ -14,75 +25,21 @@ const API_BASE_URL = `${getApiEndpoint('shops')}`;
 // Request trackers for cancellation
 const requestControllers: { [key: string]: AbortController } = {};
 
-// Type validation schemas for shop-related entities
-export const ShopActivitySchema = z.object({
-  type: z.enum(['inventory', 'staff', 'sales', 'system']),
-  message: z.string(),
-  timestamp: z.date().or(z.string().transform(val => new Date(val))),
-});
-
-export const ShopStaffMemberSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Name is required'),
-  position: z.string(),
-  email: z.string().email('Invalid email address'),
-});
-
-// Type validation schema for Shop
-export const ShopSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Shop name is required'),
-  location: z.string().min(1, 'Location is required'),
-  type: z.enum(['retail', 'warehouse', 'outlet']),
-  status: z.enum(['active', 'inactive', 'maintenance']),
-  staffCount: z.number().int().nonnegative(),
-  lastSync: z.date().or(z.string().transform(val => new Date(val))),
-  createdAt: z.date().or(z.string().transform(val => new Date(val))),
-  
-  // These fields are optional in the Shop interface, so make them optional in the schema
-  phone: z.string().optional().or(z.literal('')),
-  email: z.string().email('Invalid email address').optional().or(z.literal('')),
-  manager: z.string().optional().or(z.literal('')),
-  openingHours: z.string().optional().or(z.literal('')),
-  salesLastMonth: z.number().optional(),
-  inventoryCount: z.number().int().optional(),
-  averageOrderValue: z.number().optional(),
-  topSellingCategories: z.array(z.string()).optional(),
-  
-  // Related entities are also optional
-  recentActivity: z.array(ShopActivitySchema).optional(),
-  staffMembers: z.array(ShopStaffMemberSchema).optional(),
-});
-
-// Define the type for our schema to ensure it matches Shop interface
-export type ShopSchemaType = z.infer<typeof ShopSchema>;
-
-// Ensure compatibility - this will cause a compile error if Shop and ShopSchemaType don't match
-// Using type assertion to cast our schema to return the correct Shop interface
-const shopSchemaTyped = ShopSchema as z.ZodType<Shop>;
-const shopSchemaArrayTyped = ShopSchema.array() as z.ZodType<Shop[]>;
+// Using the shared schema for validation
+const shopSchemaTyped = shopSchema as z.ZodType<Shop>;
+const shopSchemaArrayTyped = shopSchema.array() as z.ZodType<Shop[]>;
 
 // Schema for paginated shop response from backend
 const ShopPaginatedResponseSchema = z.object({
-  shops: z.array(ShopSchema),
+  shops: z.array(shopSchema),
   total: z.number(),
   page: z.number(),
   limit: z.number()
 });
 
-// Type for creating a new shop
-export const CreateShopSchema = ShopSchema.omit({ 
-  id: true, 
-  createdAt: true, 
-  lastSync: true 
-});
-
-export type CreateShopInput = z.infer<typeof CreateShopSchema>;
-
-// Type for updating an existing shop
-export const UpdateShopSchema = ShopSchema.partial();
-
-export type UpdateShopInput = z.infer<typeof UpdateShopSchema>;
+// Type aliases for compatibility with existing code
+export type CreateShopInput = SharedCreateShopInput;
+export type UpdateShopInput = SharedUpdateShopInput;
 
 /**
  * Helper function to handle API responses
@@ -289,8 +246,8 @@ export const shopsService = {
     requestControllers[uniqueRequestId] = controller;
     
     try {
-      // Validate the input data with the CreateShopSchema
-      const validatedData = CreateShopSchema.parse(data);
+      // Validate the input data with the createShopSchema
+      const validatedData = createShopSchema.parse(data);
       
       console.log(`Creating shop "${data.name}" with unique requestId: ${uniqueRequestId}`);
       
@@ -351,7 +308,7 @@ export const shopsService = {
     
     try {
       // Validate update data if provided
-      const validatedData = UpdateShopSchema.parse(data);
+      const validatedData = updateShopSchema.parse(data);
       
       console.log(`Updating shop ${id} with data:`, JSON.stringify(validatedData, null, 2));
       

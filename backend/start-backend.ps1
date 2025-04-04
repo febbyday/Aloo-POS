@@ -1,31 +1,54 @@
-# PowerShell script to start the backend server
+# Start Backend Server Script
 Write-Host "====================================="
 Write-Host "POS System Backend Setup - PowerShell"
 Write-Host "====================================="
 
-# Navigate to backend directory (if not already there)
-# $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-# Set-Location $scriptPath
-
-Write-Host "Setting up database..."
-npx prisma generate
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Error generating Prisma client!" -ForegroundColor Red
-    exit $LASTEXITCODE
+# Check if running as administrator
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host "Please run this script as Administrator"
+    Write-Host "Right-click on PowerShell and select 'Run as Administrator'"
+    exit 1
 }
 
-Write-Host "Checking database connection..."
-npx prisma db pull
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Error connecting to database! Please check your .env file and make sure PostgreSQL is running." -ForegroundColor Red
-    exit $LASTEXITCODE
+# Load environment variables
+Write-Host "Loading environment variables..."
+if (Test-Path .env) {
+    Get-Content .env | ForEach-Object {
+        if ($_ -match '^([^=]+)=(.*)$') {
+            $name = $matches[1]
+            $value = $matches[2]
+            Set-Item -Path "Env:$name" -Value $value
+        }
+    }
+} else {
+    Write-Host "Warning: .env file not found"
 }
 
-Write-Host "Starting backend server..."
-npx ts-node-dev --respawn src/index.ts
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Error starting backend server!" -ForegroundColor Red
-    exit $LASTEXITCODE
+# Install dependencies
+Write-Host "Installing dependencies..."
+npm install
+
+# Generate Prisma client
+Write-Host "Generating Prisma client..."
+try {
+    npx prisma generate
+    Write-Host "Prisma client generated successfully"
+} catch {
+    Write-Host "Error generating Prisma client: $_"
+    exit 1
 }
 
-Write-Host "Server stopped." 
+# Run database migrations
+Write-Host "Running database migrations..."
+try {
+    npx prisma migrate dev
+    Write-Host "Database migrations completed successfully"
+} catch {
+    Write-Host "Error running database migrations: $_"
+    exit 1
+}
+
+# Start the development server
+Write-Host "Starting development server..."
+npm run dev 

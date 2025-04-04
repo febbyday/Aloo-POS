@@ -62,6 +62,108 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                     disabled={!settings.email.enabled}
                                 />
                             </div>
+                            <div className="flex items-center justify-between">
+                                <Label>System Alerts</Label>
+                                <Switch
+                                    checked={settings.email.systemAlerts}
+                                    onCheckedChange={(checked) =>
+                                        onUpdate({
+                                            ...settings,
+                                            email: { ...settings.email, systemAlerts: checked },
+                                        })
+                                    }
+                                    disabled={!settings.email.enabled}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-4">
+                        <Label>Internal Notifications</Label>
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label>Enable Internal Notifications</Label>
+                                <Switch
+                                    checked={settings.internal.enabled}
+                                    onCheckedChange={(checked) =>
+                                        onUpdate({
+                                            ...settings,
+                                            internal: { ...settings.internal, enabled: checked },
+                                        })
+                                    }
+                                />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Label>Show Badge Count</Label>
+                                <Switch
+                                    checked={settings.internal.showBadge}
+                                    onCheckedChange={(checked) =>
+                                        onUpdate({
+                                            ...settings,
+                                            internal: { ...settings.internal, showBadge: checked },
+                                        })
+                                    }
+                                    disabled={!settings.internal.enabled}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Label>Play Sound</Label>
+                                <Switch
+                                    checked={settings.internal.sound}
+                                    onCheckedChange={(checked) =>
+                                        onUpdate({
+                                            ...settings,
+                                            internal: { ...settings.internal, sound: checked },
+                                        })
+                                    }
+                                    disabled={!settings.internal.enabled}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Label>Desktop Notifications</Label>
+                                <Switch
+                                    checked={settings.internal.desktop}
+                                    onCheckedChange={(checked) =>
+                                        onUpdate({
+                                            ...settings,
+                                            internal: { ...settings.internal, desktop: checked },
+                                        })
+                                    }
+                                    disabled={!settings.internal.enabled}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Label>Auto-mark as Read</Label>
+                                <Switch
+                                    checked={settings.internal.autoRead}
+                                    onCheckedChange={(checked) =>
+                                        onUpdate({
+                                            ...settings,
+                                            internal: { ...settings.internal, autoRead: checked },
+                                        })
+                                    }
+                                    disabled={!settings.internal.enabled}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Keep Notifications for (days)</Label>
+                                <Input
+                                    type="number"
+                                    value={settings.internal.keepDays}
+                                    onChange={(e) =>
+                                        onUpdate({
+                                            ...settings,
+                                            internal: {
+                                                ...settings.internal,
+                                                keepDays: parseInt(e.target.value),
+                                            },
+                                        })
+                                    }
+                                    disabled={!settings.internal.enabled}
+                                />
+                            </div>
                         </div>
                     </div>
 

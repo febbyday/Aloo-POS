@@ -1,0 +1,356 @@
+/**
+ * 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
+ *
+ * Auth Context
+ *
+ * This context provides state management for the auth feature.
+ */
+
+import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { User, LoginCredentials, AuthContextState, AuthContextActions } from '../types/auth.types';
+import { authService } from '../services/authService';
+import { AUTH_CONFIG } from '../config/authConfig';
+import { AUTH_EVENTS } from '../constants/authEvents';
+
+// Define context type with state and actions
+export type AuthContextType = AuthContextState & AuthContextActions;
+
+// Default context state
+const defaultContextState: AuthContextType = {
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+  error: null,
+  permissions: [],
+  isDevelopmentMode: import.meta.env.MODE === 'development',
+  isBypassEnabled: import.meta.env.MODE === 'development' && AUTH_CONFIG.DEV_MODE.BYPASS_AUTH,
+  login: async () => ({ success: false, error: 'Auth context not initialized' }),
+  logout: async () => {},
+  hasPermission: () => false,
+  hasRole: () => false,
+  refreshAuth: async () => false,
+  restoreAuth: () => {},
+  clearAuthError: () => {}
+};
+
+// Create the context
+export const AuthContext = createContext<AuthContextType>(defaultContextState);
+
+export interface AuthProviderProps {
+  children: ReactNode;
+}
+
+/**
+ * Auth Provider Component
+ * Manages authentication state and provides auth-related functions
+ */
+export function AuthProvider({ children }: AuthProviderProps) {
+  // State
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [isDevelopmentMode] = useState<boolean>(import.meta.env.MODE === 'development');
+  const [isBypassEnabled] = useState<boolean>(
+    import.meta.env.MODE === 'development' && AUTH_CONFIG.DEV_MODE.BYPASS_AUTH
+  );
+
+  /**
+   * Clear authentication error
+   */
+  const clearAuthError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  /**
+   * Check if user has a specific permission
+   */
+  const hasPermission = useCallback((permission: string): boolean => {
+    // In development bypass mode with wildcard permission
+    if (isBypassEnabled && AUTH_CONFIG.DEV_MODE.DEFAULT_USER.permissions.includes('*')) {
+      return true;
+    }
+
+    // Check permission in user permissions array
+    if (permissions.includes('*')) {
+      return true; // Wildcard permission grants access to everything
+    }
+
+    return permissions.includes(permission);
+  }, [permissions, isBypassEnabled]);
+
+  /**
+   * Check if user has a specific role
+   */
+  const hasRole = useCallback((role: string): boolean => {
+    // In development bypass mode
+    if (isBypassEnabled) {
+      return AUTH_CONFIG.DEV_MODE.DEFAULT_USER.roles.includes(role);
+    }
+
+    // Check if user exists and has the role
+    if (!user || !user.roles) {
+      return false;
+    }
+
+    return user.roles.includes(role);
+  }, [user, isBypassEnabled]);
+
+  /**
+   * Perform login with credentials
+   */
+  const login = async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // authService.login returns a User object on success, not a response with success property
+      const user = await authService.login(credentials);
+
+      // If we got here, login was successful and we have a user
+      setUser(user);
+      setPermissions(user.permissions || []);
+      setIsAuthenticated(true);
+
+      return { success: true };
+    } catch (error: any) {
+      // Handle errors - authService.login throws an error on failure
+      const errorMessage = error.message || 'An unexpected error occurred during login';
+      setError(errorMessage);
+      setIsAuthenticated(false);
+
+      return {
+        success: false,
+        error: errorMessage
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Logout user
+   */
+  const logout = async (): Promise<void> => {
+    setIsLoading(true);
+
+    try {
+      await authService.logout();
+
+      // Clear state
+      setUser(null);
+      setPermissions([]);
+      setIsAuthenticated(false);
+      setError(null);
+    } catch (error: any) {
+      console.error('[AUTH] Logout error:', error);
+      // Still clear state even if API call fails
+      setUser(null);
+      setPermissions([]);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Refresh authentication state
+   */
+  const refreshAuth = async (): Promise<boolean> => {
+    setIsLoading(true);
+
+    try {
+      // In development bypass mode, just set the default user
+      if (isBypassEnabled) {
+        setUser(AUTH_CONFIG.DEV_MODE.DEFAULT_USER);
+        setPermissions(AUTH_CONFIG.DEV_MODE.DEFAULT_USER.permissions);
+        setIsAuthenticated(true);
+        setIsLoading(false);
+        return true;
+      }
+
+      // Try to refresh auth state
+      const isAuthenticated = authService.isAuthenticated();
+
+      if (isAuthenticated) {
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          setPermissions(currentUser.permissions);
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return true;
+        }
+      }
+
+      // Could not refresh auth state
+      setUser(null);
+      setPermissions([]);
+      setIsAuthenticated(false);
+      setIsLoading(false);
+      return false;
+    } catch (error) {
+      console.error('[AUTH] Refresh auth error:', error);
+      setIsAuthenticated(false);
+      setIsLoading(false);
+      return false;
+    }
+  };
+
+  /**
+   * Restore authentication state from stored data
+   */
+  const restoreAuth = useCallback((authData: { isAuthenticated: boolean; user: User | null; permissions: string[] }) => {
+    if (authData.isAuthenticated && authData.user) {
+      setUser(authData.user);
+      setPermissions(authData.permissions || []);
+      setIsAuthenticated(true);
+      setError(null);
+    }
+  }, []);
+
+  // Initialize auth state on component mount
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        // Initialize auth service (if the method exists)
+        if (typeof authService.init === 'function') {
+          authService.init();
+        }
+
+        // In bypass mode, use default user
+        if (isBypassEnabled) {
+          setUser(AUTH_CONFIG.DEV_MODE.DEFAULT_USER);
+          setPermissions(AUTH_CONFIG.DEV_MODE.DEFAULT_USER.permissions);
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
+        }
+
+        // Check existing authentication
+        const isUserAuthenticated = authService.isAuthenticated();
+        if (isUserAuthenticated) {
+          const currentUser = authService.getCurrentUser();
+          if (currentUser) {
+            setUser(currentUser);
+            setPermissions(currentUser.permissions || []);
+            setIsAuthenticated(true);
+          }
+        } else {
+          // No valid session, handle accordingly
+          setUser(null);
+          setPermissions([]);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('[AUTH] Auth initialization error:', error);
+        setUser(null);
+        setPermissions([]);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // Set up auth event listeners
+    const handleLoginSuccess = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const userData = customEvent.detail?.data as User;
+      if (userData) {
+        setUser(userData);
+        setPermissions(userData.permissions || []);
+        setIsAuthenticated(true);
+        setError(null);
+      }
+    };
+
+    const handleLogout = () => {
+      setUser(null);
+      setPermissions([]);
+      setIsAuthenticated(false);
+    };
+
+    const handleAuthError = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const errorMessage = customEvent.detail?.data?.message || 'Authentication error';
+      setError(errorMessage);
+    };
+
+    const handleTokenRefreshed = async (event: Event) => {
+      console.log('[AUTH] Token refreshed event received');
+      try {
+        // Refresh user data after token refresh
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          setPermissions(currentUser.permissions || []);
+          setIsAuthenticated(true);
+          setError(null);
+        } else {
+          // Try to fetch current user from server
+          const user = await authService.fetchCurrentUser();
+          setUser(user);
+          setPermissions(user.permissions || []);
+          setIsAuthenticated(true);
+          setError(null);
+        }
+      } catch (error) {
+        console.error('[AUTH] Error handling token refresh:', error);
+      }
+    };
+
+    const handleUnauthorized = () => {
+      console.log('[AUTH] Unauthorized event received, attempting refresh');
+      // Try to refresh the token
+      authService.refreshToken().catch(() => {
+        // If refresh fails, log out
+        authService.logout();
+      });
+    };
+
+    // Add event listeners
+    window.addEventListener(AUTH_EVENTS.LOGIN_SUCCESS, handleLoginSuccess);
+    window.addEventListener(AUTH_EVENTS.LOGOUT, handleLogout);
+    window.addEventListener(AUTH_EVENTS.AUTH_ERROR, handleAuthError);
+    window.addEventListener(AUTH_EVENTS.TOKEN_REFRESHED, handleTokenRefreshed);
+    window.addEventListener('auth:token:refreshed', handleTokenRefreshed);
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+    // Cleanup event listeners on unmount
+    return () => {
+      window.removeEventListener(AUTH_EVENTS.LOGIN_SUCCESS, handleLoginSuccess);
+      window.removeEventListener(AUTH_EVENTS.LOGOUT, handleLogout);
+      window.removeEventListener(AUTH_EVENTS.AUTH_ERROR, handleAuthError);
+      window.removeEventListener(AUTH_EVENTS.TOKEN_REFRESHED, handleTokenRefreshed);
+      window.removeEventListener('auth:token:refreshed', handleTokenRefreshed);
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
+  }, [isBypassEnabled]);
+
+  // Create the context value object
+  const contextValue: AuthContextType = {
+    user,
+    isAuthenticated,
+    isLoading,
+    error,
+    permissions,
+    isDevelopmentMode,
+    isBypassEnabled,
+    login,
+    logout,
+    hasPermission,
+    hasRole,
+    refreshAuth,
+    restoreAuth,
+    clearAuthError
+  };
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+}

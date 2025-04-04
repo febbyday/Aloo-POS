@@ -24,6 +24,7 @@ import { staffSchema } from "../types/staff"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2, Shield } from "lucide-react"
 import { useRoles } from "../hooks/useRoles"
+import { useEmploymentTypes } from "../hooks/useEmploymentTypes"
 import type { Role } from "../types/role"
 
 type StaffFormData = z.infer<typeof staffSchema>
@@ -66,6 +67,7 @@ export function StaffModal({
   const [activeTab, setActiveTab] = useState<TabValue>(TabValue.GENERAL)
   const [showBankingDetails, setShowBankingDetails] = useState(!!initialData?.bankingDetails)
   const { roles, isLoading: isLoadingRoles, error: rolesError, refreshRoles } = useRoles()
+  const { data: employmentTypes, isLoading: isLoadingEmploymentTypes, error: employmentTypesError, refetch: refreshEmploymentTypes } = useEmploymentTypes()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -357,18 +359,63 @@ export function StaffModal({
                     render={({ field }) => (
                       <FormFieldWrapper label="Employment Type">
                         <Select
-                          disabled={isReadOnly}
+                          disabled={isReadOnly || isLoadingEmploymentTypes}
                           onValueChange={field.onChange}
                           value={field.value}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
+                            <SelectValue>
+                              <div className="flex items-center space-x-2">
+                                {isLoadingEmploymentTypes ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Loading types...</span>
+                                  </>
+                                ) : employmentTypesError ? (
+                                  <span className="text-destructive">Error loading types</span>
+                                ) : field.value ? (
+                                  <span>{field.value}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">Select type</span>
+                                )}
+                              </div>
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="full-time">Full Time</SelectItem>
-                            <SelectItem value="part-time">Part Time</SelectItem>
-                            <SelectItem value="contract">Contract</SelectItem>
-                            <SelectItem value="temporary">Temporary</SelectItem>
+                            {isLoadingEmploymentTypes ? (
+                              <div className="flex items-center justify-center py-6">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : employmentTypesError ? (
+                              <div className="flex flex-col items-center justify-center py-6 text-center">
+                                <p className="text-sm text-destructive">Failed to load employment types</p>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2"
+                                  onClick={() => refreshEmploymentTypes()}
+                                >
+                                  <Loader2 className="h-4 w-4 mr-2" />
+                                  Retry
+                                </Button>
+                              </div>
+                            ) : employmentTypes.length === 0 ? (
+                              <div className="py-2 px-4 text-center">
+                                <p className="text-sm text-muted-foreground">No employment types available</p>
+                              </div>
+                            ) : (
+                              employmentTypes.map((type) => (
+                                <SelectItem 
+                                  key={type.id} 
+                                  value={type.name.toLowerCase().replace(/\s+/g, '-')}
+                                >
+                                  <div className="flex items-center">
+                                    <span className="h-2 w-2 rounded-full mr-2" style={{ backgroundColor: type.color }}></span>
+                                    <span>{type.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </FormFieldWrapper>

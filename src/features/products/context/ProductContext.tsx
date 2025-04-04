@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import type { Product, Category, PriceHistory, SpecialPrice, CustomerGroup, BulkPriceUpdate } from '../types';
+import { ProductAttribute } from '../types/unified-product.types';
 import { getSampleProductImages } from '../data/sampleProductImages';
 
 // Mock data - replace with actual API call
@@ -111,12 +112,39 @@ const initialCategories: Category[] = [
   }
 ];
 
+// Initial global attributes
+const initialAttributes: ProductAttribute[] = [
+  {
+    name: 'Size',
+    values: ['Small', 'Medium', 'Large', 'X-Large'],
+    isVisibleOnProductPage: true,
+    isUsedForVariations: true,
+    displayOrder: 0
+  },
+  {
+    name: 'Color',
+    values: ['Red', 'Blue', 'Green', 'Black', 'White'],
+    isVisibleOnProductPage: true,
+    isUsedForVariations: true,
+    displayOrder: 1
+  },
+  {
+    name: 'Material',
+    values: ['Cotton', 'Polyester', 'Wool', 'Silk', 'Leather'],
+    isVisibleOnProductPage: true,
+    isUsedForVariations: true,
+    displayOrder: 2
+  }
+];
+
 interface ProductContextType {
   products: Product[];
   categories: Category[];
   priceHistory: PriceHistory[];
   specialPrices: SpecialPrice[];
   customerGroups: CustomerGroup[];
+  attributes: ProductAttribute[];
+  loading: boolean;
   getProduct: (id: string) => Promise<Product | null>;
   addProduct: (product: Product) => void;
   updateProduct: (id: string, product: Product) => void;
@@ -128,6 +156,7 @@ interface ProductContextType {
   addCustomerGroup: (group: Omit<CustomerGroup, 'id'>) => Promise<void>;
   updateCustomerGroup: (id: string, group: Partial<CustomerGroup>) => Promise<void>;
   deleteCustomerGroup: (id: string) => Promise<void>;
+  saveAttributes: (attributes: ProductAttribute[]) => Promise<void>;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
@@ -138,6 +167,8 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [specialPrices, setSpecialPrices] = useState<SpecialPrice[]>([]);
   const [customerGroups, setCustomerGroups] = useState<CustomerGroup[]>([]);
+  const [attributes, setAttributes] = useState<ProductAttribute[]>(initialAttributes);
+  const [loading, setLoading] = useState(false);
 
   const addProduct = (product: Product) => {
     setProducts(prev => [...prev, product]);
@@ -205,7 +236,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateSpecialPrice = async (id: string, specialPrice: Partial<SpecialPrice>) => {
-    setSpecialPrices(prev => 
+    setSpecialPrices(prev =>
       prev.map(sp => sp.id === id ? { ...sp, ...specialPrice } : sp)
     );
   };
@@ -237,12 +268,28 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     return product || null;
   };
 
+  const saveAttributes = async (newAttributes: ProductAttribute[]) => {
+    setLoading(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAttributes(newAttributes);
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     products,
     categories,
     priceHistory,
     specialPrices,
     customerGroups,
+    attributes,
+    loading,
     getProduct,
     addProduct,
     updateProduct,
@@ -254,6 +301,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     addCustomerGroup,
     updateCustomerGroup,
     deleteCustomerGroup,
+    saveAttributes
   };
 
   return (

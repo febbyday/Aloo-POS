@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  BarChart3, 
-  Package, 
-  TruckIcon, 
-  DollarSign, 
+import {
+  BarChart3,
+  Package,
+  TruckIcon,
+  DollarSign,
   Calendar
 } from 'lucide-react';
-import { 
-  SalesStatsCharts, 
-  InventoryStatsCharts, 
-  SupplierStatsCharts, 
-  FinancialStatsCharts 
+import {
+  SalesStatsCharts,
+  InventoryStatsCharts,
+  SupplierStatsCharts,
+  FinancialStatsCharts
 } from './index';
 import type { Product } from '../../types';
 
@@ -85,7 +85,7 @@ export function ProductStatsOverview({ product }: ProductStatsOverviewProps) {
               <CardTitle className="text-lg font-medium">Sales Performance</CardTitle>
             </CardHeader>
             <CardContent>
-              <SalesStatsCharts product={product} timeRange={timeRange} />
+              <SalesStatsCharts productId={product.id} timeRange={timeRange} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -130,4 +130,4 @@ export function ProductStatsOverview({ product }: ProductStatsOverviewProps) {
   );
 }
 
-export default ProductStatsOverview; 
+export default ProductStatsOverview;

@@ -82,7 +82,7 @@ export function BankingDetailsModal({
                   <FormItem>
                     <FormLabel>Account Name</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} autoComplete="cc-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -96,7 +96,7 @@ export function BankingDetailsModal({
                   <FormItem>
                     <FormLabel>Account Number</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} autoComplete="cc-number" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

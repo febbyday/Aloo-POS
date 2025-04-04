@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { useSafeRender } from '@/hooks/useSafeRender';
-import { ErrorBoundary } from '@/components/error-boundary';
+import { ErrorBoundary } from '@/components/unified-error-boundary';
 import { Coffee, IceCream, AlertCircle, Check } from 'lucide-react';
 
 // Define product type based on our existing customization options

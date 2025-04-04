@@ -19,7 +19,13 @@ import {
   UserCircle,
   ChevronUp,
   ChevronDown,
-  ChevronsUpDown
+  ChevronsUpDown,
+  FileText,
+  Hash,
+  Info,
+  Barcode,
+  ShoppingBag,
+  Percent
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/components/ui/use-toast'
@@ -77,19 +83,26 @@ import {
 // Mock data for sales
 const mockSales = Array.from({ length: 20 }, (_, i) => ({
   id: `SALE-${1000 + i}`,
+  invoiceNo: `INV-${2024}${String(i + 1).padStart(4, '0')}`,
   date: new Date(2025, 2, 1 - i),
   customer: i % 3 === 0 ? null : `Customer ${i + 1}`,
   total: Math.round((50 + Math.random() * 200) * 100) / 100,
   items: Math.floor(Math.random() * 10) + 1,
-  paymentMethod: ['cash', 'card', 'mobile'][i % 3] as 'cash' | 'card' | 'mobile',
   status: ['completed', 'pending', 'cancelled'][i % 3] as 'completed' | 'pending' | 'cancelled',
-  employee: `Employee ${(i % 5) + 1}`
+  employee: `Employee ${(i % 5) + 1}`,
+  location: ['Main Store', 'Branch A', 'Branch B', 'Branch C'][i % 4],
+  addedBy: `User ${(i % 3) + 1}`,
+  note: i % 2 === 0 ? `Sample note for sale ${i + 1}` : null,
+  paymentStatus: ['paid', 'partial', 'unpaid'][i % 3] as 'paid' | 'partial' | 'unpaid',
+  paymentMethod: ['cash', 'card', 'multiple'][i % 3] as 'cash' | 'card' | 'multiple',
+  totalPaid: (amount => amount > 0 ? amount : 0)(
+    Math.round((50 + Math.random() * 200) * 100) / 100
+  )
 }))
 
 interface SaleFilter {
   search: string
   status: string | null
-  paymentMethod: string | null
   startDate: Date | null
   endDate: Date | null
 }
@@ -103,8 +116,8 @@ interface SortConfig {
 // Add columns definition
 const columns = [
   { 
-    id: 'id', 
-    label: 'Reference',
+    id: 'invoiceNo', 
+    label: 'Invoice No.',
     icon: Receipt
   },
   { 
@@ -118,6 +131,11 @@ const columns = [
     icon: User
   },
   { 
+    id: 'location', 
+    label: 'Location',
+    icon: ShoppingCart
+  },
+  { 
     id: 'items', 
     label: 'Items',
     icon: Package
@@ -128,19 +146,24 @@ const columns = [
     icon: DollarSign
   },
   { 
+    id: 'totalPaid', 
+    label: 'Paid',
+    icon: DollarSign
+  },
+  { 
     id: 'paymentMethod', 
-    label: 'Payment',
+    label: 'Payment Method',
     icon: CreditCard
+  },
+  { 
+    id: 'paymentStatus', 
+    label: 'Payment Status',
+    icon: CheckCircle
   },
   { 
     id: 'status', 
     label: 'Status',
     icon: CheckCircle
-  },
-  { 
-    id: 'employee', 
-    label: 'Employee',
-    icon: UserCircle
   }
 ]
 
@@ -160,22 +183,15 @@ const averageSaleChartData = Array.from({ length: 30 }, (_, i) => ({
   average: Math.round((Math.random() * 50) + 25)
 }))
 
-const paymentMethodsData = [
-  { name: 'Cash', value: 35, color: '#94A3B8' },
-  { name: 'Card', value: 45, color: '#60A5FA' },
-  { name: 'Mobile', value: 20, color: '#34D399' }
-]
-
-const COLORS = ['#94A3B8', '#60A5FA', '#34D399']
-
 export function SalesPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [selectedSales, setSelectedSales] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
   const [filters, setFilters] = useState<SaleFilter>({
     search: '',
     status: null,
-    paymentMethod: null,
     startDate: null,
     endDate: null
   })
@@ -252,9 +268,6 @@ export function SalesPage() {
     if (filters.status && sale.status !== filters.status) {
       return false
     }
-    if (filters.paymentMethod && sale.paymentMethod !== filters.paymentMethod) {
-      return false
-    }
     if (filters.startDate && sale.date < filters.startDate) {
       return false
     }
@@ -275,6 +288,11 @@ export function SalesPage() {
     return 0
   })
 
+  // Add pagination calculation
+  const totalPages = Math.ceil(sortedSales.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedSales = sortedSales.slice(startIndex, startIndex + itemsPerPage)
+
   return (
     <div className="space-y-6">
       <SalesToolbar
@@ -284,21 +302,40 @@ export function SalesPage() {
         onPrint={handlePrint}
         onNewSale={handleNewSale}
         onSearch={handleSearch}
+        onViewDetails={() => {
+          // Get the selected sale
+          const selectedSale = sortedSales.find(sale => selectedSales.includes(sale.id))
+          if (selectedSale) {
+            handleViewSale(selectedSale)
+          }
+        }}
+        onDelete={() => {
+          // Delete all selected sales
+          selectedSales.forEach(id => handleDeleteSale(id))
+          setSelectedSales([])
+        }}
+        selectedCount={selectedSales.length}
       />
 
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
+            <div className="flex justify-between items-start">
+              <div>
             <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
             <CardDescription>Current month</CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold">
+                  ${mockSales.reduce((sum, sale) => sum + sale.total, 0).toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  +12.5% from last month
+                </p>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              ${mockSales.reduce((sum, sale) => sum + sale.total, 0).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground mb-2">
-              +12.5% from last month
-            </p>
             {/* Add Area Chart for Total Sales */}
             <div className="h-36">
               <ResponsiveContainer width="100%" height="100%">
@@ -340,14 +377,20 @@ export function SalesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
+            <div className="flex justify-between items-start">
+              <div>
             <CardTitle className="text-sm font-medium">Transactions</CardTitle>
             <CardDescription>Current month</CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold">{mockSales.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  +8.2% from last month
+                </p>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockSales.length}</div>
-            <p className="text-xs text-muted-foreground mb-2">
-              +8.2% from last month
-            </p>
             {/* Add Bar Chart for Transactions */}
             <div className="h-36">
               <ResponsiveContainer width="100%" height="100%">
@@ -376,16 +419,22 @@ export function SalesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
+            <div className="flex justify-between items-start">
+              <div>
             <CardTitle className="text-sm font-medium">Average Sale</CardTitle>
             <CardDescription>Current month</CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold">
+                  ${(mockSales.reduce((sum, sale) => sum + sale.total, 0) / mockSales.length).toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  +2.1% from last month
+                </p>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              ${(mockSales.reduce((sum, sale) => sum + sale.total, 0) / mockSales.length).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground mb-2">
-              +2.1% from last month
-            </p>
             {/* Add Line Chart for Average Sale */}
             <div className="h-36">
               <ResponsiveContainer width="100%" height="100%">
@@ -420,114 +469,13 @@ export function SalesPage() {
         </Card>
       </div>
 
-      {/* Add Payment Methods Distribution Chart */}
-      <div className="grid gap-6 md:grid-cols-4">
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Payment Methods</CardTitle>
-            <CardDescription>Distribution by type</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={paymentMethodsData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {paymentMethodsData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value) => [`${value}%`, 'Percentage']}
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      padding: '8px',
-                      border: '1px solid #e2e8f0'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex justify-center mt-2 space-x-4">
-              {paymentMethodsData.map((entry, index) => (
-                <div key={`legend-${index}`} className="flex items-center">
-                  <div 
-                    className="w-3 h-3 mr-1 rounded-sm" 
-                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                  />
-                  <span className="text-xs">{entry.name}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="md:col-span-3">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Sales Trend</CardTitle>
-            <CardDescription>Last 30 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={salesChartData}
-                  margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis 
-                    dataKey="day" 
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `${value}`}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis 
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `$${value}`}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`$${value}`, 'Sales']}
-                    labelFormatter={(label) => `Day ${label}`}
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      padding: '8px',
-                      border: '1px solid #e2e8f0'
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="amount" 
-                    stroke="#10b981" 
-                    strokeWidth={2} 
-                    dot={{ r: 0 }}
-                    activeDot={{ r: 4, fill: "#10b981" }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card className="shadow-none border-none">
         <CardContent className="p-0">
-          <Table className="[&_td]:p-0 [&_th]:p-0">
+          <Table>
             <TableHeader className="bg-muted/50">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[40px] px-3">
+                <TableHead className="w-[50px] p-3">
+                  <div className="flex items-center justify-center">
                   <Checkbox
                     checked={selectedSales.length === filteredSales.length && filteredSales.length > 0}
                     onCheckedChange={() => {
@@ -539,11 +487,24 @@ export function SalesPage() {
                     }}
                     aria-label="Select all sales"
                   />
+                  </div>
                 </TableHead>
                 {columns.map((column) => (
                   <TableHead
                     key={column.id}
-                    className="h-12 px-3 cursor-pointer hover:bg-muted/50"
+                    className={cn(
+                      "h-12 px-4 cursor-pointer hover:bg-muted/50",
+                      column.id === 'invoiceNo' && "w-[160px]",
+                      column.id === 'date' && "w-[160px]",
+                      column.id === 'customer' && "w-[180px]",
+                      column.id === 'location' && "w-[140px]",
+                      column.id === 'items' && "w-[100px]",
+                      column.id === 'total' && "w-[120px]",
+                      column.id === 'totalPaid' && "w-[120px]",
+                      column.id === 'paymentMethod' && "w-[140px]",
+                      column.id === 'paymentStatus' && "w-[140px]",
+                      column.id === 'status' && "w-[120px]"
+                    )}
                     onClick={() => handleSort(column.id)}
                   >
                     <div className="flex items-center gap-2">
@@ -563,26 +524,30 @@ export function SalesPage() {
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="w-[100px] px-3 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedSales.map((sale) => (
+              {paginatedSales.map((sale) => (
                 <TableRow 
                   key={sale.id}
                   className={cn(
                     "border-b border-border transition-colors hover:bg-muted/50 cursor-pointer",
                     selectedSales.includes(sale.id) && "bg-muted"
                   )}
-                  onClick={() => {
+                  onClick={(e) => {
+                    // Prevent double click from triggering both handlers
+                    if (e.detail === 1) {
                     setSelectedSales(current =>
                       current.includes(sale.id)
                         ? current.filter(id => id !== sale.id)
                         : [...current, sale.id]
                     )
+                    }
                   }}
+                  onDoubleClick={() => handleViewSale(sale)}
                 >
-                  <TableCell className="w-[40px] px-3">
+                  <TableCell className="w-[50px] p-3">
+                    <div className="flex items-center justify-center">
                     <Checkbox
                       checked={selectedSales.includes(sale.id)}
                       onCheckedChange={() => {
@@ -594,188 +559,346 @@ export function SalesPage() {
                       }}
                       aria-label={`Select sale ${sale.id}`}
                     />
-                  </TableCell>
-                  <TableCell className="h-[50px] px-3">
-                    <div className="flex items-center">
-                      {sale.id}
                     </div>
                   </TableCell>
-                  <TableCell className="h-[50px] px-3">
-                    <div className="flex items-center">
-                      {format(sale.date, 'MMM dd, yyyy')}
-                    </div>
-                  </TableCell>
-                  <TableCell className="h-[50px] px-3">
-                    <div className="flex items-center">
-                      {sale.customer || 'Walk-in'}
-                    </div>
-                  </TableCell>
-                  <TableCell className="h-[50px] px-3">
-                    <div className="flex items-center">
-                      {sale.items}
-                    </div>
-                  </TableCell>
-                  <TableCell className="h-[50px] px-3">
-                    <div className="flex items-center">
-                      ${sale.total.toFixed(2)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="h-[50px] px-3">
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      {sale.paymentMethod === 'cash' ? (
-                        <>
-                          <Wallet className="h-3 w-3" />
-                          Cash
-                        </>
-                      ) : sale.paymentMethod === 'card' ? (
-                        <>
-                          <CreditCard className="h-3 w-3" />
-                          Card
-                        </>
-                      ) : (
-                        <>
-                          <Smartphone className="h-3 w-3" />
-                          Mobile
-                        </>
-                      )}
+                  <TableCell className="px-4 py-3">{sale.invoiceNo}</TableCell>
+                  <TableCell className="px-4 py-3">{format(sale.date, 'PPP')}</TableCell>
+                  <TableCell className="px-4 py-3">{sale.customer || 'Walk-in'}</TableCell>
+                  <TableCell className="px-4 py-3">{sale.location}</TableCell>
+                  <TableCell className="px-4 py-3">{sale.items}</TableCell>
+                  <TableCell className="px-4 py-3">${sale.total.toFixed(2)}</TableCell>
+                  <TableCell className="px-4 py-3">${sale.totalPaid.toFixed(2)}</TableCell>
+                  <TableCell className="px-4 py-3">
+                    <Badge variant="outline" className="capitalize">
+                      {sale.paymentMethod}
                     </Badge>
                   </TableCell>
-                  <TableCell className="h-[50px] px-3">
+                  <TableCell className="px-4 py-3">
+                    <Badge 
+                      variant={
+                        sale.paymentStatus === 'paid' ? 'default' : 
+                        sale.paymentStatus === 'partial' ? 'secondary' : 'destructive'
+                      }
+                    >
+                      {sale.paymentStatus.charAt(0).toUpperCase() + sale.paymentStatus.slice(1)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
                     <Badge 
                       variant={
                         sale.status === 'completed' ? 'default' : 
                         sale.status === 'pending' ? 'secondary' : 'destructive'
                       }
-                      className="flex items-center gap-1"
                     >
-                      {sale.status === 'completed' ? (
-                        <CheckCircle className="h-3 w-3" />
-                      ) : sale.status === 'pending' ? (
-                        <Clock className="h-3 w-3" />
-                      ) : (
-                        <XCircle className="h-3 w-3" />
-                      )}
                       {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="h-[50px] px-3">
-                    <div className="flex items-center">
-                      {sale.employee}
-                    </div>
-                  </TableCell>
-                  <TableCell className="w-[100px] px-3 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleViewSale(sale)}>
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.print()}>
-                          Print Receipt
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteSale(sale.id)}>
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+
+          {/* Add pagination */}
+          <div className="flex items-center justify-between px-4 py-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedSales.length)} of {sortedSales.length} entries
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* Sale Details Dialog */}
       {viewSale && (
         <Dialog open={!!viewSale} onOpenChange={(open) => !open && setViewSale(null)}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Sale Details - {viewSale.id}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+          <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/50 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 dark:[&::-webkit-scrollbar-track]:bg-muted/30 dark:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 dark:hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40">
+            <DialogHeader className="border-b pb-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium">Date</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(viewSale.date, 'PPP')}
+                  <DialogTitle className="text-2xl font-bold">Sale Details</DialogTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Invoice No: {viewSale.invoiceNo}
+                  </p>
+                </div>
+                <Badge 
+                  variant={
+                    viewSale.status === 'completed' ? 'default' : 
+                    viewSale.status === 'pending' ? 'secondary' : 'destructive'
+                  }
+                  className="text-sm px-3 py-1"
+                >
+                  {viewSale.status.charAt(0).toUpperCase() + viewSale.status.slice(1)}
+                </Badge>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              {/* Header Info Grid */}
+              <div className="grid grid-cols-3 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Date & Time</p>
+                    <p className="text-base font-semibold mt-1">
+                      {format(viewSale.date, 'PPP')}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Customer</p>
-                  <p className="text-sm text-muted-foreground">
+                    <p className="text-sm font-medium text-muted-foreground">Customer</p>
+                    <p className="text-base font-semibold mt-1">
                     {viewSale.customer || 'Walk-in'}
                   </p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Location</p>
+                    <p className="text-base font-semibold mt-1">
+                      {viewSale.location}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Employee</p>
+                    <p className="text-base font-semibold mt-1">
+                      {viewSale.employee}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                <div>
+                    <p className="text-sm font-medium text-muted-foreground">Added By</p>
+                    <p className="text-base font-semibold mt-1">
+                      {viewSale.addedBy}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Payment Method</p>
+                    <Badge variant="outline" className="capitalize mt-2">
+                      {viewSale.paymentMethod}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Status Card */}
+              <div className="grid grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Payment Status</p>
+                  <Badge 
+                    variant={
+                      viewSale.paymentStatus === 'paid' ? 'default' : 
+                      viewSale.paymentStatus === 'partial' ? 'secondary' : 'destructive'
+                    }
+                    className="mt-2"
+                  >
+                    {viewSale.paymentStatus.charAt(0).toUpperCase() + viewSale.paymentStatus.slice(1)}
+                  </Badge>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Payment Method</p>
-                  <p className="text-sm text-muted-foreground">
-                    {viewSale.paymentMethod.charAt(0).toUpperCase() + viewSale.paymentMethod.slice(1)}
+                  <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
+                  <p className="text-xl font-bold mt-1">
+                    ${viewSale.total.toFixed(2)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Status</p>
-                  <Badge 
-                    variant={
-                      viewSale.status === 'completed' ? 'default' : 
-                      viewSale.status === 'pending' ? 'secondary' : 'destructive'
-                    }
-                  >
-                    {viewSale.status.charAt(0).toUpperCase() + viewSale.status.slice(1)}
-                  </Badge>
+                  <p className="text-sm font-medium text-muted-foreground">Amount Paid</p>
+                  <p className="text-xl font-bold mt-1">
+                    ${viewSale.totalPaid.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Balance</p>
+                  <p className="text-xl font-bold mt-1">
+                    ${(viewSale.total - viewSale.totalPaid).toFixed(2)}
+                  </p>
                 </div>
               </div>
-              <div>
-                <p className="text-sm font-medium">Items</p>
-                <div className="rounded-md border mt-2">
+
+              {/* Notes Section */}
+              {viewSale.note && (
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-sm font-medium text-muted-foreground">Notes</p>
+                  </div>
+                  <p className="text-sm mt-1">
+                    {viewSale.note}
+                  </p>
+                </div>
+              )}
+
+              {/* Items Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold">Items</h3>
+                  </div>
+                  <Badge variant="outline">
+                    Total Items: {viewSale.items}
+                  </Badge>
+                </div>
+                <div className="rounded-lg border overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Qty</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-[60px] text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Hash className="h-4 w-4 text-muted-foreground" />
+                            <span>No.</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="w-[200px]">
+                          <div className="flex items-center gap-1">
+                            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                            <span>Product</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="w-[120px]">
+                          <div className="flex items-center gap-1">
+                            <Barcode className="h-4 w-4 text-muted-foreground" />
+                            <span>SKU</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="w-[100px] text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <span>Qty</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="w-[120px] text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            <span>Price</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="w-[120px] text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            <span>Total</span>
+                          </div>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {Array.from({ length: viewSale.items }, (_, i) => ({
                         name: `Product ${i + 1}`,
+                        sku: `SKU-${1000 + i}`,
                         qty: Math.floor(Math.random() * 5) + 1,
                         price: Math.round((10 + Math.random() * 50) * 100) / 100
                       })).map((item, i) => (
                         <TableRow key={i}>
-                          <TableCell>{item.name}</TableCell>
-                          <TableCell>{item.qty}</TableCell>
-                          <TableCell>${item.price.toFixed(2)}</TableCell>
+                          <TableCell className="text-center font-medium">
+                            <div className="flex items-center justify-center gap-1">
+                              <Hash className="h-4 w-4 text-muted-foreground" />
+                              <span>{i + 1}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                              <p className="font-medium">{item.name}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Barcode className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-mono text-sm">{item.sku}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-medium">
+                            <div className="flex items-center justify-center gap-1">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                              <span>{item.qty}</span>
+                            </div>
+                          </TableCell>
                           <TableCell className="text-right">
-                            ${(item.qty * item.price).toFixed(2)}
+                            <div className="flex items-center justify-end gap-1">
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />
+                              <span>${item.price.toFixed(2)}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            <div className="flex items-center justify-end gap-1">
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />
+                              <span>${(item.qty * item.price).toFixed(2)}</span>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-[60px]"></TableHead>
+                        <TableHead className="w-[200px]"></TableHead>
+                        <TableHead className="w-[120px]"></TableHead>
+                        <TableHead className="w-[100px]"></TableHead>
+                        <TableHead className="w-[120px] text-right">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-end gap-1">
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />
+                              <p className="text-sm">Subtotal</p>
+                            </div>
+                            <div className="flex items-center justify-end gap-1">
+                              <Percent className="h-4 w-4 text-muted-foreground" />
+                              <p className="text-sm">Tax (0%)</p>
+                            </div>
+                            <div className="flex items-center justify-end gap-1">
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />
+                              <p className="text-base font-semibold">Total</p>
+                            </div>
+                          </div>
+                        </TableHead>
+                        <TableHead className="w-[120px] text-right">
+                          <div className="space-y-1">
+                            <p className="text-sm">${viewSale.total.toFixed(2)}</p>
+                            <p className="text-sm">$0.00</p>
+                            <p className="text-base font-semibold">${viewSale.total.toFixed(2)}</p>
+                          </div>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
                   </Table>
                 </div>
               </div>
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-medium">Total</p>
-                  <p className="text-xl font-bold">${viewSale.total.toFixed(2)}</p>
                 </div>
-                <div className="space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => window.print()}>
+
+            {/* Actions */}
+            <div className="sticky bottom-0 left-0 right-0 flex justify-end gap-3 pt-4 mt-6 border-t bg-background">
+              <Button variant="outline" onClick={() => window.print()}>
                     <Printer className="h-4 w-4 mr-2" />
-                    Print
+                Print Invoice
                   </Button>
-                  <Button variant="default" size="sm">
+              <Button variant="default">
                     <Receipt className="h-4 w-4 mr-2" />
-                    Receipt
+                Download Receipt
                   </Button>
-                </div>
-              </div>
             </div>
           </DialogContent>
         </Dialog>
