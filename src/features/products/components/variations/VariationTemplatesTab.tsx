@@ -1,29 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   CardDescription,
   CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
+import { formatDate } from '@/lib/utils/formatters';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,40 +38,40 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Plus, 
-  Search, 
-  RefreshCw, 
-  FileDown, 
-  Trash2, 
-  Edit, 
-  MoreHorizontal, 
-  Copy, 
-  Star, 
-  Calendar, 
-  Tag, 
+import {
+  Plus,
+  Search,
+  RefreshCw,
+  FileDown,
+  Trash2,
+  Edit,
+  MoreHorizontal,
+  Copy,
+  Star,
+  Calendar,
+  Tag,
   Layers
 } from 'lucide-react';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/components/ui/use-toast';
-import { useVariationTemplates } from '../../context/VariationTemplateContext';
+import { useToast } from '@/lib/toast';
+import { useVariationTemplates } from '../../context/BatchVariationTemplateProvider';
 import { VariationTemplateForm } from './VariationTemplateForm';
 import { VariationTemplate, VariationTemplateFormData } from '../../types/variation-template';
 
 export function VariationTemplatesTab() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { 
-    templates, 
-    loading, 
-    error, 
-    selectedTemplates, 
+  const {
+    templates,
+    loading,
+    error,
+    selectedTemplates,
     setSelectedTemplates,
     filters,
     setFilters,
@@ -86,31 +87,31 @@ export function VariationTemplatesTab() {
     setDefaultTemplate,
     refreshTemplates
   } = useVariationTemplates();
-  
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<VariationTemplate | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false);
-  
+
   // Handle form open for adding new template
   const handleAddTemplate = () => {
     setCurrentTemplate(null);
     setIsFormOpen(true);
   };
-  
+
   // Handle form open for editing template
   const handleEditTemplate = (template: VariationTemplate) => {
     setCurrentTemplate(template);
     setIsFormOpen(true);
   };
-  
+
   // Handle delete template
   const handleDeleteTemplate = (template: VariationTemplate) => {
     setCurrentTemplate(template);
     setIsDeleteDialogOpen(true);
   };
-  
+
   // Handle form submission
   const handleFormSubmit = async (data: VariationTemplateFormData) => {
     try {
@@ -139,7 +140,7 @@ export function VariationTemplatesTab() {
       });
     }
   };
-  
+
   // Handle delete confirmation
   const handleDeleteConfirm = async () => {
     try {
@@ -166,17 +167,17 @@ export function VariationTemplatesTab() {
       });
     }
   };
-  
+
   // Handle search
   const handleSearch = () => {
     setFilters({ ...filters, search: searchQuery });
   };
-  
+
   // Handle category filter change
   const handleCategoryFilterChange = (category: string) => {
     setFilters({ ...filters, category: category as any });
   };
-  
+
   // Handle sort change
   const handleSortChange = (field: 'name' | 'category' | 'createdAt' | 'updatedAt' | 'usageCount' | 'lastUsed') => {
     if (sort.field === field) {
@@ -185,7 +186,7 @@ export function VariationTemplatesTab() {
       setSort({ field, direction: 'asc' });
     }
   };
-  
+
   // Handle select all templates
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -194,7 +195,7 @@ export function VariationTemplatesTab() {
       setSelectedTemplates([]);
     }
   };
-  
+
   // Handle select template
   const handleSelectTemplate = (templateId: string, checked: boolean) => {
     if (checked) {
@@ -203,7 +204,7 @@ export function VariationTemplatesTab() {
       setSelectedTemplates(selectedTemplates.filter(id => id !== templateId));
     }
   };
-  
+
   // Handle set default template
   const handleSetDefaultTemplate = async (templateId: string) => {
     try {
@@ -221,7 +222,7 @@ export function VariationTemplatesTab() {
       });
     }
   };
-  
+
   // Handle duplicate template
   const handleDuplicateTemplate = async (templateId: string) => {
     try {
@@ -239,7 +240,7 @@ export function VariationTemplatesTab() {
       });
     }
   };
-  
+
   // Handle apply template
   const handleApplyTemplate = async (templateId: string) => {
     try {
@@ -258,7 +259,7 @@ export function VariationTemplatesTab() {
       });
     }
   };
-  
+
   // Handle refresh
   const handleRefresh = async () => {
     try {
@@ -276,7 +277,7 @@ export function VariationTemplatesTab() {
       });
     }
   };
-  
+
   // Handle export
   const handleExport = (format: 'csv' | 'excel') => {
     toast({
@@ -284,13 +285,13 @@ export function VariationTemplatesTab() {
       description: `Templates have been exported as ${format.toUpperCase()}.`,
     });
   };
-  
+
   // Get sort indicator
   const getSortIndicator = (field: 'name' | 'category' | 'createdAt' | 'updatedAt' | 'usageCount' | 'lastUsed') => {
     if (sort.field !== field) return null;
     return sort.direction === 'asc' ? ' ↑' : ' ↓';
   };
-  
+
   // Format category name
   const formatCategoryName = (category: string) => {
     switch (category) {
@@ -308,19 +309,9 @@ export function VariationTemplatesTab() {
         return category;
     }
   };
-  
-  // Format date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Never';
-    
-    const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
-  
+
+  // Using imported formatDate from formatters.ts
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -332,18 +323,18 @@ export function VariationTemplatesTab() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => handleExport('csv')}
               disabled={templates.length === 0}
             >
               <FileDown className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleRefresh}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -373,10 +364,10 @@ export function VariationTemplatesTab() {
               Search
             </Button>
           </div>
-          
+
           <div className="flex items-center space-x-2">
-            <Select 
-              value={filters.category || 'all'} 
+            <Select
+              value={filters.category || 'all'}
               onValueChange={handleCategoryFilterChange}
             >
               <SelectTrigger className="w-[180px]">
@@ -391,7 +382,7 @@ export function VariationTemplatesTab() {
                 <SelectItem value="custom">Custom</SelectItem>
               </SelectContent>
             </Select>
-            
+
             {selectedTemplates.length > 0 && (
               <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -400,7 +391,7 @@ export function VariationTemplatesTab() {
             )}
           </div>
         </div>
-        
+
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -432,32 +423,32 @@ export function VariationTemplatesTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">
-                    <Checkbox 
+                    <Checkbox
                       checked={selectedTemplates.length === templates.length && templates.length > 0}
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all"
                     />
                   </TableHead>
-                  <TableHead 
+                  <TableHead
                     className="cursor-pointer"
                     onClick={() => handleSortChange('name')}
                   >
                     Template{getSortIndicator('name')}
                   </TableHead>
-                  <TableHead 
+                  <TableHead
                     className="cursor-pointer"
                     onClick={() => handleSortChange('category')}
                   >
                     Category{getSortIndicator('category')}
                   </TableHead>
                   <TableHead>Attributes</TableHead>
-                  <TableHead 
+                  <TableHead
                     className="cursor-pointer"
                     onClick={() => handleSortChange('usageCount')}
                   >
                     Usage{getSortIndicator('usageCount')}
                   </TableHead>
-                  <TableHead 
+                  <TableHead
                     className="cursor-pointer"
                     onClick={() => handleSortChange('lastUsed')}
                   >
@@ -470,7 +461,7 @@ export function VariationTemplatesTab() {
                 {templates.map((template) => (
                   <TableRow key={template.id}>
                     <TableCell>
-                      <Checkbox 
+                      <Checkbox
                         checked={selectedTemplates.includes(template.id)}
                         onCheckedChange={(checked) => handleSelectTemplate(template.id, !!checked)}
                         aria-label={`Select ${template.name}`}
@@ -536,7 +527,7 @@ export function VariationTemplatesTab() {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onClick={() => handleDeleteTemplate(template)}
                           >
@@ -556,15 +547,15 @@ export function VariationTemplatesTab() {
       <CardFooter className="border-t p-4 text-sm text-muted-foreground">
         {templates.length} templates found
       </CardFooter>
-      
+
       {/* Template Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>{currentTemplate ? 'Edit Template' : 'Add Template'}</DialogTitle>
             <DialogDescription>
-              {currentTemplate 
-                ? 'Update the template details below.' 
+              {currentTemplate
+                ? 'Update the template details below.'
                 : 'Fill in the details to create a new variation template.'}
             </DialogDescription>
           </DialogHeader>
@@ -576,17 +567,17 @@ export function VariationTemplatesTab() {
           />
         </DialogContent>
       </Dialog>
-      
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              {selectedTemplates.length > 1 
-                ? `This will permanently delete ${selectedTemplates.length} templates.` 
-                : currentTemplate 
-                  ? `This will permanently delete "${currentTemplate.name}".` 
+              {selectedTemplates.length > 1
+                ? `This will permanently delete ${selectedTemplates.length} templates.`
+                : currentTemplate
+                  ? `This will permanently delete "${currentTemplate.name}".`
                   : 'This will permanently delete the selected template.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -598,7 +589,7 @@ export function VariationTemplatesTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
+
       {/* Apply Template Dialog */}
       <Dialog open={isApplyDialogOpen} onOpenChange={setIsApplyDialogOpen}>
         <DialogContent>

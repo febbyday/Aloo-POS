@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { Request, Response } from 'express';
 import { shopService } from '../services/shopService';
 import { sendSuccessResponse, sendErrorResponse } from '../utils/errorHandling';
@@ -109,8 +107,20 @@ export class ShopController {
 
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          sendErrorResponse(res, 'A shop with that name already exists', 409);
-          return;
+          // P2002 is the Prisma error code for unique constraint violations
+          // Extract the field name from the error metadata to provide more specific error messages
+          const target = (error.meta?.target as string[]) || [];
+          
+          if (target.includes('code')) {
+            sendErrorResponse(res, 'A shop with this code already exists', 409);
+            return;
+          } else if (target.includes('name')) {
+            sendErrorResponse(res, 'A shop with this name already exists', 409);
+            return;
+          } else {
+            sendErrorResponse(res, 'A shop with these details already exists', 409);
+            return;
+          }
         }
       }
 
@@ -302,6 +312,30 @@ export class ShopController {
       sendSuccessResponse(res, updatedInventory, 'Inventory updated successfully');
     } catch (error) {
       console.error(`Error updating inventory for shop ${req.params.shopId}:`, error);
+      sendErrorResponse(res, error instanceof Error ? error : String(error), 500);
+    }
+  }
+
+  /**
+   * Check if a shop code already exists
+   */
+  async checkShopCodeExists(req: Request, res: Response): Promise<void> {
+    try {
+      const { code } = req.query;
+      
+      if (!code || typeof code !== 'string') {
+        sendErrorResponse(res, 'Shop code is required', 400);
+        return;
+      }
+      
+      const existingShop = await shopService.findShopByCode(code);
+      
+      sendSuccessResponse(res, { 
+        exists: !!existingShop,
+        code
+      });
+    } catch (error) {
+      console.error('Error checking shop code:', error);
       sendErrorResponse(res, error instanceof Error ? error : String(error), 500);
     }
   }

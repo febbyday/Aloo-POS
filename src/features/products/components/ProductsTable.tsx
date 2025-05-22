@@ -31,7 +31,7 @@ import {
 } from "lucide-react"
 import { Product } from "@/types/inventory"
 import { useState } from 'react'
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Eye } from 'lucide-react';
 
@@ -168,8 +168,8 @@ export function ProductsTable({
   onSort,
   visibleColumns,
 }: ProductsTableProps) {
-  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
   const navigate = useNavigate();
 
   const startIndex = currentPage * itemsPerPage
@@ -368,11 +368,10 @@ export function ProductsTable({
                 <SelectValue placeholder={itemsPerPage} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="30">30</SelectItem>
-                <SelectItem value="40">40</SelectItem>
-                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="15">15 per page</SelectItem>
+                <SelectItem value="25">25 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+                <SelectItem value="100">100 per page</SelectItem>
               </SelectContent>
             </Select>
             <span className="text-sm text-muted-foreground">entries</span>

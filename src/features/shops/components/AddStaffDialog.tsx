@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 import { useStaff } from '@/features/staff/hooks/useStaff';
 import { useRealShopContext } from '../context/RealShopContext';
@@ -31,23 +31,23 @@ interface AddStaffDialogProps {
 export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddStaffDialogProps) {
   // Get staff data
   const { items: allStaff, loading: loadingStaff } = useStaff({ autoLoad: true });
-  
+
   // Get shop context
   const { assignStaff, isLoading, error, staffAssignments, fetchStaffAssignments } = useRealShopContext();
-  
+
   // Form state
   const [formData, setFormData] = useState<FormData>({
     staffId: '',
     role: '',
     isPrimary: false,
   });
-  
+
   // Form errors
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
-  
+
   // Toast notifications
   const { toast } = useToast();
-  
+
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
@@ -57,19 +57,19 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
         isPrimary: false,
       });
       setErrors({});
-      
+
       // Load staff assignments to know who's already assigned
       fetchStaffAssignments(shopId);
     }
   }, [open, shopId, fetchStaffAssignments]);
-  
+
   // Handle form input changes
   const handleChange = (field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-    
+
     // Clear error for this field
     if (errors[field]) {
       setErrors(prev => ({
@@ -78,7 +78,7 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
       }));
     }
   };
-  
+
   // Validate form
   const validateForm = (): boolean => {
     try {
@@ -97,11 +97,11 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
       return false;
     }
   };
-  
+
   // Handle form submission
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    
+
     try {
       await assignStaff(
         shopId,
@@ -109,12 +109,12 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
         formData.role,
         formData.isPrimary
       );
-      
+
       toast({
         title: "Staff Assigned",
         description: "Staff member has been successfully assigned to this shop.",
       });
-      
+
       // Close dialog and refresh data
       onOpenChange(false);
       if (onSuccess) onSuccess();
@@ -127,12 +127,12 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
       });
     }
   };
-  
+
   // Filter out staff that are already assigned to this shop
-  const availableStaff = allStaff.filter(staff => 
+  const availableStaff = allStaff.filter(staff =>
     !staffAssignments.some(assignment => assignment.staffId === staff.id)
   );
-  
+
   // Common role options for staff in shops
   const roleOptions = [
     { value: "Manager", label: "Manager" },
@@ -144,7 +144,7 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
     { value: "Customer Service", label: "Customer Service" },
     { value: "Maintenance", label: "Maintenance" },
   ];
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -154,7 +154,7 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
             Assign a staff member to this shop location.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="staff" className="required">
@@ -191,7 +191,7 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
               <p className="text-sm text-destructive">{errors.staffId}</p>
             )}
           </div>
-          
+
           <div className="grid gap-2">
             <Label htmlFor="role" className="required">
               Role
@@ -216,7 +216,7 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
               <p className="text-sm text-destructive">{errors.role}</p>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-2 pt-2">
             <Checkbox
               id="isPrimary"
@@ -229,7 +229,7 @@ export function AddStaffDialog({ shopId, open, onOpenChange, onSuccess }: AddSta
             </Label>
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button
             variant="outline"

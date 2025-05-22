@@ -2,8 +2,8 @@
  * Custom hook for managing customer data and operations
  */
 
+import { customerService } from '../services';
 import { useState, useEffect, useCallback } from 'react';
-import { customerService } from '../services/customerService';
 import { Customer, CustomerFilters, CustomerSortOptions, CustomerPagination } from '../types';
 import { useToast } from '@/hooks';
 import { eventBus, POS_EVENTS } from '@/lib/events/event-bus';

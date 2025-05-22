@@ -1,7 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
-import { toast } from "@/components/ui/use-toast";
-
 /**
  * Safely converts any value to a string representation for display
  * Handles objects, arrays, and other non-primitive types
@@ -9,7 +5,7 @@ import { toast } from "@/components/ui/use-toast";
 export const safeStringify = (value: unknown): string => {
   if (value === null) return 'null';
   if (value === undefined) return 'undefined';
-  
+
   if (typeof value === 'object') {
     try {
       return JSON.stringify(value);
@@ -17,19 +13,19 @@ export const safeStringify = (value: unknown): string => {
       return '[Object]';
     }
   }
-  
+
   return String(value);
 };
 
 /**
  * Shows an error toast with a formatted error message
  */
-export const showErrorToast = (error: unknown, title = 'Something went wrong'): void => {
+export const showErrorToast = async (error: unknown, title = 'Something went wrong'): Promise<void> => {
   let description: string;
-  
+
   if (error instanceof Error) {
     description = error.message;
-    
+
     // Handle specific React errors
     if (error.message.includes('Objects are not valid as a React child')) {
       description = 'Attempted to render an object directly in the UI. Please convert it to a string first.';
@@ -39,12 +35,16 @@ export const showErrorToast = (error: unknown, title = 'Something went wrong'): 
   } else {
     description = safeStringify(error);
   }
-  
-  toast({
-    variant: "destructive",
-    title,
-    description,
-  });
+
+  try {
+    // Dynamically import the toast service to avoid circular dependencies
+    const { ToastService } = await import('@/lib/toast');
+    ToastService.error(title, description);
+  } catch (toastError) {
+    // If there's an error showing the toast, just log it
+    console.error('Error showing toast:', toastError);
+    console.error('Original error:', error);
+  }
 };
 
 /**
@@ -58,8 +58,12 @@ export const handleAsyncError = async <T>(
   try {
     return await fn();
   } catch (error) {
-    showErrorToast(error, errorTitle);
+    // Log the error first
     console.error(error);
+
+    // Show toast notification
+    await showErrorToast(error, errorTitle);
+
     return null;
   }
 };

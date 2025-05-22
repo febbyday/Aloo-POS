@@ -1,55 +1,48 @@
 /**
- * Bypass Protected Route Component
- * 
- * This is a modified version of the ProtectedRoute component that always allows access.
- * It completely bypasses authentication checks for all routes.
+ * Development Bypass Protected Route Component
+ *
+ * This component is a special version of the ProtectedRoute that allows
+ * for bypassing authentication checks in development mode.
+ * DO NOT USE IN PRODUCTION - FOR DEVELOPMENT PURPOSES ONLY
  */
 
-import React from 'react';
-import { DevelopmentModeIndicator } from './DevelopmentModeIndicator';
+import { ReactNode } from 'react';
+import { Outlet } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
+/**
+ * Protected Route Props
+ */
+export interface ProtectedRouteProps {
+  /** The children components to render */
+  children?: ReactNode;
+  
+  /** Permissions required to access the route */
   permissions?: string[];
+  
+  /** Roles required to access the route */
   roles?: string[];
+  
+  /** Path to redirect to if user is not authenticated */
   redirectPath?: string;
 }
 
 /**
- * Bypass Protected Route Component
- * Always allows access to the route regardless of authentication status
+ * Development Bypass Protected Route
+ * 
+ * This provides no actual protection and allows any route to be accessed,
+ * even without authentication. Use only for development when backend might not be available.
  */
-export function ProtectedRoute({ 
-  children, 
-  permissions = [], 
-  roles = [], 
-  redirectPath = '/login' 
-}: ProtectedRouteProps) {
-  // Log that we're using the bypass version
-  console.log('[AUTH BYPASS] Using bypass ProtectedRoute - Authentication checks disabled');
-  
-  // Log permissions and roles that would normally be required
-  if (permissions.length > 0 || roles.length > 0) {
-    const permissionMessage = permissions.length > 0
-      ? `Permissions needed: ${permissions.join(', ')}`
-      : '';
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading } = useAuth();
 
-    const rolesMessage = roles.length > 0
-      ? `Roles needed: ${roles.join(', ')}`
-      : '';
-
-    console.log(
-      '[AUTH BYPASS] Access requirements bypassed.',
-      permissionMessage,
-      rolesMessage
-    );
+  // For logging purposes only
+  if (!isAuthenticated && !isLoading) {
+    console.info('[DEV MODE] Protected route would normally require authentication, but auth check is bypassed in development.');
   }
 
-  // Always render the children with a development mode indicator
-  return (
-    <>
-      {children}
-      <DevelopmentModeIndicator />
-    </>
-  );
+  // Simply render children or the Outlet without any checks
+  return children ? <>{children}</> : <Outlet />;
 }
+
+export default ProtectedRoute;

@@ -1,6 +1,5 @@
 import { apiClient, ApiResponse, PaginatedApiResponse } from '../api-client';
 import { EntityStorage } from '../storage';
-import { createMockEntity, updateMockEntity, deleteMockEntity } from '../api-client';
 
 export interface BaseServiceOptions {
   endpoint: string;
@@ -41,8 +40,7 @@ export class BaseService<T extends { id: string }> {
       // Get from API
       const response = await apiClient.getPaginated<T>(
         this.endpoint,
-        params,
-        (params) => this.getMockData(params)
+        params
       );
 
       // Update local storage if enabled
@@ -75,9 +73,7 @@ export class BaseService<T extends { id: string }> {
 
       // Get from API
       const response = await apiClient.get<T>(
-        `${this.endpoint}/${id}`,
-        undefined,
-        () => this.getMockById(id)
+        `${this.endpoint}/${id}`
       );
 
       // Update local storage if enabled
@@ -98,8 +94,7 @@ export class BaseService<T extends { id: string }> {
       // Create via API
       const response = await apiClient.post<T, Omit<T, 'id'>>(
         this.endpoint,
-        data,
-        (data) => this.createMockEntity(data)
+        data
       );
 
       // Update local storage if enabled
@@ -120,8 +115,7 @@ export class BaseService<T extends { id: string }> {
       // Update via API
       const response = await apiClient.put<T, Partial<T>>(
         `${this.endpoint}/${id}`,
-        data,
-        (data) => this.updateMockEntity(id, data)
+        data
       );
 
       // Update local storage if enabled
@@ -141,8 +135,7 @@ export class BaseService<T extends { id: string }> {
     try {
       // Delete via API
       const response = await apiClient.delete<boolean>(
-        `${this.endpoint}/${id}`,
-        () => this.deleteMockEntity(id)
+        `${this.endpoint}/${id}`
       );
 
       // Update local storage if enabled
@@ -163,8 +156,7 @@ export class BaseService<T extends { id: string }> {
       // Bulk create via API
       const response = await apiClient.post<T[], Array<Omit<T, 'id'>>>(
         `${this.endpoint}/bulk`,
-        items,
-        (items) => items.map(item => this.createMockEntity(item))
+        items
       );
 
       // Update local storage if enabled
@@ -185,8 +177,7 @@ export class BaseService<T extends { id: string }> {
       // Bulk update via API
       const response = await apiClient.put<T[], T[]>(
         `${this.endpoint}/bulk`,
-        items,
-        (items) => this.bulkUpdateMockEntities(items)
+        items
       );
 
       // Update local storage if enabled
@@ -207,8 +198,7 @@ export class BaseService<T extends { id: string }> {
       // Bulk delete via API
       const response = await apiClient.post<boolean, string[]>(
         `${this.endpoint}/bulk-delete`,
-        ids,
-        (ids) => this.bulkDeleteMockEntities(ids)
+        ids
       );
 
       // Update local storage if enabled
@@ -232,8 +222,7 @@ export class BaseService<T extends { id: string }> {
     try {
       const response = await apiClient.getPaginated<T>(
         this.endpoint,
-        { pageSize: 1000 }, // Get a large batch
-        (params) => this.getMockData(params)
+        { pageSize: 1000 } // Get a large batch
       );
 
       if (response.success) {
@@ -256,64 +245,7 @@ export class BaseService<T extends { id: string }> {
     return this.storage ? this.storage.getAll() : [];
   }
 
-  // Mock data methods - to be overridden by subclasses
-  protected getMockData(params?: QueryParams): T[] {
-    return [];
-  }
 
-  protected getMockById(id: string): T | null {
-    const allEntities = this.getMockData();
-    return allEntities.find(entity => entity.id === id) || null;
-  }
-
-  protected createMockEntity(data: Omit<T, 'id'>): T {
-    return createMockEntity<T>(data);
-  }
-
-  protected updateMockEntity(id: string, data: Partial<T>): T {
-    const entity = this.getMockById(id);
-    if (!entity) {
-      throw new Error(`${this.entityName} with ID ${id} not found`);
-    }
-
-    const updatedEntity = { ...entity, ...data, updatedAt: new Date().toISOString() };
-    const allEntities = this.getMockData();
-    const updatedEntities = updateMockEntity(allEntities, updatedEntity);
-
-    return updatedEntity;
-  }
-
-  protected deleteMockEntity(id: string): boolean {
-    const allEntities = this.getMockData();
-    const filteredEntities = deleteMockEntity(allEntities, id);
-
-    return filteredEntities.length < allEntities.length;
-  }
-
-  protected bulkUpdateMockEntities(items: T[]): T[] {
-    const allEntities = this.getMockData();
-    let updatedEntities = [...allEntities];
-
-    items.forEach(item => {
-      updatedEntities = updateMockEntity(updatedEntities, {
-        ...item,
-        updatedAt: new Date().toISOString()
-      });
-    });
-
-    return items;
-  }
-
-  protected bulkDeleteMockEntities(ids: string[]): boolean {
-    let allEntities = this.getMockData();
-    const initialCount = allEntities.length;
-
-    ids.forEach(id => {
-      allEntities = deleteMockEntity(allEntities, id);
-    });
-
-    return allEntities.length < initialCount;
-  }
 }
 
 export default BaseService;

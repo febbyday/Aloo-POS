@@ -7,11 +7,12 @@
 import { renderHook, act } from '@testing-library/react-hooks';
 import { useProductOperations } from '../../hooks/useProductOperations';
 import { useProductStore } from '../../store';
-import { productService } from '../../services/productService';
+import productService from '../../services/factory-product-service';
 
 // Mock the product service
-jest.mock('../../services/productService', () => ({
-  productService: {
+jest.mock('../../services/factory-product-service', () => ({
+  __esModule: true,
+  default: {
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),

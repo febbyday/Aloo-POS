@@ -7,7 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import UnifiedErrorBoundary from './components/unified-error-boundary';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ScrollbarProvider } from '@/components/scrollbar-provider';
-import { Toaster } from "@/components/ui/toaster";
+import { EnhancedToaster, ToastProvider } from "@/lib/toast";
 import { StoreProvider } from './features/store/context/StoreContext';
 import { CompanyProvider } from './features/store/context/CompanyContext';
 import { ProductProvider } from './features/products/context/ProductContext';
@@ -16,6 +16,7 @@ import { CategoryProvider } from './features/products/context/CategoryContext';
 import { BrandProvider } from './features/products/context/BrandContext';
 import { VariationTemplateProvider } from './features/products/context/VariationTemplateContext';
 import { AuthProvider } from './features/auth/context/AuthContext';
+import { BatchRequestProvider } from './lib/providers/BatchRequestProvider';
 // Import shop pages
 import { ShopsPage } from './features/shops/pages/ShopsPage';
 import { ShopDetailsPage } from './features/shops/pages/ShopDetailsPage';
@@ -50,6 +51,9 @@ import { ProductAddPage } from './features/products/pages/ProductAddPage';
 import { ProductEditPage } from './features/products/pages/ProductEditPage';
 import { ProductDetailsPage } from './features/products/pages/ProductDetailsPage';
 import { CategoriesPage } from './features/products/pages/CategoriesPage';
+import { CategoryAddPage } from './features/products/pages/CategoryAddPage';
+import { CategoryEditPage } from './features/products/pages/CategoryEditPage';
+import { CategoryDetailsPage } from './features/products/pages/CategoryDetailsPage';
 import { PricingPage } from './features/products/pages/PricingPage';
 import { StockHistoryPage } from './features/products/pages/StockHistoryPage';
 import { StockTransferPage } from './features/products/pages/StockTransferPage';
@@ -177,8 +181,8 @@ import { FinanceSettingsPage } from './features/finance/pages/FinanceSettingsPag
 import { FinanceProviders } from './features/finance/context/FinanceProviders';
 
 // Import permissions pages
-import { PermissionsPage } from "@/features/staff/pages/PermissionsPage"
-import { PermissionsListPage } from "@/features/staff/pages/PermissionsListPage"
+import { PermissionsPage } from "@/features/users/pages/PermissionsPage"
+import { PermissionsListPage } from "@/features/users/pages/PermissionsListPage"
 
 
 import { RealShopProvider } from './features/shops/context/RealShopContext';
@@ -221,28 +225,30 @@ function App() {
           </Helmet>
           <ScrollbarProvider>
             <AuthProvider>
-              <NotificationProvider>
-                <StoreProvider>
-                  <CompanyProvider>
-                    <CategoryProvider>
-                      <BrandProvider>
-                        <VariationTemplateProvider>
-                          <ProductProvider>
-                            <ProductHistoryProvider>
-                              <CustomerHistoryProvider>
-                                <SalesHistoryProvider>
-                                  <InventoryHistoryProvider>
-                                    <StaffHistoryProvider>
-                                      <RoleHistoryProvider>
-                                        <SupplierHistoryProvider>
-                                          <PurchaseOrderHistoryProvider>
-                                            <RepairHistoryProvider>
-                                              <LocationHistoryProvider>
-                                                <ExpenseHistoryProvider>
-                                                  <SettingsHistoryProvider>
-                                                    <ReportHistoryProvider>
-                                                      <PricingSettingsProvider>
-                                                        <RealShopProvider>
+              <ToastProvider>
+                <BatchRequestProvider>
+                <NotificationProvider>
+                  <StoreProvider>
+                    <CompanyProvider>
+                      <CategoryProvider>
+                        <BrandProvider>
+                          <VariationTemplateProvider>
+                            <ProductProvider>
+                              <ProductHistoryProvider>
+                                <CustomerHistoryProvider>
+                                  <SalesHistoryProvider>
+                                    <InventoryHistoryProvider>
+                                      <StaffHistoryProvider>
+                                        <RoleHistoryProvider>
+                                          <SupplierHistoryProvider>
+                                            <PurchaseOrderHistoryProvider>
+                                              <RepairHistoryProvider>
+                                                <LocationHistoryProvider>
+                                                  <ExpenseHistoryProvider>
+                                                    <SettingsHistoryProvider>
+                                                      <ReportHistoryProvider>
+                                                        <PricingSettingsProvider>
+                                                          <RealShopProvider>
                                                           <Routes>
                                                             {/* Authentication Routes - Bypassed */}
                                                             <Route path="/login" element={<LoginBypass />} />
@@ -271,7 +277,12 @@ function App() {
                                                                     <ProductEditPage />
                                                                   </ProductFormWrapper>
                                                                 } />
-                                                                <Route path="categories" element={<CategoriesPage />} />
+                                                                <Route path="categories">
+                                                                  <Route index element={<CategoriesPage />} />
+                                                                  <Route path="add" element={<CategoryAddPage />} />
+                                                                  <Route path="edit/:id" element={<CategoryEditPage />} />
+                                                                  <Route path=":id" element={<CategoryDetailsPage />} />
+                                                                </Route>
                                                                 <Route path="variations" element={<VariationsManagerPage />} />
                                                                 <Route path="pricing" element={<PricingPage />} />
                                                                 <Route path="history" element={<StockHistoryPage />} />
@@ -531,29 +542,31 @@ function App() {
                                                             {/* Redirect to dashboard if no match instead of login */}
                                                             <Route path="*" element={<Navigate to="/" replace />} />
                                                           </Routes>
-                                                          <Toaster />
-                                                        </RealShopProvider>
-                                                      </PricingSettingsProvider>
-                                                    </ReportHistoryProvider>
-                                                  </SettingsHistoryProvider>
-                                                </ExpenseHistoryProvider>
-                                              </LocationHistoryProvider>
-                                            </RepairHistoryProvider>
-                                          </PurchaseOrderHistoryProvider>
-                                        </SupplierHistoryProvider>
-                                      </RoleHistoryProvider>
-                                    </StaffHistoryProvider>
-                                  </InventoryHistoryProvider>
-                                </SalesHistoryProvider>
-                              </CustomerHistoryProvider>
-                            </ProductHistoryProvider>
-                          </ProductProvider>
-                        </VariationTemplateProvider>
-                      </BrandProvider>
-                    </CategoryProvider>
-                  </CompanyProvider>
-                </StoreProvider>
-              </NotificationProvider>
+                                                          <EnhancedToaster />
+                                                          </RealShopProvider>
+                                                        </PricingSettingsProvider>
+                                                      </ReportHistoryProvider>
+                                                    </SettingsHistoryProvider>
+                                                  </ExpenseHistoryProvider>
+                                                </LocationHistoryProvider>
+                                              </RepairHistoryProvider>
+                                            </PurchaseOrderHistoryProvider>
+                                          </SupplierHistoryProvider>
+                                        </RoleHistoryProvider>
+                                      </StaffHistoryProvider>
+                                    </InventoryHistoryProvider>
+                                  </SalesHistoryProvider>
+                                </CustomerHistoryProvider>
+                              </ProductHistoryProvider>
+                            </ProductProvider>
+                          </VariationTemplateProvider>
+                        </BrandProvider>
+                      </CategoryProvider>
+                    </CompanyProvider>
+                  </StoreProvider>
+                </NotificationProvider>
+              </BatchRequestProvider>
+              </ToastProvider>
             </AuthProvider>
           </ScrollbarProvider>
         </ThemeProvider>

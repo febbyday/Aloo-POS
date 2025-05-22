@@ -1,6 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+/**
+ * @deprecated This file is deprecated. Import Prisma client from 'src/prisma.ts' instead.
+ *
+ * A centralized Prisma client instance has been created in 'src/prisma.ts' that includes
+ * all the features from this implementation plus additional improvements.
+ */
 
-// Create a singleton instance of the Prisma client
-const prisma = new PrismaClient();
+import prisma from '../prisma';
 
-export default prisma; 
+// Re-export the centralized Prisma client
+export default prisma;

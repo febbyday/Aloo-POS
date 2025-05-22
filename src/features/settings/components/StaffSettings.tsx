@@ -1,8 +1,6 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { Button } from "@/components/ui/button"
-import { 
-  Shield, 
+import {
+  Shield,
   Users,
   Loader2
 } from "lucide-react"
@@ -16,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form } from "@/components/ui/form"
-import { useRoles } from "@/features/staff/hooks/useRoles"
+import { useRoles } from "@/features/users/hooks/useRoles"
 
 // Define schema for staff settings
 const staffSettingsSchema = z.object({
@@ -24,21 +22,21 @@ const staffSettingsSchema = z.object({
   enableStaffManagement: z.boolean(),
   staffCodePrefix: z.string(),
   requireStaffLogin: z.boolean(),
-  
+
   // Security Settings
   enforcePasswordPolicy: z.boolean(),
   passwordExpiryDays: z.number().min(0),
   twoFactorAuth: z.boolean(),
-  
+
   // Permissions Settings
   defaultRole: z.enum(["admin", "manager", "cashier", "inventory"]),
   allowRoleCustomization: z.boolean(),
-  
+
   // Schedule Settings
   enableScheduling: z.boolean(),
   defaultShiftHours: z.number().min(1).max(12),
   allowOvertime: z.boolean(),
-  
+
   // Performance Settings
   enablePerformanceTracking: z.boolean(),
   salesTargets: z.boolean(),
@@ -51,18 +49,18 @@ const defaultValues: StaffSettingsValues = {
   enableStaffManagement: true,
   staffCodePrefix: "STF",
   requireStaffLogin: true,
-  
+
   enforcePasswordPolicy: true,
   passwordExpiryDays: 90,
   twoFactorAuth: false,
-  
+
   defaultRole: "cashier",
   allowRoleCustomization: true,
-  
+
   enableScheduling: true,
   defaultShiftHours: 8,
   allowOvertime: true,
-  
+
   enablePerformanceTracking: true,
   salesTargets: true,
   commissionStructure: true,
@@ -106,7 +104,7 @@ const StaffSettings = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="enable-staff">Enable Staff Management</Label>
-                <Switch 
+                <Switch
                   id="enable-staff"
                   checked={form.watch("enableStaffManagement")}
                   onCheckedChange={(value) => form.setValue("enableStaffManagement", value)}
@@ -114,7 +112,7 @@ const StaffSettings = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="staff-prefix">Staff Code Prefix</Label>
-                <Input 
+                <Input
                   id="staff-prefix"
                   {...form.register("staffCodePrefix")}
                   placeholder="STF"
@@ -122,7 +120,7 @@ const StaffSettings = () => {
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="require-login">Require Staff Login</Label>
-                <Switch 
+                <Switch
                   id="require-login"
                   checked={form.watch("requireStaffLogin")}
                   onCheckedChange={(value) => form.setValue("requireStaffLogin", value)}
@@ -140,7 +138,7 @@ const StaffSettings = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password-policy">Enforce Password Policy</Label>
-                <Switch 
+                <Switch
                   id="password-policy"
                   checked={form.watch("enforcePasswordPolicy")}
                   onCheckedChange={(value) => form.setValue("enforcePasswordPolicy", value)}
@@ -149,7 +147,7 @@ const StaffSettings = () => {
               {form.watch("enforcePasswordPolicy") && (
                 <div className="space-y-2">
                   <Label htmlFor="password-expiry">Password Expiry (days)</Label>
-                  <Input 
+                  <Input
                     id="password-expiry"
                     type="number"
                     {...form.register("passwordExpiryDays", { valueAsNumber: true })}
@@ -158,7 +156,7 @@ const StaffSettings = () => {
               )}
               <div className="flex items-center justify-between">
                 <Label htmlFor="two-factor">Enable Two-Factor Authentication</Label>
-                <Switch 
+                <Switch
                   id="two-factor"
                   checked={form.watch("twoFactorAuth")}
                   onCheckedChange={(value) => form.setValue("twoFactorAuth", value)}
@@ -176,7 +174,7 @@ const StaffSettings = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="default-role">Default Role</Label>
-                <Select 
+                <Select
                   defaultValue={form.watch("defaultRole")}
                   onValueChange={(value: any) => form.setValue("defaultRole", value)}
                 >
@@ -209,7 +207,7 @@ const StaffSettings = () => {
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="role-customization">Allow Role Customization</Label>
-                <Switch 
+                <Switch
                   id="role-customization"
                   checked={form.watch("allowRoleCustomization")}
                   onCheckedChange={(value) => form.setValue("allowRoleCustomization", value)}
@@ -227,7 +225,7 @@ const StaffSettings = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="enable-scheduling">Enable Staff Scheduling</Label>
-                <Switch 
+                <Switch
                   id="enable-scheduling"
                   checked={form.watch("enableScheduling")}
                   onCheckedChange={(value) => form.setValue("enableScheduling", value)}
@@ -245,7 +243,7 @@ const StaffSettings = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="allow-overtime">Allow Overtime</Label>
-                    <Switch 
+                    <Switch
                       id="allow-overtime"
                       checked={form.watch("allowOvertime")}
                       onCheckedChange={(value) => form.setValue("allowOvertime", value)}
@@ -265,7 +263,7 @@ const StaffSettings = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="enable-performance">Enable Performance Tracking</Label>
-                <Switch 
+                <Switch
                   id="enable-performance"
                   checked={form.watch("enablePerformanceTracking")}
                   onCheckedChange={(value) => form.setValue("enablePerformanceTracking", value)}
@@ -275,7 +273,7 @@ const StaffSettings = () => {
                 <>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="sales-targets">Enable Sales Targets</Label>
-                    <Switch 
+                    <Switch
                       id="sales-targets"
                       checked={form.watch("salesTargets")}
                       onCheckedChange={(value) => form.setValue("salesTargets", value)}
@@ -283,7 +281,7 @@ const StaffSettings = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="commission">Enable Commission Structure</Label>
-                    <Switch 
+                    <Switch
                       id="commission"
                       checked={form.watch("commissionStructure")}
                       onCheckedChange={(value) => form.setValue("commissionStructure", value)}
@@ -308,4 +306,4 @@ const StaffSettings = () => {
   );
 };
 
-export default StaffSettings; 
+export default StaffSettings;

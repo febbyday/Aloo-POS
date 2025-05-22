@@ -5,7 +5,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { salesService } from '../services/salesService';
+// Import the new factory-based sales service
+import salesService from '../services/factory-sales-service';
 import { Sales } from '../types';
 
 export interface UseSalesOptions {

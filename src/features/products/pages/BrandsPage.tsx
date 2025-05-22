@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -29,6 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -41,7 +40,12 @@ import {
   MoreHorizontal,
   Globe,
   Eye,
-  EyeOff
+  EyeOff,
+  Tag,
+  Package,
+  AlertCircle,
+  Calendar,
+  Settings
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -50,8 +54,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/components/ui/use-toast';
-import { useBrands } from '../context/BrandContext';
+import { useToast } from '@/lib/toast';
+import { useBrands } from '../context/BatchBrandProvider';
 import BrandForm from '../components/brands/BrandForm';
 import { Brand, BrandFormData } from '../types/brand';
 
@@ -67,10 +71,11 @@ function BrandsPageComponent() {
     setFilters,
     sort,
     setSort,
+    pagination,
+    setPagination,
     addBrand,
     updateBrand,
     deleteBrands,
-    // bulkAction, // Commented out as it's not used
     refreshBrands
   } = useBrands();
 
@@ -243,6 +248,11 @@ function BrandsPageComponent() {
     });
   };
 
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    setPagination({ ...pagination, page });
+  };
+
   // Get sort indicator
   const getSortIndicator = (field: 'name' | 'products' | 'createdAt' | 'updatedAt') => {
     if (sort.field !== field) return null;
@@ -250,7 +260,7 @@ function BrandsPageComponent() {
   };
 
   return (
-    <div className="container mx-auto space-y-6">
+    <div className="w-full" data-component-name="BrandsPageComponent">
       <PageHeader
         title="Brands"
         description="Manage your product brands"
@@ -340,7 +350,7 @@ function BrandsPageComponent() {
           </Button>
         </div>
       ) : (
-        <div className="rounded-md border overflow-x-auto">
+        <div className="rounded-md overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -355,23 +365,35 @@ function BrandsPageComponent() {
                   className="cursor-pointer"
                   onClick={() => handleSortChange('name')}
                 >
+                  <Tag className="h-4 w-4 mr-1" />
                   Brand{getSortIndicator('name')}
                 </TableHead>
-                <TableHead>Website</TableHead>
+                <TableHead>
+                  <Globe className="h-4 w-4 mr-1" />
+                  Website
+                </TableHead>
                 <TableHead
                   className="cursor-pointer"
                   onClick={() => handleSortChange('products')}
                 >
+                  <Package className="h-4 w-4 mr-1" />
                   Products{getSortIndicator('products')}
                 </TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  Status
+                </TableHead>
                 <TableHead
                   className="cursor-pointer"
                   onClick={() => handleSortChange('createdAt')}
                 >
+                  <Calendar className="h-4 w-4 mr-1" />
                   Created{getSortIndicator('createdAt')}
                 </TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">
+                  <Settings className="h-4 w-4 mr-1" />
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -467,6 +489,15 @@ function BrandsPageComponent() {
               ))}
             </TableBody>
           </Table>
+          <div className="mt-4 flex justify-between items-center px-4 py-2 bg-muted/20 rounded-md">
+            <TablePagination
+              currentPage={pagination.page}
+              totalPages={Math.ceil(brands.length / pagination.pageSize)}
+              totalItems={brands.length}
+              pageSize={pagination.pageSize}
+              onPageChange={handlePageChange}
+            />
+          </div>
         </div>
       )}
 
@@ -538,7 +569,7 @@ function BrandsPageComponent() {
   );
 }
 
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
+
 
 // Export the component with both default and named exports for compatibility
 export { BrandsPageComponent as BrandsPage };

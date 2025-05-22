@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import bcrypt from 'bcryptjs';
 
 /**
@@ -33,6 +31,21 @@ export const comparePasswords = async (
   hashedPassword: string
 ): Promise<boolean> => {
   return bcrypt.compare(plainPassword, hashedPassword);
+};
+
+/**
+ * Compare a plain text PIN with a hashed PIN
+ * 
+ * @param plainPin Plain text PIN
+ * @param hashedPin Hashed PIN
+ * @returns True if the PINs match
+ */
+export const comparePins = async (
+  plainPin: string,
+  hashedPin: string
+): Promise<boolean> => {
+  // Use bcrypt's compare function, suitable for both passwords and PINs
+  return bcrypt.compare(plainPin, hashedPin);
 };
 
 /**

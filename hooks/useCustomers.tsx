@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { customerService, Customer, CustomerParams, CustomerResponse } from '../services/customerService';
+import { customerService } from '@/features/customers/services';
+import type { Customer, CustomerParams, CustomerResponse } from '@/features/customers/types';
 
 interface UseCustomersResult {
   customers: Customer[];

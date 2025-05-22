@@ -1,8 +1,9 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import jwt from 'jsonwebtoken';
 import { User, UserRole } from '@prisma/client';
 import { UserRepository } from '../repositories/userRepository';
+import { getDefaultPermissions } from '../../shared/schemas/permissions';
+import { AccessLevel } from '../../shared/schemas/accessLevel';
+import { permissionsToStringArray } from './permissionUtils';
 
 // Environment variables - these should be in .env file in production
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-should-be-in-env-file';
@@ -155,28 +156,58 @@ export const blacklistToken = async (token: string, expiryTime = 86400): Promise
  * @returns Array of permissions
  */
 export const getUserPermissions = (role: UserRole): string[] => {
+  // Get default permissions object
+  const defaultPerms = getDefaultPermissions();
+
+  // Create role-specific permissions
+  let permissions = { ...defaultPerms };
+
   switch (role) {
     case UserRole.ADMIN:
-      return ['*']; // Admin has all permissions
+      // Set all permissions to ALL access level
+      Object.keys(permissions).forEach(module => {
+        const modulePerms = permissions[module as keyof typeof permissions];
+
+        // Set all access level permissions to ALL
+        Object.keys(modulePerms).forEach(perm => {
+          if (typeof modulePerms[perm as keyof typeof modulePerms] === 'string') {
+            (modulePerms as any)[perm] = AccessLevel.ALL;
+          } else if (typeof modulePerms[perm as keyof typeof modulePerms] === 'boolean') {
+            (modulePerms as any)[perm] = true;
+          }
+        });
+      });
+      break;
+
     case UserRole.MANAGER:
-      return [
-        'sales.*', 
-        'inventory.*', 
-        'customers.*', 
-        'reports.view', 
-        'staff.view', 
-        'staff.create'
-      ];
+      // Set specific permissions for manager
+      permissions.sales.view = AccessLevel.ALL;
+      permissions.sales.create = AccessLevel.ALL;
+      permissions.sales.edit = AccessLevel.ALL;
+      permissions.inventory.view = AccessLevel.ALL;
+      permissions.inventory.create = AccessLevel.ALL;
+      permissions.customers.view = AccessLevel.ALL;
+      permissions.customers.create = AccessLevel.ALL;
+      permissions.reports.view = AccessLevel.ALL;
+      permissions.staff.view = AccessLevel.ALL;
+      permissions.staff.create = AccessLevel.ALL;
+      break;
+
     case UserRole.CASHIER:
-      return [
-        'sales.view', 
-        'sales.create', 
-        'inventory.view', 
-        'customers.view'
-      ];
+      // Set specific permissions for cashier
+      permissions.sales.view = AccessLevel.ALL;
+      permissions.sales.create = AccessLevel.ALL;
+      permissions.inventory.view = AccessLevel.ALL;
+      permissions.customers.view = AccessLevel.ALL;
+      break;
+
     default:
-      return [];
+      // No permissions
+      break;
   }
+
+  // Convert permissions object to string array
+  return permissionsToStringArray(permissions);
 };
 
 export { TokenBlacklist };

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { ErrorBoundary } from '@/components/unified-error-boundary'
 import {
   BarChart3,
   Download,
@@ -10,7 +11,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -18,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
-import { useToast } from '@/components/ui/use-toast'
+import { ToastService } from '@/lib/toast'
 import {
   Card,
   CardContent,
@@ -32,6 +33,10 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useBatchRequest } from '@/lib/providers/BatchRequestProvider'
+import { performanceMonitor } from '@/lib/performance/performance-monitor'
+import { BatchedDashboard } from '@/features/dashboard/components/BatchedDashboard'
 
 type TimeRange = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom'
 type ChartType = 'bar' | 'line' | 'pie'
@@ -46,28 +51,76 @@ interface ChartConfig {
 export function AnalyticsDashboardPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('week')
   const [activeTab, setActiveTab] = useState('overview')
-  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [dashboardData, setDashboardData] = useState<any>({})
+  const { get, executeBatch, queueSize } = useBatchRequest()
+
+  // Load dashboard data using batched requests
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      performanceMonitor.markStart('dashboard:loadData');
+      setLoading(true);
+
+      try {
+        // Add multiple requests to the batch
+        const revenuePromise = get('dashboard/revenue');
+        const salesPromise = get('dashboard/sales');
+        const customersPromise = get('dashboard/customers');
+        const productsPromise = get('dashboard/products');
+
+        // Execute the batch
+        await executeBatch();
+
+        // Process the results
+        const [revenue, sales, customers, products] = await Promise.all([
+          revenuePromise,
+          salesPromise,
+          customersPromise,
+          productsPromise
+        ]);
+
+        // Update state with the results
+        setDashboardData({
+          revenue,
+          sales,
+          customers,
+          products
+        });
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        ToastService.error("Error loading dashboard data",
+          "There was an error loading the dashboard data. Please try again."
+        );
+      } finally {
+        setLoading(false);
+        performanceMonitor.markEnd('dashboard:loadData');
+      }
+    };
+
+    loadDashboardData();
+  }, [get, executeBatch]);
 
   const handleRefresh = () => {
-    toast({
-      title: "Refreshing data...",
-      description: "Your analytics data is being updated."
-    })
+    ToastService.info("Refreshing data...", "Your analytics data is being updated.");
+
+    // Reload dashboard data
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
   }
 
   const handleExport = () => {
-    toast({
-      title: "Exporting report...",
-      description: "Your export will be ready shortly."
-    })
+    ToastService.info("Exporting report...", "Your export will be ready shortly.");
   }
 
   return (
-    <div className="space-y-4">
+    <ErrorBoundary>
+      <div className="space-y-4">
       {/* Header Actions */}
       <div className="bg-zinc-900 px-4 py-2 flex items-center gap-2 -mx-4 -mt-4">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
           className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-white/10"
           onClick={handleRefresh}
@@ -75,8 +128,8 @@ export function AnalyticsDashboardPage() {
           <RefreshCw className="h-4 w-4" />
         </Button>
 
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
           className="h-8 text-zinc-400 hover:text-white hover:bg-white/10"
           onClick={handleExport}
@@ -85,8 +138,8 @@ export function AnalyticsDashboardPage() {
           Export Report
         </Button>
 
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
           className="h-8 text-zinc-400 hover:text-white hover:bg-white/10"
         >
@@ -122,6 +175,7 @@ export function AnalyticsDashboardPage() {
           <TabsTrigger value="sales">Sales Analysis</TabsTrigger>
           <TabsTrigger value="products">Product Performance</TabsTrigger>
           <TabsTrigger value="customers">Customer Insights</TabsTrigger>
+          <TabsTrigger value="batched">Batched Dashboard</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -135,10 +189,21 @@ export function AnalyticsDashboardPage() {
                 <LineChart className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$45,231.89</div>
-                <p className="text-xs text-muted-foreground">
-                  +20.1% from last month
-                </p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-24" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      ${dashboardData.revenue?.total || '0.00'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {dashboardData.revenue?.change || '+0.0%'} from last month
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -149,10 +214,21 @@ export function AnalyticsDashboardPage() {
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">+2350</div>
-                <p className="text-xs text-muted-foreground">
-                  +180.1% from last month
-                </p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-24" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      +{dashboardData.sales?.count || '0'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {dashboardData.sales?.change || '+0.0%'} from last month
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -163,10 +239,21 @@ export function AnalyticsDashboardPage() {
                 <PieChart className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">+12,234</div>
-                <p className="text-xs text-muted-foreground">
-                  +19% from last month
-                </p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-24" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      +{dashboardData.customers?.active || '0'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {dashboardData.customers?.change || '+0.0%'} from last month
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -177,10 +264,21 @@ export function AnalyticsDashboardPage() {
                 <LineChart className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$59.62</div>
-                <p className="text-xs text-muted-foreground">
-                  +201 since last hour
-                </p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-24" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      ${dashboardData.sales?.averageValue || '0.00'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {dashboardData.sales?.valueChange || '+0.0%'} since last hour
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -296,7 +394,18 @@ export function AnalyticsDashboardPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="batched" className="space-y-4">
+          {/* Batched Dashboard Content */}
+          <ErrorBoundary
+            title="Batched Dashboard Error"
+            showToast={true}
+          >
+            <BatchedDashboard />
+          </ErrorBoundary>
+        </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }

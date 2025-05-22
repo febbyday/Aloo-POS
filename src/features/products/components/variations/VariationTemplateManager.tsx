@@ -1,7 +1,5 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { useState, useEffect } from 'react';
-import { useVariationTemplates } from '../../context/VariationTemplateContext';
+import { useVariationTemplates } from '../../context/BatchVariationTemplateProvider';
 import { VariationTemplate, VariationTemplateFormData } from '../../types/variation-template';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -186,7 +184,7 @@ const VariationTemplateManager: React.FC = () => {
   // Handle deleting a template
   const handleDeleteTemplate = async () => {
     if (!currentTemplate) return;
-    
+
     try {
       await deleteTemplate(currentTemplate.id);
       toast({
@@ -240,7 +238,7 @@ const VariationTemplateManager: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        
+
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Select
             value={selectedCategory}
@@ -259,7 +257,7 @@ const VariationTemplateManager: React.FC = () => {
               <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Button onClick={handleAddTemplate}>
             <Plus className="h-4 w-4 mr-2" />
             New Template
@@ -391,7 +389,7 @@ const VariationTemplateManager: React.FC = () => {
                 : 'Create a reusable template for product variations'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <VariationTemplateForm
             initialData={isEditMode && currentTemplate ? currentTemplate : undefined}
             onSubmit={handleSaveTemplate}

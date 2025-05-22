@@ -1,0 +1,4 @@
+# This is an empty migration.toml file.
+# It's used by Prisma Migrate to track migration metadata.
+
+migration_name = "20240601000000_add_pin_authentication"

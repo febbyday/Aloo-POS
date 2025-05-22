@@ -21,11 +21,11 @@ import {
 } from "@/components/ui/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { staffSchema } from "../types/staff"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/lib/toast"
 import { Loader2, Shield } from "lucide-react"
-import { useRoles } from "../hooks/useRoles"
+import { useRoles } from "@/features/users/hooks/useRoles"
 import { useEmploymentTypes } from "../hooks/useEmploymentTypes"
-import type { Role } from "../types/role"
+import type { Role } from "@/features/users/types/role"
 
 type StaffFormData = z.infer<typeof staffSchema>
 
@@ -52,12 +52,12 @@ const FormFieldWrapper = ({ children, label, required = true }: FormFieldWrapper
 )
 
 export function StaffModal({
-  isOpen, 
-  onClose, 
-  onSubmit, 
+  isOpen,
+  onClose,
+  onSubmit,
   initialData,
   isReadOnly = false
-}: { 
+}: {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: StaffFormData) => void
@@ -112,14 +112,14 @@ export function StaffModal({
 
   const handleSubmit = async (data: StaffFormData) => {
     setIsSubmitting(true)
-    
+
     try {
       await onSubmit({
         ...data,
         createdAt: initialData?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
-      
+
       // Reset form if it's an add operation (no initialData)
       if (!initialData) {
         form.reset({
@@ -143,11 +143,7 @@ export function StaffModal({
       }
     } catch (error) {
       console.error("Error submitting staff form:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save staff member",
-        variant: "destructive"
-      })
+      toast.error("Error", error instanceof Error ? error.message : "Failed to save staff member")
     } finally {
       setIsSubmitting(false)
     }
@@ -165,9 +161,9 @@ export function StaffModal({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            <Tabs 
-              defaultValue={TabValue.GENERAL} 
-              value={activeTab} 
+            <Tabs
+              defaultValue={TabValue.GENERAL}
+              value={activeTab}
               onValueChange={(value: string) => setActiveTab(value as TabValue)}
             >
               <TabsList className="grid w-full grid-cols-3">
@@ -283,8 +279,8 @@ export function StaffModal({
                               </div>
                             ) : (
                               roles.map((role) => (
-                                <SelectItem 
-                                  key={role.id} 
+                                <SelectItem
+                                  key={role.id}
                                   value={role.name}
                                   className="py-2"
                                 >
@@ -405,8 +401,8 @@ export function StaffModal({
                               </div>
                             ) : (
                               employmentTypes.map((type) => (
-                                <SelectItem 
-                                  key={type.id} 
+                                <SelectItem
+                                  key={type.id}
                                   value={type.name.toLowerCase().replace(/\s+/g, '-')}
                                 >
                                   <div className="flex items-center">
@@ -501,31 +497,31 @@ export function StaffModal({
                         )}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="bankingDetails.branchLocation"
                         render={({ field }) => (
                           <FormFieldWrapper label="Branch Location">
-                            <Input 
-                              placeholder="Enter bank branch location" 
-                              {...field} 
-                              readOnly={isReadOnly} 
+                            <Input
+                              placeholder="Enter bank branch location"
+                              {...field}
+                              readOnly={isReadOnly}
                             />
                           </FormFieldWrapper>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="bankingDetails.branchCode"
                         render={({ field }) => (
                           <FormFieldWrapper label="Branch Code (Optional)">
-                            <Input 
-                              placeholder="Enter branch code if applicable" 
-                              {...field} 
-                              readOnly={isReadOnly} 
+                            <Input
+                              placeholder="Enter branch code if applicable"
+                              {...field}
+                              readOnly={isReadOnly}
                             />
                           </FormFieldWrapper>
                         )}
@@ -541,8 +537,8 @@ export function StaffModal({
                 Cancel
               </Button>
               {!isReadOnly && (
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isSubmitting || !form.formState.isValid}
                 >
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

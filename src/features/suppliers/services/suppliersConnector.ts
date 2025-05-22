@@ -1,17 +1,21 @@
 /**
  * Suppliers Connector
- * 
+ *
  * This module handles the connection process with external supplier systems
  * as outlined in the connection guide (docs/connections/suppliers.connection.md)
+ *
+ * @deprecated CRITICAL: Use the factory-based suppliersConnector instead
+ * This service has been migrated to use the enhanced API client but will be removed in a future release.
+ * Import from 'src/features/suppliers/services' instead of directly from this file.
+ * Example: import { suppliersConnector } from '@/features/suppliers/services';
  */
 
-import { api } from '@/lib/api';
-import { getApiEndpoint } from '@/lib/api/config';
+import { enhancedApiClient } from '@/lib/api/enhanced-api-client';
+import { ApiErrorType, createErrorHandler } from '@/lib/api/error-handler';
 import { Supplier, SUPPLIER_STATUS } from '../types';
 
-// API endpoints
-const SUPPLIERS_URL = getApiEndpoint('suppliers');
-const CONNECTION_URL = `${SUPPLIERS_URL}/connection`;
+// Create error handler for this module
+const errorHandler = createErrorHandler('suppliersConnector');
 
 // Connection status types
 export enum CONNECTION_STATUS {
@@ -91,6 +95,10 @@ export interface ConnectionStatus {
 
 /**
  * Supplier Connection Service
+ *
+ * @deprecated CRITICAL: Use the factory-based suppliersConnector instead
+ * This service has been migrated to use the enhanced API client but will be removed in a future release.
+ * Import from 'src/features/suppliers/services' instead of directly from this file.
  */
 export const suppliersConnector = {
   /**
@@ -98,11 +106,15 @@ export const suppliersConnector = {
    */
   getConnectionStatus: async (supplierId: string): Promise<ConnectionStatus | null> => {
     try {
-      const response = await api.get(`${CONNECTION_URL}/${supplierId}/status`);
-      return response.data;
+      console.warn('DEPRECATED: Using legacy suppliersConnector.getConnectionStatus(). Please use the factory-based suppliersConnector instead.');
+      return await enhancedApiClient.get<ConnectionStatus>(
+        'suppliers/connection/STATUS',
+        { supplierId },
+        { retry: true, cache: 'default' }
+      );
     } catch (error) {
       console.error(`Error fetching connection status for supplier ${supplierId}:`, error);
-      return null;
+      return errorHandler.handleError(error, 'getConnectionStatus', null);
     }
   },
 
@@ -111,11 +123,15 @@ export const suppliersConnector = {
    */
   getConnectionConfig: async (supplierId: string): Promise<ConnectionConfig | null> => {
     try {
-      const response = await api.get(`${CONNECTION_URL}/${supplierId}/config`);
-      return response.data;
+      console.warn('DEPRECATED: Using legacy suppliersConnector.getConnectionConfig(). Please use the factory-based suppliersConnector instead.');
+      return await enhancedApiClient.get<ConnectionConfig>(
+        'suppliers/connection/CONFIG',
+        { supplierId },
+        { retry: true, cache: 'default' }
+      );
     } catch (error) {
       console.error(`Error fetching connection config for supplier ${supplierId}:`, error);
-      return null;
+      return errorHandler.handleError(error, 'getConnectionConfig', null);
     }
   },
 
@@ -124,8 +140,13 @@ export const suppliersConnector = {
    */
   testConnection: async (supplierId: string, config: ConnectionConfig): Promise<ValidationResult> => {
     try {
-      const response = await api.post(`${CONNECTION_URL}/${supplierId}/test`, config);
-      return response.data;
+      console.warn('DEPRECATED: Using legacy suppliersConnector.testConnection(). Please use the factory-based suppliersConnector instead.');
+      return await enhancedApiClient.post<ValidationResult>(
+        'suppliers/connection/TEST',
+        config,
+        { supplierId },
+        { retry: false }
+      );
     } catch (error) {
       console.error(`Error testing connection for supplier ${supplierId}:`, error);
       return {
@@ -146,8 +167,13 @@ export const suppliersConnector = {
    */
   connect: async (supplierId: string, config: ConnectionConfig): Promise<ValidationResult> => {
     try {
-      const response = await api.post(`${CONNECTION_URL}/${supplierId}/connect`, config);
-      return response.data;
+      console.warn('DEPRECATED: Using legacy suppliersConnector.connect(). Please use the factory-based suppliersConnector instead.');
+      return await enhancedApiClient.post<ValidationResult>(
+        'suppliers/connection/CONNECT',
+        config,
+        { supplierId },
+        { retry: false }
+      );
     } catch (error) {
       console.error(`Error connecting to supplier ${supplierId}:`, error);
       return {
@@ -168,11 +194,17 @@ export const suppliersConnector = {
    */
   disconnect: async (supplierId: string): Promise<boolean> => {
     try {
-      await api.post(`${CONNECTION_URL}/${supplierId}/disconnect`, {});
+      console.warn('DEPRECATED: Using legacy suppliersConnector.disconnect(). Please use the factory-based suppliersConnector instead.');
+      await enhancedApiClient.post(
+        'suppliers/connection/DISCONNECT',
+        {},
+        { supplierId },
+        { retry: false }
+      );
       return true;
     } catch (error) {
       console.error(`Error disconnecting from supplier ${supplierId}:`, error);
-      return false;
+      return errorHandler.handleError(error, 'disconnect', false);
     }
   },
 
@@ -181,11 +213,17 @@ export const suppliersConnector = {
    */
   triggerSync: async (supplierId: string, syncOptions?: { fields?: string[] }): Promise<boolean> => {
     try {
-      await api.post(`${CONNECTION_URL}/${supplierId}/sync`, syncOptions || {});
+      console.warn('DEPRECATED: Using legacy suppliersConnector.triggerSync(). Please use the factory-based suppliersConnector instead.');
+      await enhancedApiClient.post(
+        'suppliers/connection/SYNC',
+        syncOptions || {},
+        { supplierId },
+        { retry: false }
+      );
       return true;
     } catch (error) {
       console.error(`Error triggering sync for supplier ${supplierId}:`, error);
-      return false;
+      return errorHandler.handleError(error, 'triggerSync', false);
     }
   },
 
@@ -194,11 +232,15 @@ export const suppliersConnector = {
    */
   getSyncHistory: async (supplierId: string): Promise<ConnectionStatus['syncHistory']> => {
     try {
-      const response = await api.get(`${CONNECTION_URL}/${supplierId}/sync-history`);
-      return response.data;
+      console.warn('DEPRECATED: Using legacy suppliersConnector.getSyncHistory(). Please use the factory-based suppliersConnector instead.');
+      return await enhancedApiClient.get<ConnectionStatus['syncHistory']>(
+        'suppliers/connection/SYNC_HISTORY',
+        { supplierId },
+        { retry: true, cache: 'default' }
+      );
     } catch (error) {
       console.error(`Error fetching sync history for supplier ${supplierId}:`, error);
-      return [];
+      return errorHandler.handleError(error, 'getSyncHistory', []);
     }
   },
 
@@ -207,11 +249,17 @@ export const suppliersConnector = {
    */
   updateConnectionSettings: async (supplierId: string, settings: ConnectionConfig['settings']): Promise<boolean> => {
     try {
-      await api.put(`${CONNECTION_URL}/${supplierId}/settings`, settings);
+      console.warn('DEPRECATED: Using legacy suppliersConnector.updateConnectionSettings(). Please use the factory-based suppliersConnector instead.');
+      await enhancedApiClient.put(
+        'suppliers/connection/UPDATE_SETTINGS',
+        settings,
+        { supplierId },
+        { retry: false }
+      );
       return true;
     } catch (error) {
       console.error(`Error updating connection settings for supplier ${supplierId}:`, error);
-      return false;
+      return errorHandler.handleError(error, 'updateConnectionSettings', false);
     }
   },
 
@@ -220,11 +268,17 @@ export const suppliersConnector = {
    */
   updateFieldMapping: async (supplierId: string, mapping: ConnectionConfig['mapping']): Promise<boolean> => {
     try {
-      await api.put(`${CONNECTION_URL}/${supplierId}/mapping`, mapping);
+      console.warn('DEPRECATED: Using legacy suppliersConnector.updateFieldMapping(). Please use the factory-based suppliersConnector instead.');
+      await enhancedApiClient.put(
+        'suppliers/connection/UPDATE_MAPPING',
+        mapping,
+        { supplierId },
+        { retry: false }
+      );
       return true;
     } catch (error) {
       console.error(`Error updating field mapping for supplier ${supplierId}:`, error);
-      return false;
+      return errorHandler.handleError(error, 'updateFieldMapping', false);
     }
   },
 
@@ -233,15 +287,19 @@ export const suppliersConnector = {
    */
   getConnectionHealth: async (supplierId: string): Promise<ConnectionStatus['health']> => {
     try {
-      const response = await api.get(`${CONNECTION_URL}/${supplierId}/health`);
-      return response.data;
+      console.warn('DEPRECATED: Using legacy suppliersConnector.getConnectionHealth(). Please use the factory-based suppliersConnector instead.');
+      return await enhancedApiClient.get<ConnectionStatus['health']>(
+        'suppliers/connection/CONNECTION_HEALTH',
+        { supplierId },
+        { retry: true, cache: 'default' }
+      );
     } catch (error) {
       console.error(`Error fetching connection health for supplier ${supplierId}:`, error);
-      return {
+      return errorHandler.handleError(error, 'getConnectionHealth', {
         uptime: 0,
         responseTime: 0,
         errorRate: 100
-      };
+      });
     }
   },
 
@@ -250,11 +308,15 @@ export const suppliersConnector = {
    */
   getSupportedConnectionTypes: async (supplierId: string): Promise<CONNECTION_TYPE[]> => {
     try {
-      const response = await api.get(`${CONNECTION_URL}/${supplierId}/supported-types`);
-      return response.data;
+      console.warn('DEPRECATED: Using legacy suppliersConnector.getSupportedConnectionTypes(). Please use the factory-based suppliersConnector instead.');
+      return await enhancedApiClient.get<CONNECTION_TYPE[]>(
+        'suppliers/connection/SUPPORTED_TYPES',
+        { supplierId },
+        { retry: true, cache: 'default' }
+      );
     } catch (error) {
       console.error(`Error fetching supported connection types for supplier ${supplierId}:`, error);
-      return [CONNECTION_TYPE.MANUAL]; // Default to manual if error
+      return errorHandler.handleError(error, 'getSupportedConnectionTypes', [CONNECTION_TYPE.MANUAL]);
     }
   },
 
@@ -263,11 +325,15 @@ export const suppliersConnector = {
    */
   generateReport: async (supplierId: string): Promise<Blob> => {
     try {
-      const response = await api.get(`${CONNECTION_URL}/${supplierId}/report`);
-      return response.data;
+      console.warn('DEPRECATED: Using legacy suppliersConnector.generateReport(). Please use the factory-based suppliersConnector instead.');
+      return await enhancedApiClient.get<Blob>(
+        'suppliers/connection/GENERATE_REPORT',
+        { supplierId },
+        { retry: false }
+      );
     } catch (error) {
       console.error(`Error generating connection report for supplier ${supplierId}:`, error);
-      throw error;
+      return errorHandler.handleError(error, 'generateReport');
     }
   }
-}; 
+};

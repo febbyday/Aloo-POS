@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Search, Plus, UserPlus, FileText, UserCheck, UserX } from "lucide-react"
 import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import { ReactNode } from "react"
 
 interface ToolbarButton {

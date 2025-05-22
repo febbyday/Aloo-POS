@@ -1,7 +1,7 @@
-import { 
-  RefreshCw, 
-  Filter, 
-  ArrowUpDown, 
+import {
+  RefreshCw,
+  Filter,
+  ArrowUpDown,
   SlidersHorizontal,
   Plus,
   Upload,
@@ -11,7 +11,7 @@ import {
   Edit
 } from "lucide-react"
 import { ProductsToolbar } from "../ProductsToolbar"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/lib/toast"
 
 interface StockTransferToolbarProps {
   onNewTransfer: () => void
@@ -21,14 +21,14 @@ interface StockTransferToolbarProps {
   selectedTransfer?: any
 }
 
-export function StockTransferToolbar({ 
+export function StockTransferToolbar({
   onNewTransfer,
-  onExport, 
+  onExport,
   onColumnsChange,
   onEditTransfer,
   selectedTransfer
 }: StockTransferToolbarProps) {
-  const { toast } = useToast()
+  const toast = useToast()
 
   const toolbarGroups = [
     {
@@ -37,10 +37,7 @@ export function StockTransferToolbar({
           icon: RefreshCw,
           label: "Refresh",
           onClick: () => {
-            toast({
-              title: "Refreshing data...",
-              description: "Your transfer list is being updated."
-            })
+            toast.info("Refreshing data...", "Your transfer list is being updated.")
           }
         }
       ]
@@ -62,10 +59,7 @@ export function StockTransferToolbar({
           icon: Filter,
           label: "Filter",
           onClick: () => {
-            toast({
-              title: "Filter options",
-              description: "Filter transfers by various criteria."
-            })
+            toast.info("Filter options", "Filter transfers by various criteria.")
           }
         }
       ]
@@ -76,10 +70,7 @@ export function StockTransferToolbar({
           icon: ArrowUpDown,
           label: "Sort",
           onClick: () => {
-            toast({
-              title: "Sort options",
-              description: "Sort transfers by date, status, or location."
-            })
+            toast.info("Sort options", "Sort transfers by date, status, or location.")
           }
         },
         {
@@ -95,10 +86,7 @@ export function StockTransferToolbar({
           icon: Printer,
           label: "Print",
           onClick: () => {
-            toast({
-              title: "Preparing print...",
-              description: "Your print job is being prepared."
-            })
+            toast.info("Preparing print...", "Your print job is being prepared.")
           }
         },
         {
@@ -114,10 +102,7 @@ export function StockTransferToolbar({
           icon: Upload,
           label: "Import",
           onClick: () => {
-            toast({
-              title: "Import data",
-              description: "Import transfers from file."
-            })
+            toast.info("Import data", "Import transfers from file.")
           }
         },
         {
@@ -130,7 +115,7 @@ export function StockTransferToolbar({
   ]
 
   return (
-    <ProductsToolbar 
+    <ProductsToolbar
       groups={toolbarGroups}
     />
   )

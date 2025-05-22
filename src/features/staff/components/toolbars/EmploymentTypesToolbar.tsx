@@ -1,14 +1,14 @@
-import { 
-  RefreshCw, 
-  Filter, 
-  FileDown, 
+import {
+  RefreshCw,
+  Filter,
+  FileDown,
   Plus,
   Search,
   Trash2,
   Eye
 } from "lucide-react"
 import { Toolbar } from "@/components/ui/toolbar/toolbar"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/lib/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
@@ -24,7 +24,7 @@ interface EmploymentTypesToolbarProps {
   selectedCount?: number
 }
 
-export function EmploymentTypesToolbar({ 
+export function EmploymentTypesToolbar({
   onRefresh,
   onFilter,
   onExport,
@@ -34,7 +34,7 @@ export function EmploymentTypesToolbar({
   onDelete,
   selectedCount = 0
 }: EmploymentTypesToolbarProps) {
-  const { toast } = useToast()
+  const toast = useToast()
   const [searchQuery, setSearchQuery] = useState("")
 
   const handleSearch = () => {
@@ -46,35 +46,35 @@ export function EmploymentTypesToolbar({
   const toolbarGroups = [
     {
       buttons: [
-        ...(onRefresh ? [{ 
-          icon: RefreshCw, 
-          label: "Refresh", 
-          onClick: onRefresh 
+        ...(onRefresh ? [{
+          icon: RefreshCw,
+          label: "Refresh",
+          onClick: onRefresh
         }] : []),
-        ...(onFilter ? [{ 
-          icon: Filter, 
-          label: "Filter", 
-          onClick: onFilter 
+        ...(onFilter ? [{
+          icon: Filter,
+          label: "Filter",
+          onClick: onFilter
         }] : [])
       ]
     },
     {
       buttons: [
-        ...(onAddEmploymentType ? [{ 
-          icon: Plus, 
-          label: "Add Employment Type", 
-          onClick: onAddEmploymentType 
+        ...(onAddEmploymentType ? [{
+          icon: Plus,
+          label: "Add Employment Type",
+          onClick: onAddEmploymentType
         }] : []),
-        ...(onViewDetails ? [{ 
-          icon: Eye, 
-          label: "View Details", 
+        ...(onViewDetails ? [{
+          icon: Eye,
+          label: "View Details",
           onClick: onViewDetails,
           disabled: selectedCount !== 1,
           title: selectedCount === 1 ? 'View employment type details' : 'Select an employment type to view details'
         }] : []),
-        ...(onDelete ? [{ 
-          icon: Trash2, 
-          label: `Delete${selectedCount > 0 ? ` (${selectedCount})` : ''}`, 
+        ...(onDelete ? [{
+          icon: Trash2,
+          label: `Delete${selectedCount > 0 ? ` (${selectedCount})` : ''}`,
           onClick: onDelete,
           disabled: selectedCount === 0,
           title: selectedCount > 0 ? `Delete ${selectedCount} selected employment types` : 'Select employment types to delete'
@@ -83,10 +83,10 @@ export function EmploymentTypesToolbar({
     },
     {
       buttons: [
-        ...(onExport ? [{ 
-          icon: FileDown, 
-          label: "Export", 
-          onClick: onExport 
+        ...(onExport ? [{
+          icon: FileDown,
+          label: "Export",
+          onClick: onExport
         }] : [])
       ]
     }
@@ -101,10 +101,10 @@ export function EmploymentTypesToolbar({
         onChange={(e) => setSearchQuery(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
       />
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8" 
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
         onClick={handleSearch}
       >
         <Search className="h-4 w-4" />
@@ -113,9 +113,9 @@ export function EmploymentTypesToolbar({
   ) : undefined
 
   return (
-    <Toolbar 
+    <Toolbar
       groups={toolbarGroups}
       rightContent={rightContent}
     />
   )
-} 
+}

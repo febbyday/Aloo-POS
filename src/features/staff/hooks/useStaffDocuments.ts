@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { documentService } from '../services/documentService';
-import { 
-  StaffDocument, 
-  CreateDocument, 
+import {
+  StaffDocument,
+  CreateDocument,
   UpdateDocument,
   DocumentType
 } from '../types/document';
@@ -15,7 +15,7 @@ interface UseStaffDocumentsProps {
 
 /**
  * Hook for managing staff documents
- * 
+ *
  * @param staffId The ID of the staff member
  * @param autoLoad Whether to load documents automatically on mount
  */
@@ -31,14 +31,14 @@ export function useStaffDocuments({ staffId, autoLoad = true }: UseStaffDocument
    */
   const fetchDocuments = useCallback(async () => {
     if (!staffId) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const data = await documentService.fetchAll(staffId);
       setDocuments(data);
-      
+
       if (documentService.isUsingMockData()) {
         toast({
           title: 'Using Mock Data',
@@ -64,24 +64,24 @@ export function useStaffDocuments({ staffId, autoLoad = true }: UseStaffDocument
    */
   const uploadDocument = useCallback(async (data: Omit<CreateDocument, 'staffId'> & { file: File }) => {
     if (!staffId) return null;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const documentData: CreateDocument = {
         ...data,
         staffId,
       };
-      
+
       const newDocument = await documentService.upload(documentData);
       setDocuments(prev => [...prev, newDocument]);
-      
+
       toast({
         title: 'Document Uploaded',
         description: 'Document was successfully uploaded.',
       });
-      
+
       return newDocument;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to upload document');
@@ -102,21 +102,21 @@ export function useStaffDocuments({ staffId, autoLoad = true }: UseStaffDocument
    */
   const updateDocument = useCallback(async (documentId: string, data: UpdateDocument) => {
     if (!staffId) return null;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const updatedDocument = await documentService.update(documentId, data);
-      setDocuments(prev => 
+      setDocuments(prev =>
         prev.map(doc => doc.id === documentId ? updatedDocument : doc)
       );
-      
+
       toast({
         title: 'Document Updated',
         description: 'Document was successfully updated.',
       });
-      
+
       return updatedDocument;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to update document');
@@ -137,24 +137,24 @@ export function useStaffDocuments({ staffId, autoLoad = true }: UseStaffDocument
    */
   const deleteDocument = useCallback(async (documentId: string) => {
     if (!staffId) return false;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       await documentService.delete(documentId);
       setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-      
+
       // If the deleted document was selected, clear selection
       if (selectedDocumentId === documentId) {
         setSelectedDocumentId(null);
       }
-      
+
       toast({
         title: 'Document Deleted',
         description: 'Document was successfully deleted.',
       });
-      
+
       return true;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to delete document');
@@ -175,13 +175,13 @@ export function useStaffDocuments({ staffId, autoLoad = true }: UseStaffDocument
    */
   const downloadDocument = useCallback(async (documentId: string, filename?: string) => {
     if (!staffId) return false;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const blob = await documentService.download(documentId);
-      
+
       // Create a link to download the blob
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -191,12 +191,12 @@ export function useStaffDocuments({ staffId, autoLoad = true }: UseStaffDocument
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       toast({
         title: 'Download Started',
         description: 'Your document download has started.',
       });
-      
+
       return true;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to download document');
@@ -255,4 +255,4 @@ export function useStaffDocuments({ staffId, autoLoad = true }: UseStaffDocument
     selectDocument,
     getSelectedDocument,
   };
-} 
+}

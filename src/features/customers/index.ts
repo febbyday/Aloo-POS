@@ -1,6 +1,6 @@
 /**
  * Customers Module Structure
- * 
+ *
  * /features/customers/
  * ├── components/          # UI Components
  * ├── pages/              # Route Pages
@@ -14,10 +14,10 @@
 // Core exports
 export * from './pages/CustomersPage';
 export * from './hooks/useCustomers';
-export * from './services/customerService';
+export * from './services';
 
 // Type definitions
-export type { 
+export type {
   Customer,
   CustomerFilter,
   CustomerGroup,
@@ -25,8 +25,8 @@ export type {
 } from './types';
 
 // Context providers
-export { 
+export {
   CustomersProvider,
-  useCustomersContext 
+  useCustomersContext
 } from './context/CustomersContext';
 

@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import {
@@ -32,6 +30,8 @@ import { useUsers } from '@/features/users/hooks/useUsers';
 import { UserTable } from '@/features/users/components/UserTable';
 import { UserForm } from '@/features/users/components/UserForm';
 import { User } from '@/features/users/types/user.types';
+import { pinAuthService } from '@/features/auth/services/pinAuthService';
+import { toast } from '@/lib/toast';
 
 /**
  * User Management Page
@@ -106,8 +106,25 @@ export function UserManagementPage() {
       setIsSubmitting(true);
       await createUser(userData);
       setIsEditDialogOpen(false);
-    } catch (error) {
+
+      // Show success toast
+      toast({
+        title: "Success",
+        description: "User created successfully",
+        variant: "default"
+      });
+    } catch (error: any) {
       console.error('Failed to create user:', error);
+
+      // Don't close the dialog on error so user can try again
+      // Only show toast if it's not already handled by the useUsers hook
+      if (error.name !== 'AbortError' && error.message !== 'Request was cancelled') {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to create user. Please try again.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -158,10 +175,59 @@ export function UserManagementPage() {
     }
   };
 
+  // Handle reset user PIN
+  const handleResetUserPin = async (userId: string): Promise<boolean> => {
+    try {
+      setIsSubmitting(true);
+
+      // Find the user first
+      const userToReset = users.find(user => user.id === userId);
+      if (!userToReset) {
+        toast({
+          title: "User Not Found",
+          description: "Could not find the user to reset PIN.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      // Call the PIN service to reset PIN
+      const result = await pinAuthService.resetUserPin(userId);
+
+      if (result.success) {
+        // Update the user in the UI to reflect the PIN reset
+        await fetchUsers();
+
+        toast({
+          title: "PIN Reset Successful",
+          description: `${userToReset.firstName} ${userToReset.lastName}'s PIN has been reset.`
+        });
+        return true;
+      } else {
+        toast({
+          title: "Failed to Reset PIN",
+          description: result.error || "An error occurred while trying to reset the PIN.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error("Error resetting user PIN:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while resetting the PIN.",
+        variant: "destructive"
+      });
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
       <PageHeader
-        title="User Management"
+        title="Users"
         description="Manage system users and their access permissions"
         actions={<UserCog className="h-6 w-6" />}
       />
@@ -214,6 +280,7 @@ export function UserManagementPage() {
               onSubmit={handleCreateUserSubmit}
               onCancel={() => setIsEditDialogOpen(false)}
               isSubmitting={isSubmitting}
+              onResetPin={handleResetUserPin}
             />
           </DialogContent>
         </Dialog>
@@ -292,6 +359,7 @@ export function UserManagementPage() {
               onSubmit={handleUpdateUserSubmit}
               onCancel={() => setIsEditDialogOpen(false)}
               isSubmitting={isSubmitting}
+              onResetPin={handleResetUserPin}
             />
           </DialogContent>
         </Dialog>
@@ -372,5 +440,3 @@ export function UserManagementPage() {
     </div>
   );
 }
-
-export default UserManagementPage;

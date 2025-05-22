@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useCustomers } from '../hooks/useCustomers';
-import { CustomerParams } from '../services/customerService';
+import type { CustomerParams } from '@/features/customers/types';
 
 export function CustomersPage() {
   const [searchParams, setSearchParams] = useState<CustomerParams>({
@@ -55,7 +55,7 @@ export function CustomersPage() {
   return (
     <div className="customers-page">
       <h1>Customers</h1>
-      
+
       {/* Search Input */}
       <div className="search-container">
         <input

@@ -13,6 +13,8 @@ export class ProductController {
    */
   async getAllProducts(req: Request, res: Response): Promise<void> {
     try {
+      console.log('GET /products request received with query:', req.query);
+
       const {
         page,
         limit,
@@ -27,7 +29,8 @@ export class ProductController {
         sortOrder,
       } = req.query;
 
-      const result = await productService.getAllProducts({
+      // Log the parsed parameters for debugging
+      const params = {
         page: page ? parseInt(page as string) : undefined,
         limit: limit ? parseInt(limit as string) : undefined,
         search: search as string,
@@ -39,12 +42,55 @@ export class ProductController {
         lowStock: lowStock === 'true',
         sortBy: sortBy as string,
         sortOrder: (sortOrder as 'asc' | 'desc') || 'desc',
-      });
+      };
 
-      res.json(transformToProductListDto(result));
+      console.log('Parsed parameters:', params);
+
+      try {
+        const result = await productService.getAllProducts(params);
+        console.log(`Successfully retrieved ${result.products.length} products out of ${result.total} total`);
+
+        const transformedResult = transformToProductListDto(result);
+        res.json(transformedResult);
+      } catch (serviceError) {
+        console.error('Error in productService.getAllProducts:', serviceError);
+
+        // Check for specific Prisma errors
+        if (serviceError instanceof Prisma.PrismaClientKnownRequestError) {
+          console.error('Prisma error code:', serviceError.code);
+
+          if (serviceError.code === 'P2021') {
+            return res.status(500).json({
+              error: 'Database table not found. The database schema might be outdated.',
+              code: 'DB_TABLE_NOT_FOUND'
+            });
+          }
+
+          if (serviceError.code === 'P1001') {
+            return res.status(500).json({
+              error: 'Cannot reach database server. Please check your database connection.',
+              code: 'DB_CONNECTION_FAILED'
+            });
+          }
+        }
+
+        throw serviceError; // Re-throw to be caught by the outer catch block
+      }
     } catch (error) {
       console.error('Error getting products:', error);
-      res.status(500).json({ error: 'Failed to get products' });
+
+      // Provide more detailed error information
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      console.error('Error details:', { message: errorMessage, stack: errorStack });
+
+      res.status(500).json({
+        error: 'Failed to get products',
+        message: errorMessage,
+        // Only include stack trace in development
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
+      });
     }
   }
 
@@ -114,7 +160,7 @@ export class ProductController {
   async createProduct(req: Request, res: Response): Promise<void> {
     try {
       const data = req.body;
-      
+
       // Transform data for Prisma (handle nested creates)
       const createData: Prisma.ProductCreateInput = {
         name: data.name,
@@ -164,7 +210,7 @@ export class ProductController {
       res.status(201).json(transformProductToDto(product));
     } catch (error) {
       console.error('Error creating product:', error);
-      
+
       // Check for unique constraint violations
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -179,7 +225,7 @@ export class ProductController {
           }
         }
       }
-      
+
       res.status(500).json({ error: 'Failed to create product' });
     }
   }
@@ -245,7 +291,7 @@ export class ProductController {
       res.json(transformProductToDto(product));
     } catch (error) {
       console.error('Error updating product:', error);
-      
+
       // Check for unique constraint violations
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -260,7 +306,7 @@ export class ProductController {
           }
         }
       }
-      
+
       res.status(500).json({ error: 'Failed to update product' });
     }
   }
@@ -271,7 +317,7 @@ export class ProductController {
   async deleteProduct(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      
+
       // Check if product exists
       const existingProduct = await productService.getProductById(id);
       if (!existingProduct) {
@@ -285,7 +331,7 @@ export class ProductController {
       } catch (error) {
         // Check if the error is due to a foreign key constraint
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
-          res.status(409).json({ 
+          res.status(409).json({
             error: 'Cannot delete product because it is referenced by other records',
             details: 'This product might be included in orders. Consider deactivating it instead of deleting it.'
           });
@@ -353,17 +399,17 @@ export class ProductController {
   async quickSearch(req: Request, res: Response): Promise<void> {
     try {
       const { query, limit } = req.query;
-      
+
       if (!query) {
         res.status(400).json({ error: 'Search query is required' });
         return;
       }
-      
+
       const products = await productService.quickSearch(
         query as string,
         limit ? parseInt(limit as string) : undefined
       );
-      
+
       res.json(products.map(transformProductToDto));
     } catch (error) {
       console.error('Error performing quick search:', error);
@@ -378,7 +424,7 @@ export class ProductController {
     try {
       const { id } = req.params;
       const { quantity, operation } = req.body;
-      
+
       if (quantity === undefined) {
         res.status(400).json({ error: 'Quantity is required' });
         return;
@@ -390,13 +436,13 @@ export class ProductController {
         res.status(404).json({ error: 'Product not found' });
         return;
       }
-      
+
       const updatedProduct = await productService.updateStock(
-        id, 
-        parseInt(quantity.toString()), 
+        id,
+        parseInt(quantity.toString()),
         operation as 'add' | 'subtract' | 'set'
       );
-      
+
       res.json(transformProductToDto(updatedProduct));
     } catch (error) {
       console.error('Error updating product stock:', error);
@@ -411,7 +457,7 @@ export class ProductController {
     try {
       const { id } = req.params;
       const { adjustments } = req.body;
-      
+
       if (!adjustments || !Array.isArray(adjustments) || adjustments.length === 0) {
         res.status(400).json({ error: 'Valid stock adjustments are required' });
         return;
@@ -423,9 +469,9 @@ export class ProductController {
         res.status(404).json({ error: 'Product not found' });
         return;
       }
-      
+
       const result = await productService.adjustStockAcrossLocations(id, adjustments);
-      
+
       if (result.success) {
         const updatedProduct = await productService.getProductById(id);
         res.json(transformProductToDto(updatedProduct!));
@@ -437,7 +483,84 @@ export class ProductController {
       res.status(500).json({ error: 'Failed to adjust product stock' });
     }
   }
+
+  /**
+   * Get all product attributes
+   * @route GET /api/v1/products/attributes
+   */
+  async getProductAttributes(req: Request, res: Response): Promise<void> {
+    try {
+      // For now, return a mock response
+      const mockAttributes = [
+        {
+          id: '1',
+          name: 'Color',
+          values: ['Red', 'Blue', 'Green', 'Black', 'White'],
+          displayOrder: 1,
+          isVisibleOnProductPage: true,
+          isUsedForVariations: true
+        },
+        {
+          id: '2',
+          name: 'Size',
+          values: ['Small', 'Medium', 'Large', 'XL', 'XXL'],
+          displayOrder: 2,
+          isVisibleOnProductPage: true,
+          isUsedForVariations: true
+        },
+        {
+          id: '3',
+          name: 'Material',
+          values: ['Cotton', 'Polyester', 'Wool', 'Silk', 'Leather'],
+          displayOrder: 3,
+          isVisibleOnProductPage: true,
+          isUsedForVariations: true
+        }
+      ];
+
+      res.json({
+        success: true,
+        data: mockAttributes
+      });
+    } catch (error) {
+      console.error('Error getting product attributes:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get product attributes'
+      });
+    }
+  }
+
+  /**
+   * Save product attributes
+   * @route POST /api/v1/products/attributes
+   */
+  async saveProductAttributes(req: Request, res: Response): Promise<void> {
+    try {
+      const attributes = req.body;
+
+      if (!attributes || !Array.isArray(attributes)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid attributes data'
+        });
+        return;
+      }
+
+      // For now, just return the attributes as if they were saved
+      res.status(200).json({
+        success: true,
+        data: attributes
+      });
+    } catch (error) {
+      console.error('Error saving product attributes:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to save product attributes'
+      });
+    }
+  }
 }
 
 // Export singleton instance
-export const productController = new ProductController(); 
+export const productController = new ProductController();

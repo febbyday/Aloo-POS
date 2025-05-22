@@ -1,6 +1,6 @@
 /**
  * Products Components
- * 
+ *
  * This module exports all components for the products feature.
  * Components are organized following atomic design principles:
  * - atoms: Basic UI components
@@ -71,7 +71,6 @@ export * from './toolbars';
 export * from './analytics';
 export * from './pricing';
 export * from './inventory';
-export * from './labels';
 
 // Pages
 export { ViewProductsDialog } from './ViewProductsDialog';

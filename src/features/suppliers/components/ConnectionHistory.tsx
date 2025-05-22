@@ -31,7 +31,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { suppliersService } from '../services/suppliersService';
+// Update to use the factory-based service
+import suppliersService from '../services/factory-suppliers-service';
 import { ConnectionHistoryItem } from '../types';
 
 interface ConnectionHistoryProps {

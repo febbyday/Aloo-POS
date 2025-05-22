@@ -1,4 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
 import { ReactNode } from 'react';
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,9 +22,9 @@ export function SectionCard({
   children
 }: SectionCardProps) {
   return (
-    <div className={cn("bg-card rounded-lg shadow-sm", className)}>
+    <div className={cn("bg-card rounded-lg shadow-sm border border-border/40 hover:border-border/80 transition-colors duration-200", className)}>
       {(title || headerRight) && (
-        <div className={cn("flex items-center justify-between mb-4", headerClassName)}>
+        <div className={cn("flex items-center justify-between p-4 border-b border-border/30", headerClassName)}>
           {title && (
             <h3 className="text-lg font-semibold flex items-center">
               {Icon && <Icon className="h-5 w-5 mr-2 text-primary" />}
@@ -37,7 +36,7 @@ export function SectionCard({
           )}
         </div>
       )}
-      <div className={cn(contentClassName)}>
+      <div className={cn("p-4", contentClassName)}>
         {children}
       </div>
     </div>

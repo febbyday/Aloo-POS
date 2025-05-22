@@ -23,7 +23,7 @@ import {
   FileText,
   Info
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import { useState, useEffect } from "react"
 import { ReportPdfPreview } from "./ReportPdfPreview"
 import { DateRange } from "@/types/date"

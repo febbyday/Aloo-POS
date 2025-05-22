@@ -24,23 +24,10 @@ export const AUTH_CONFIG = {
     CHECK_INTERVAL_MS: 60 * 1000, // Check session validity every minute
   },
 
-  // Development mode settings
+  // Development mode settings - enable bypasses for debugging
   DEV_MODE: {
-    BYPASS_AUTH: true, // Always enable bypass in development mode
-    DEFAULT_USER: {
-      id: '1',
-      username: 'dev_user',
-      email: 'dev@example.com',
-      fullName: 'Development User',
-      firstName: 'Development',
-      lastName: 'User',
-      roles: ['Admin'],
-      permissions: ['*'],
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString()
-    }
+    BYPASS_AUTH: true, // Enable auth bypass so app won't crash in development
+    ENABLE_MOCK_DATA: false, // Keep mock data disabled - attempt to use real API data
+    // Default user removed - we will always use real authentication when API is available
   }
 };
-

@@ -8,31 +8,37 @@
  */
 
 /**
- * User Role Enum
- * Defines the possible roles a user can have in the system
+ * Re-export UserRole from auth schemas
  */
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
-  CASHIER = 'CASHIER',
-  USER = 'USER'
-}
+import { UserRole } from '../schemas/auth.schemas';
+import { UserSession, SessionDetails } from './session.types';
 
 /**
  * User Interface
- * Represents a user in the system with their roles and permissions
+ * Represents a user in the system with their role and permissions
+ * This interface is aligned with the backend User model
  */
 export interface User {
   id: string;
   username: string;
   email: string;
-  fullName: string;
-  roles: string[];
+  firstName: string;
+  lastName: string;
+  fullName?: string; // Computed from firstName + lastName
+  role: UserRole;
   permissions: string[];
   isActive: boolean;
   createdAt: string;
-  lastLogin?: string;
-  avatar?: string;
+  updatedAt?: string;
+  lastLogin?: string | null;
+  avatar?: string | null;
+  // PIN Authentication
+  isPinEnabled: boolean;
+  lastPinChange?: string | null;
+  failedPinAttempts?: number;
+  pinLockedUntil?: string | null;
+  // Additional fields for frontend use
+  securitySettings?: UserSecuritySettings;
 }
 
 /**
@@ -63,11 +69,10 @@ export interface RegisterCredentials {
  */
 export interface LoginResponse {
   success: boolean;
-  user?: User;
-  token?: string;
-  refreshToken?: string;
-  expiresIn?: number;
-  expiresAt?: string;
+  data?: {
+    user: User;
+    expiresIn?: number;
+  };
   error?: string;
 }
 
@@ -78,6 +83,7 @@ export interface LoginResponse {
 export interface AuthResponse {
   token: string;
   refreshToken: string;
+  accessToken: string; // Alias for token for compatibility
   user: User;
   expiresIn: number;
 }
@@ -114,7 +120,21 @@ export interface AuthContextState {
   permissions: string[];
   error: string | null;
   isDevelopmentMode: boolean;
-  isBypassEnabled: boolean;
+  isPinAuthEnabled: boolean;
+  pinAuthStatus: {
+    isEnabled: boolean;
+    lastChanged?: string;
+    isLoading: boolean;
+  };
+  securitySettings: {
+    trustedDevices: TrustedDevice[];
+    isLoading: boolean;
+  };
+  sessionManagement: {
+    activeSessions: number;
+    isLoading: boolean;
+    hasMultipleDevices: boolean;
+  };
 }
 
 /**
@@ -123,12 +143,28 @@ export interface AuthContextState {
  */
 export interface AuthContextActions {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
+  loginWithPin: (credentials: PinLoginCredentials) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: string) => boolean;
   refreshAuth: () => Promise<boolean>;
   restoreAuth: (authData: { isAuthenticated: boolean; user: User | null; permissions: string[] }) => void;
   clearAuthError: () => void;
+  setupPin: (data: { pin: string; confirmPin: string; currentPassword: string }) => Promise<{ success: boolean; error?: string }>;
+  changePin: (data: { currentPin: string; newPin: string; confirmPin: string }) => Promise<{ success: boolean; error?: string }>;
+  disablePin: () => Promise<{ success: boolean; error?: string }>;
+  isPinEnabled: () => Promise<boolean>;
+  addTrustedDevice: () => Promise<{ success: boolean; error?: string }>;
+  removeTrustedDevice: (deviceId: string) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (profileData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
+  changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => Promise<{ success: boolean; error?: string }>;
+  
+  // Session Management Actions
+  getSessions: () => Promise<UserSession[]>;
+  getCurrentSession: () => Promise<SessionDetails>;
+  revokeSession: (sessionId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
+  revokeAllSessions: (keepCurrent?: boolean) => Promise<{ success: boolean; error?: string }>;
+  refreshSession: () => Promise<boolean>;
 }
 
 /**
@@ -188,6 +224,74 @@ export interface PasswordChange {
 }
 
 /**
+ * User Security Settings
+ * Security-related settings for a user
+ */
+export interface UserSecuritySettings {
+  mfaEnabled: boolean;
+  pinEnabled: boolean;
+  trustedDevices: TrustedDevice[];
+  lastPasswordChange?: string;
+  passwordExpiryDays?: number;
+  securityQuestions?: SecurityQuestion[];
+  loginNotifications: boolean;
+}
+
+/**
+ * Trusted Device
+ * Information about a device that has been marked as trusted
+ */
+export interface TrustedDevice {
+  deviceId: string;
+  deviceName: string;
+  browser: string;
+  browserVersion?: string;
+  os: string;
+  osVersion?: string;
+  lastUsed?: string;
+  ipAddress?: string;
+  trustedSince: string;
+  isMobile?: boolean;
+  isTablet?: boolean;
+  isDesktop?: boolean;
+}
+
+/**
+ * Security Question
+ * A security question and its answer (hashed)
+ */
+export interface SecurityQuestion {
+  id: string;
+  question: string;
+  answerHash: string;
+}
+
+/**
+ * PIN Login Credentials
+ * Represents the data needed for PIN-based login
+ */
+export interface PinLoginCredentials {
+  username: string;
+  pin: string;
+  deviceId?: string;
+  rememberDevice?: boolean;
+}
+
+/**
+ * PIN Login Response
+ * Represents the response from the PIN login API
+ */
+export interface PinLoginResponse {
+  success: boolean;
+  user?: User;
+  token?: string;
+  refreshToken?: string;
+  expiresIn?: number;
+  expiresAt?: string;
+  error?: string;
+}
+
+/**
  * Auth Error
  * Standardized error format for authentication errors
  */
@@ -213,6 +317,7 @@ export const AUTH_EVENTS = {
   LOGIN_FAILURE: 'auth:login:failure',
   LOGOUT: 'auth:logout',
   TOKEN_REFRESHED: 'auth:token:refreshed',
+  TOKEN_REFRESH_FAILED: 'auth:token:refresh:failed',
   UNAUTHORIZED: 'auth:unauthorized',
   FORBIDDEN: 'auth:forbidden',
   AUTH_ERROR: 'auth:error',
@@ -221,10 +326,22 @@ export const AUTH_EVENTS = {
   API_AVAILABLE: 'auth:api:available',
   API_UNAVAILABLE: 'auth:api:unavailable',
   SESSION_TIMEOUT: 'auth:session:timeout',
+  SESSION_EXPIRED: 'auth:session:expired',
   AUTHENTICATED: 'auth:authenticated',
   REGISTER_SUCCESS: 'auth:register:success',
   REGISTER_FAILURE: 'auth:register:failure',
-  LOGIN_RATE_LIMITED: 'auth:login:ratelimited'
+  LOGIN_RATE_LIMITED: 'auth:login:ratelimited',
+  PIN_LOGIN_SUCCESS: 'auth:pin:login:success',
+  PIN_LOGIN_FAILURE: 'auth:pin:login:failure',
+  PIN_SETUP_SUCCESS: 'auth:pin:setup:success',
+  PIN_SETUP_FAILURE: 'auth:pin:setup:failure',
+  PIN_CHANGE_SUCCESS: 'auth:pin:change:success',
+  PIN_CHANGE_FAILURE: 'auth:pin:change:failure',
+  PIN_DISABLED: 'auth:pin:disabled',
+  PIN_RESET: 'auth:pin:reset',
+  DEVICE_TRUSTED: 'auth:device:trusted',
+  DEVICE_REMOVED: 'auth:device:removed',
+  SUSPICIOUS_ACTIVITY: 'auth:suspicious:activity'
 };
 
 /**

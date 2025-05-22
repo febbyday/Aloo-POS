@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 /**
  * Shop schema for backend validation
  *
@@ -8,7 +6,7 @@
  */
 
 // Import shared schemas
-const {
+import {
   shopSchema,
   baseShopSchema,
   createShopSchema,
@@ -23,7 +21,7 @@ const {
   UpdateShopInput,
   ShopActivity,
   StaffAssignment
-} = require('../../../shared/schemas/shopSchema.cjs');
+} from '../../../shared/schemas/shopSchema';
 
 // Import local address types
 import { Address } from '../models/addressTypes';

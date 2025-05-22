@@ -3,21 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -29,20 +29,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from '@/components/ui/use-toast';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  RefreshCw, 
-  FileDown, 
-  Trash2, 
-  BarChart3, 
-  List, 
+import { useToast } from '@/lib/toast';
+import {
+  Plus,
+  Search,
+  Filter,
+  RefreshCw,
+  FileDown,
+  Trash2,
+  BarChart3,
+  List,
   Grid3X3
 } from 'lucide-react';
-import { 
-  CategoryTreeView, 
+import {
+  CategoryTreeView,
   EnhancedCategoryForm,
   CategoryAnalyticsDashboard
 } from '../components/categories';
@@ -99,16 +99,16 @@ const mockAnalyticsData = {
 export function EnhancedCategoriesPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { 
-    categories, 
-    loading, 
-    error, 
-    addCategory, 
-    updateCategory, 
+  const {
+    categories,
+    loading,
+    error,
+    addCategory,
+    updateCategory,
     deleteCategory,
     fetchCategories
   } = useCategories();
-  
+
   // State
   const [view, setView] = useState<'tree' | 'grid'>('tree');
   const [activeTab, setActiveTab] = useState<'categories' | 'analytics'>('categories');
@@ -121,20 +121,20 @@ export function EnhancedCategoriesPage() {
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const [selectedCategoryForAnalytics, setSelectedCategoryForAnalytics] = useState<string | null>(null);
-  
+
   // Filter categories based on search and status
   const filteredCategories = categories.filter(category => {
-    const matchesSearch = searchQuery 
+    const matchesSearch = searchQuery
       ? category.name.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
-    
-    const matchesStatus = statusFilter !== 'all' 
+
+    const matchesStatus = statusFilter !== 'all'
       ? category.status === statusFilter
       : true;
-    
+
     return matchesSearch && matchesStatus;
   });
-  
+
   // Handle category selection
   const handleCategorySelect = (categoryId: string, isSelected: boolean) => {
     if (isSelected) {
@@ -143,7 +143,7 @@ export function EnhancedCategoriesPage() {
       setSelectedCategories(selectedCategories.filter(id => id !== categoryId));
     }
   };
-  
+
   // Handle category expansion
   const handleCategoryToggle = (categoryId: string) => {
     if (expandedCategories.includes(categoryId)) {
@@ -152,7 +152,7 @@ export function EnhancedCategoriesPage() {
       setExpandedCategories([...expandedCategories, categoryId]);
     }
   };
-  
+
   // Handle category move
   const handleCategoryMove = (categoryId: string, newParentId: string | null, position: number) => {
     // In a real app, you would call an API to move the category
@@ -161,24 +161,24 @@ export function EnhancedCategoriesPage() {
       description: `Category moved to ${newParentId ? 'a new parent' : 'root level'}.`,
     });
   };
-  
+
   // Handle category edit
   const handleCategoryEdit = (category: Category) => {
     setCurrentCategory(category);
     setIsFormOpen(true);
   };
-  
+
   // Handle category delete
   const handleCategoryDelete = (categoryId: string) => {
     setCurrentCategory(categories.find(cat => cat.id === categoryId) || null);
     setIsDeleteDialogOpen(true);
   };
-  
+
   // Handle category add
   const handleCategoryAdd = (parentId: string | null) => {
     setCurrentCategory(null);
     setIsFormOpen(true);
-    
+
     if (parentId) {
       const parentCategory = categories.find(cat => cat.id === parentId);
       if (parentCategory) {
@@ -197,7 +197,7 @@ export function EnhancedCategoriesPage() {
       }
     }
   };
-  
+
   // Handle category duplicate
   const handleCategoryDuplicate = (categoryId: string) => {
     const categoryToDuplicate = categories.find(cat => cat.id === categoryId);
@@ -210,12 +210,12 @@ export function EnhancedCategoriesPage() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      
+
       setCurrentCategory(duplicatedCategory);
       setIsFormOpen(true);
     }
   };
-  
+
   // Handle category visibility toggle
   const handleCategoryVisibilityToggle = (categoryId: string, isVisible: boolean) => {
     const category = categories.find(cat => cat.id === categoryId);
@@ -224,7 +224,7 @@ export function EnhancedCategoriesPage() {
         ...category,
         status: isVisible ? 'active' : 'inactive',
       };
-      
+
       updateCategory(categoryId, updatedCategory)
         .then(() => {
           toast({
@@ -242,7 +242,7 @@ export function EnhancedCategoriesPage() {
         });
     }
   };
-  
+
   // Handle form submission
   const handleFormSubmit = (data: CategoryFormData) => {
     if (currentCategory && currentCategory.id) {
@@ -283,7 +283,7 @@ export function EnhancedCategoriesPage() {
         });
     }
   };
-  
+
   // Handle delete confirmation
   const handleDeleteConfirm = () => {
     if (currentCategory && currentCategory.id) {
@@ -305,7 +305,7 @@ export function EnhancedCategoriesPage() {
         });
     }
   };
-  
+
   // Handle refresh
   const handleRefresh = () => {
     fetchCategories()
@@ -324,7 +324,7 @@ export function EnhancedCategoriesPage() {
         });
       });
   };
-  
+
   // Handle export
   const handleExport = (format: 'csv' | 'pdf' | 'excel') => {
     toast({
@@ -332,7 +332,7 @@ export function EnhancedCategoriesPage() {
       description: `Categories have been exported as ${format.toUpperCase()}.`,
     });
   };
-  
+
   // Handle analytics time range change
   const handleTimeRangeChange = (range: 'day' | 'week' | 'month' | 'year') => {
     setTimeRange(range);
@@ -341,13 +341,13 @@ export function EnhancedCategoriesPage() {
       description: `Analytics time range changed to ${range}.`,
     });
   };
-  
+
   // Handle selecting a category for analytics
   const handleSelectCategoryForAnalytics = (categoryId: string) => {
     setSelectedCategoryForAnalytics(categoryId);
     setActiveTab('analytics');
   };
-  
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <PageHeader
@@ -366,7 +366,7 @@ export function EnhancedCategoriesPage() {
           </div>
         }
       />
-      
+
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="categories">
@@ -378,7 +378,7 @@ export function EnhancedCategoriesPage() {
             Analytics
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="categories" className="space-y-4 pt-4">
           <div className="flex flex-col md:flex-row gap-4 mb-4">
             <div className="flex-1 flex items-center space-x-2">
@@ -402,7 +402,7 @@ export function EnhancedCategoriesPage() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Button variant="outline" size="icon" onClick={() => setView('tree')} className={view === 'tree' ? 'bg-muted' : ''}>
                 <List className="h-4 w-4" />
@@ -422,7 +422,7 @@ export function EnhancedCategoriesPage() {
               )}
             </div>
           </div>
-          
+
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -470,7 +470,7 @@ export function EnhancedCategoriesPage() {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="analytics" className="space-y-4 pt-4">
           {selectedCategoryForAnalytics ? (
             <CategoryAnalyticsDashboard
@@ -492,15 +492,15 @@ export function EnhancedCategoriesPage() {
           )}
         </TabsContent>
       </Tabs>
-      
+
       {/* Category Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{currentCategory?.id ? 'Edit Category' : 'Add Category'}</DialogTitle>
             <DialogDescription>
-              {currentCategory?.id 
-                ? 'Update the category details below.' 
+              {currentCategory?.id
+                ? 'Update the category details below.'
                 : 'Fill in the details to create a new category.'}
             </DialogDescription>
           </DialogHeader>
@@ -512,17 +512,17 @@ export function EnhancedCategoriesPage() {
           />
         </DialogContent>
       </Dialog>
-      
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              {selectedCategories.length > 1 
-                ? `This will permanently delete ${selectedCategories.length} categories and their subcategories.` 
-                : currentCategory 
-                  ? `This will permanently delete "${currentCategory.name}" and its subcategories.` 
+              {selectedCategories.length > 1
+                ? `This will permanently delete ${selectedCategories.length} categories and their subcategories.`
+                : currentCategory
+                  ? `This will permanently delete "${currentCategory.name}" and its subcategories.`
                   : 'This will permanently delete the selected category and its subcategories.'}
             </AlertDialogDescription>
           </AlertDialogHeader>

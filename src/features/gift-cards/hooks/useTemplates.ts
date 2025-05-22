@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DesignTemplate } from '../types';
-import TemplateService from '../services/templateService';
+import { TemplateService } from '@/features/sales/services';
 
 // Interface for template filtering
 interface TemplateFilter {
@@ -92,7 +92,7 @@ export function useTemplates() {
       if (updatedTemplate) {
         setTemplates(prev => prev.map(t => t.id === id ? updatedTemplate : t));
         applyFilter(filter, templates.map(t => t.id === id ? updatedTemplate : t));
-        
+
         // Update selected template if it's the one being updated
         if (selectedTemplate && selectedTemplate.id === id) {
           setSelectedTemplate(updatedTemplate);
@@ -127,7 +127,7 @@ export function useTemplates() {
       if (success) {
         setTemplates(prev => prev.filter(t => t.id !== id));
         applyFilter(filter, templates.filter(t => t.id !== id));
-        
+
         // Clear selected template if it's the one being deleted
         if (selectedTemplate && selectedTemplate.id === id) {
           setSelectedTemplate(null);
@@ -153,7 +153,7 @@ export function useTemplates() {
           ...t,
           isDefault: t.id === id
         })));
-        
+
         // Update selected template if it's the one being set as default
         if (selectedTemplate && selectedTemplate.id === id) {
           setSelectedTemplate({
@@ -182,38 +182,38 @@ export function useTemplates() {
   // Apply filter function
   const applyFilter = useCallback((filter: TemplateFilter, templatesList: DesignTemplate[] = templates) => {
     setFilter(filter);
-    
+
     let filtered = [...templatesList];
-    
+
     // Apply category filter
     if (filter.category) {
       filtered = filtered.filter(t => t.category === filter.category);
     }
-    
+
     // Apply occasion filter
     if (filter.occasion) {
       filtered = filtered.filter(t => t.occasion === filter.occasion);
     }
-    
+
     // Apply season filter
     if (filter.season) {
       filtered = filtered.filter(t => t.season === filter.season);
     }
-    
+
     // Apply active filter
     if (filter.isActive !== undefined) {
       filtered = filtered.filter(t => t.isActive === filter.isActive);
     }
-    
+
     // Apply search filter
     if (filter.search) {
       const searchLower = filter.search.toLowerCase();
-      filtered = filtered.filter(t => 
+      filtered = filtered.filter(t =>
         t.name.toLowerCase().includes(searchLower) ||
         (t.description && t.description.toLowerCase().includes(searchLower))
       );
     }
-    
+
     setFilteredTemplates(filtered);
   }, [templates]);
 
@@ -253,4 +253,4 @@ export function useTemplates() {
     clearSelectedTemplate,
     applyFilter,
   };
-} 
+}

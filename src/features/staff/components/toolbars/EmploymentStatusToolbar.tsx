@@ -1,6 +1,6 @@
 import { RefreshCw, Filter, FileDown, Plus, Search, Trash2, Eye } from "lucide-react"
 import { Toolbar } from "@/components/ui/toolbar"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/lib/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
@@ -116,4 +116,4 @@ export const EmploymentStatusToolbar = ({
       rightContent={rightContent}
     />
   )
-} 
+}

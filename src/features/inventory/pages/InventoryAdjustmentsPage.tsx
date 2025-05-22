@@ -1,7 +1,7 @@
 // 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! ��
 
 import { useState, useEffect } from 'react';
-import { 
+import {
   Search,
   RefreshCw,
   Filter,
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -41,11 +41,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useToastManager } from '@/components/ui/toast-manager';
 import { useInventoryHistory } from '../context/InventoryHistoryContext';
 import { FieldHelpTooltip, InfoBox } from '@/components/ui/help-tooltip';
 import { OperationButton, ActionStatus, ActionFeedback } from '@/components/ui/action-feedback';
@@ -73,16 +72,16 @@ interface AdjustmentFilter {
 }
 
 export function InventoryAdjustmentsPage() {
-  // Replace regular toast with our enhanced toast manager
-  const showToast = useToastManager();
-  
+  // Use the new toast API
+  const toast = useToast();
+
   // Add inventory history for undo/redo support
   const { trackAction, canUndo, undo, canRedo, redo } = useInventoryHistory();
-  
+
   const [filters, setFilters] = useState<AdjustmentFilter>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Partial<AdjustmentItem> | null>(null);
-  
+
   // Add operation status state
   const [adjustmentStatus, setAdjustmentStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
@@ -115,11 +114,11 @@ export function InventoryAdjustmentsPage() {
   ]);
 
   const handleRefresh = () => {
-    showToast.info("Refreshing data...", "Your adjustment history is being updated.");
+    toast.info("Refreshing data...", "Your adjustment history is being updated.");
   };
 
   const handleExport = () => {
-    showToast.info("Exporting Data", "Your adjustment history export is being prepared.");
+    toast.info("Exporting Data", "Your adjustment history export is being prepared.");
   };
 
   const handleNewAdjustment = () => {
@@ -133,7 +132,7 @@ export function InventoryAdjustmentsPage() {
   const handleSaveAdjustment = async (formData: FormData) => {
     try {
       setAdjustmentStatus("loading");
-      
+
       const sku = formData.get('sku') as string;
       const name = formData.get('name') as string;
       const adjustment = parseInt(formData.get('adjustment') as string);
@@ -141,7 +140,7 @@ export function InventoryAdjustmentsPage() {
       const type = formData.get('type') as AdjustmentItem['type'];
 
       if (!sku || !name || !adjustment || !reason || !type) {
-        showToast.error("Validation Error", "Please fill in all required fields.");
+        toast.error("Validation Error", "Please fill in all required fields.");
         setAdjustmentStatus("error");
         return;
       }
@@ -159,29 +158,29 @@ export function InventoryAdjustmentsPage() {
         createdAt: new Date(),
         createdBy: 'Current User'
       };
-      
+
       // Track this action for undo/redo
       trackAction(
-        { 
-          type: 'adjust_stock', 
+        {
+          type: 'adjust_stock',
           adjustment: newAdjustment,
           before: newAdjustment.quantityBefore,
           after: newAdjustment.quantityAfter
         },
         `${type === 'increase' ? 'Increased' : 'Decreased'} ${name} by ${adjustment}`
       );
-      
+
       // Add to adjustments list
       setAdjustments([newAdjustment, ...adjustments]);
-      
+
       setAdjustmentStatus("success");
-      showToast.success("Adjustment Saved", "Inventory adjustment has been recorded successfully.");
+      toast.success("Adjustment Saved", "Inventory adjustment has been recorded successfully.");
       setDialogOpen(false);
-      
+
     } catch (error) {
       console.error('Error saving adjustment:', error);
       setAdjustmentStatus("error");
-      showToast.error("Error", "Failed to save inventory adjustment.");
+      toast.error("Error", "Failed to save inventory adjustment.");
     }
   };
 
@@ -192,30 +191,30 @@ export function InventoryAdjustmentsPage() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && canUndo) {
         e.preventDefault();
         const action = undo();
-        
+
         if (action && action.type === 'adjust_stock') {
           // Remove the adjustment from the list
           setAdjustments(prev => prev.filter(adj => adj.id !== action.adjustment.id));
-          showToast.info("Undo", "Adjustment has been undone");
+          toast.info("Undo", "Adjustment has been undone");
         }
       }
-      
+
       // Check for Ctrl+Shift+Z or Command+Shift+Z (Redo)
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey && canRedo) {
         e.preventDefault();
         const action = redo();
-        
+
         if (action && action.type === 'adjust_stock') {
           // Add the adjustment back to the list
           setAdjustments(prev => [action.adjustment, ...prev]);
-          showToast.info("Redo", "Adjustment has been reapplied");
+          toast.info("Redo", "Adjustment has been reapplied");
         }
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canUndo, canRedo, undo, redo, showToast]);
+  }, [canUndo, canRedo, undo, redo, toast]);
 
   const getAdjustmentBadgeVariant = (type: AdjustmentItem['type']) => {
     return type === 'increase' ? 'success' : 'destructive';
@@ -231,15 +230,15 @@ export function InventoryAdjustmentsPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center mr-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="icon"
               onClick={() => {
                 if (canUndo) {
                   const action = undo();
                   if (action && action.type === 'adjust_stock') {
                     setAdjustments(prev => prev.filter(adj => adj.id !== action.adjustment.id));
-                    showToast.info("Undo", "Adjustment has been undone");
+                    toast.info("Undo", "Adjustment has been undone");
                   }
                 }
               }}
@@ -248,15 +247,15 @@ export function InventoryAdjustmentsPage() {
             >
               <Undo2 className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="icon"
               onClick={() => {
                 if (canRedo) {
                   const action = redo();
                   if (action && action.type === 'adjust_stock') {
                     setAdjustments(prev => [action.adjustment, ...prev]);
-                    showToast.info("Redo", "Adjustment has been reapplied");
+                    toast.info("Redo", "Adjustment has been reapplied");
                   }
                 }
               }}
@@ -266,23 +265,23 @@ export function InventoryAdjustmentsPage() {
               <Redo2 className="h-4 w-4" />
             </Button>
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleRefresh}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleExport}
           >
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button 
+          <Button
             size="sm"
             onClick={handleNewAdjustment}
           >
@@ -306,7 +305,7 @@ export function InventoryAdjustmentsPage() {
 
         <Select
           value={filters.type}
-          onValueChange={(value: AdjustmentItem['type']) => 
+          onValueChange={(value: AdjustmentItem['type']) =>
             setFilters(prev => ({ ...prev, type: value }))
           }
         >
@@ -319,7 +318,7 @@ export function InventoryAdjustmentsPage() {
           </SelectContent>
         </Select>
 
-        <Button 
+        <Button
           variant="outline"
           onClick={() => setFilters({})}
           className="h-10"
@@ -385,7 +384,7 @@ export function InventoryAdjustmentsPage() {
               Record a manual adjustment to inventory quantities.
             </DialogDescription>
           </DialogHeader>
-          
+
           <ActionFeedback
             status={adjustmentStatus}
             message={adjustmentStatus === "success" ? "Adjustment saved successfully" : "Saving adjustment..."}
@@ -395,7 +394,7 @@ export function InventoryAdjustmentsPage() {
               <InfoBox variant="info" className="mb-4">
                 Use this form to record manual inventory adjustments. All adjustments are logged for audit purposes.
               </InfoBox>
-              
+
               <div className="space-y-2">
                 <FieldHelpTooltip
                   label="SKU"
@@ -404,7 +403,7 @@ export function InventoryAdjustmentsPage() {
                 />
                 <Input id="sku" name="sku" required />
               </div>
-              
+
               <div className="space-y-2">
                 <FieldHelpTooltip
                   label="Product Name"
@@ -413,7 +412,7 @@ export function InventoryAdjustmentsPage() {
                 />
                 <Input id="name" name="name" required />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <FieldHelpTooltip
@@ -424,7 +423,7 @@ export function InventoryAdjustmentsPage() {
                   <Select
                     name="type"
                     value={selectedItem?.type}
-                    onValueChange={(value: AdjustmentItem['type']) => 
+                    onValueChange={(value: AdjustmentItem['type']) =>
                       setSelectedItem(prev => prev ? { ...prev, type: value } : null)
                     }
                   >
@@ -437,42 +436,42 @@ export function InventoryAdjustmentsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <FieldHelpTooltip
                     label="Quantity"
                     content="Enter the quantity to adjust. This should be a positive number regardless of whether it's an increase or decrease."
                     required
                   />
-                  <Input 
-                    id="adjustment" 
-                    name="adjustment" 
+                  <Input
+                    id="adjustment"
+                    name="adjustment"
                     type="number"
                     min="1"
-                    required 
+                    required
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <FieldHelpTooltip
                   label="Reason"
                   content="Provide a detailed explanation for this adjustment. This is important for audit purposes."
                   required
                 />
-                <Textarea 
-                  id="reason" 
-                  name="reason" 
+                <Textarea
+                  id="reason"
+                  name="reason"
                   placeholder="Explain the reason for this adjustment..."
-                  required 
+                  required
                 />
               </div>
-              
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel
                 </Button>
-                <OperationButton 
+                <OperationButton
                   type="submit"
                   successMessage="Adjustment saved successfully"
                   errorMessage="Failed to save adjustment"
@@ -487,4 +486,4 @@ export function InventoryAdjustmentsPage() {
       </Dialog>
     </div>
   );
-} 
+}

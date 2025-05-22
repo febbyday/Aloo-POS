@@ -1,0 +1,123 @@
+/**
+ * Gift Card data models
+ * Implements the core data structures for gift cards and templates
+ */
+
+// Gift card recipient information
+export interface GiftCardRecipient {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+}
+
+// Gift card sender information
+export interface GiftCardSender {
+  name: string;
+  email: string;
+  phone?: string;
+}
+
+// Gift card status
+export type GiftCardStatus = 'active' | 'used' | 'expired' | 'disabled';
+
+// Gift card transaction types
+export type TransactionType = 'issue' | 'redeem' | 'adjustment' | 'expire' | 'reactivate';
+
+// Gift card transaction
+export interface GiftCardTransaction {
+  id: string;
+  giftCardId: string;
+  type: TransactionType;
+  amount: number;
+  date: Date;
+  notes?: string;
+  performedBy?: string;
+  orderId?: string;
+  balance: number; // Balance after transaction
+}
+
+// Gift card model
+export interface GiftCard {
+  id: string;
+  code: string;
+  initialValue: number;
+  balance: number;
+  issueDate: Date;
+  expirationDate: Date | null;
+  lastUsedDate: Date | null;
+  status: GiftCardStatus;
+  recipient?: GiftCardRecipient;
+  sender?: GiftCardSender;
+  message?: string;
+  designTemplateId: string;
+  metadata?: Record<string, any>;
+}
+
+// Design element for gift card templates
+export interface DesignElement {
+  id: string;
+  type: 'text' | 'image' | 'shape' | 'barcode';
+  content: string; // Text content or image URL
+  position: {
+    x: number;
+    y: number;
+  };
+  size: {
+    width: number;
+    height: number;
+  };
+  styles: {
+    fontFamily?: string;
+    fontSize?: number;
+    fontWeight?: string;
+    color?: string;
+    backgroundColor?: string;
+    borderRadius?: number;
+    opacity?: number;
+    rotation?: number;
+    zIndex?: number;
+  };
+}
+
+// Gift card design template
+export interface DesignTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  category: 'occasion' | 'seasonal' | 'default';
+  occasion?: string; // For occasion-based templates
+  season?: string; // For seasonal templates
+  isActive: boolean;
+  isDefault: boolean;
+  version: string;
+  thumbnail: string;
+  elements: DesignElement[];
+  styles: {
+    backgroundColor: string;
+    backgroundImage?: string;
+    width: number; // In pixels
+    height: number; // In pixels
+  };
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string; // User ID
+}
+
+// Settings for gift card customization
+export interface GiftCardSettings {
+  enableEmailDelivery: boolean;
+  enablePrintFormat: boolean;
+  enableDigitalWallet: boolean;
+  defaultExpirationPeriod: number; // In days, 0 = never expires
+  defaultTemplate: string; // Template ID
+  codePrefix: string;
+  codeLength: number;
+  allowManualCodes: boolean;
+}

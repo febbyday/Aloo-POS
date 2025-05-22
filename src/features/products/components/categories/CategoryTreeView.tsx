@@ -1,21 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  Folder, 
-  FolderOpen, 
-  MoreHorizontal, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Copy, 
-  Eye, 
+import {
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  MoreHorizontal,
+  Plus,
+  Edit,
+  Trash2,
+  Copy,
+  Eye,
   EyeOff,
   ArrowRight
 } from 'lucide-react';
-import { 
+import {
   Button,
   Checkbox,
   DropdownMenu,
@@ -29,7 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/components-index';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 import { Category, CategoryAttribute } from '../../types/category';
 
 // DnD item types
@@ -105,12 +105,12 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   const ref = useRef<HTMLDivElement>(null);
   const hasChildren = category.children && category.children.length > 0;
   const isActive = category.status === 'active';
-  
+
   // Set up drag source
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.CATEGORY,
-    item: { 
-      id: category.id, 
+    item: {
+      id: category.id,
       type: ItemTypes.CATEGORY,
       index,
       parentId: category.parentId
@@ -119,14 +119,14 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
       isDragging: monitor.isDragging(),
     }),
   });
-  
+
   // Set up drop target
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: ItemTypes.CATEGORY,
     canDrop: (item: DragItem) => {
       // Prevent dropping on itself or its children
       if (item.id === category.id) return false;
-      
+
       // Prevent dropping if it would create a cycle
       let parent = category.parentId;
       while (parent) {
@@ -134,10 +134,10 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
         const parentCategory = category.path?.find(id => id === parent);
         parent = parentCategory ? category.parentId : null;
       }
-      
+
       // Prevent dropping if it would exceed max depth
       if (level >= maxDepth) return false;
-      
+
       return true;
     },
     drop: (item: DragItem) => {
@@ -151,17 +151,17 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
       canDrop: monitor.canDrop(),
     }),
   });
-  
+
   // Connect drag and drop refs
   drag(drop(ref));
-  
+
   // Determine styles based on drag and drop state
   const opacity = isDragging ? 0.4 : 1;
   const backgroundColor = isOver && canDrop ? 'bg-primary/10' : isSelected ? 'bg-muted' : '';
-  
+
   return (
     <div style={{ opacity }} className="select-none">
-      <div 
+      <div
         ref={ref}
         className={cn(
           "flex items-center py-2 px-2 rounded-md hover:bg-muted/50 cursor-pointer",
@@ -173,10 +173,10 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
         {/* Expand/Collapse Button */}
         <div className="w-6 flex-shrink-0">
           {hasChildren ? (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6" 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
               onClick={(e) => {
                 e.stopPropagation();
                 onToggle(category.id);
@@ -192,7 +192,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
             <div className="w-6" />
           )}
         </div>
-        
+
         {/* Checkbox */}
         {showCheckboxes && (
           <Checkbox
@@ -202,7 +202,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
             onClick={(e) => e.stopPropagation()}
           />
         )}
-        
+
         {/* Category Icon */}
         <div className="mr-2 text-muted-foreground">
           {isExpanded ? (
@@ -211,9 +211,9 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
             <Folder className="h-4 w-4" />
           )}
         </div>
-        
+
         {/* Category Name */}
-        <div 
+        <div
           className="flex-1 flex items-center"
           onClick={() => onToggle(category.id)}
         >
@@ -223,24 +223,24 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
           )}>
             {category.name}
           </span>
-          
+
           {/* Status Badge */}
           {!isActive && (
             <Badge variant="outline" className="ml-2 text-xs">Inactive</Badge>
           )}
-          
+
           {/* Product Count */}
           {showProductCount && (
             <Badge variant="secondary" className="ml-2">
               {category.products} products
             </Badge>
           )}
-          
+
           {/* Attributes Badge */}
           {category.attributes && category.attributes.length > 0 && (
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger>
                   <Badge variant="outline" className="ml-2 bg-primary/10">
                     {category.attributes.length} attributes
                   </Badge>
@@ -259,11 +259,11 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
             </TooltipProvider>
           )}
         </div>
-        
+
         {/* Actions */}
         {showActions && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger>
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -296,7 +296,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => onDelete(category.id)}
               >
@@ -307,7 +307,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
           </DropdownMenu>
         )}
       </div>
-      
+
       {/* Render children if expanded */}
       {isExpanded && hasChildren && (
         <div>
@@ -359,7 +359,7 @@ export const CategoryTreeView: React.FC<CategoryTreeViewProps> = ({
 }) => {
   // Filter root categories (those without a parent)
   const rootCategories = categories.filter(category => !category.parentId);
-  
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className={cn("space-y-1", className)}>
@@ -385,7 +385,7 @@ export const CategoryTreeView: React.FC<CategoryTreeViewProps> = ({
             maxDepth={maxDepth}
           />
         ))}
-        
+
         {rootCategories.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center border rounded-md">
             <Folder className="h-12 w-12 text-muted-foreground mb-4" />
@@ -393,8 +393,8 @@ export const CategoryTreeView: React.FC<CategoryTreeViewProps> = ({
             <p className="text-muted-foreground mb-4">
               Create categories to organize your products.
             </p>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => onCategoryAdd(null)}
             >
               <Plus className="h-4 w-4 mr-2" />

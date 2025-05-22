@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { Route, Routes } from 'react-router-dom';
 import { SettingsPage } from '../pages/SettingsPage';
 import { lazy } from 'react';
@@ -11,6 +9,7 @@ const SalesSettings = lazy(() => import('../components/SalesSettings'));
 const StaffSettings = lazy(() => import('../components/StaffSettings'));
 const SuppliersSettings = lazy(() => import('../components/SuppliersSettings'));
 const PurchaseOrdersSettings = lazy(() => import('../components/PurchaseOrdersSettings'));
+const MonitoringSettings = lazy(() => import('../components/MonitoringSettings'));
 
 /**
  * Settings feature routing configuration
@@ -26,8 +25,9 @@ export const SettingsRoutes = () => {
       <Route path="staff" element={<StaffSettings />} />
       <Route path="suppliers" element={<SuppliersSettings />} />
       <Route path="purchase-orders" element={<PurchaseOrdersSettings />} />
+      <Route path="monitoring" element={<MonitoringSettings />} />
     </Routes>
   );
 };
 
-export default SettingsRoutes; 
+export default SettingsRoutes;

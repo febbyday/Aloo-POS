@@ -1,7 +1,4 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! ��
-
-import { useState } from "react"
-import { z } from "zod"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
@@ -9,100 +6,126 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
-
-// Define the schema for product settings
-const productSettingsSchema = z.object({
-  // General Product Settings
-  defaultUnit: z.string(),
-  defaultCategory: z.string(),
-  enableVariants: z.boolean(),
-  enableSerialNumbers: z.boolean(),
-  enableBarcodes: z.boolean(),
-  barcodeFormat: z.enum(["EAN-13", "UPC", "CODE128", "QR"]),
-  
-  // Inventory Settings
-  trackInventory: z.boolean(),
-  allowNegativeStock: z.boolean(),
-  lowStockThreshold: z.number().min(0),
-  enableAutoReorder: z.boolean(),
-  reorderPoint: z.number().min(0),
-  reorderQuantity: z.number().min(0),
-  
-  // Pricing Settings
-  defaultPriceCalculation: z.enum(["markup", "margin"]),
-  defaultMarkupPercentage: z.number().min(0).max(1000),
-  defaultMarginPercentage: z.number().min(0).max(100),
-  enableBulkPricing: z.boolean(),
-  enableCustomerPricing: z.boolean(),
-  
-  // Display Settings
-  showOutOfStock: z.boolean(),
-  showLowStock: z.boolean(),
-  defaultSortOrder: z.enum(["name", "sku", "price", "category"]),
-  itemsPerPage: z.number().min(10).max(100),
-  
-  // Image Settings
-  enableImageUpload: z.boolean(),
-  maxImageSize: z.number().min(1),
-  allowMultipleImages: z.boolean(),
-  compressImages: z.boolean(),
-  
-  // Import/Export Settings
-  importFormat: z.enum(["csv", "excel", "json"]),
-  exportFormat: z.enum(["csv", "excel", "json"]),
-  autoBackupProducts: z.boolean(),
-});
-
-type ProductSettingsValues = z.infer<typeof productSettingsSchema>;
-
-const defaultValues: ProductSettingsValues = {
-  defaultUnit: "piece",
-  defaultCategory: "general",
-  enableVariants: true,
-  enableSerialNumbers: false,
-  enableBarcodes: true,
-  barcodeFormat: "EAN-13",
-  trackInventory: true,
-  allowNegativeStock: false,
-  lowStockThreshold: 10,
-  enableAutoReorder: false,
-  reorderPoint: 5,
-  reorderQuantity: 10,
-  defaultPriceCalculation: "markup",
-  defaultMarkupPercentage: 50,
-  defaultMarginPercentage: 33,
-  enableBulkPricing: true,
-  enableCustomerPricing: true,
-  showOutOfStock: true,
-  showLowStock: true,
-  defaultSortOrder: "name",
-  itemsPerPage: 20,
-  enableImageUpload: true,
-  maxImageSize: 5,
-  allowMultipleImages: true,
-  compressImages: true,
-  importFormat: "csv",
-  exportFormat: "csv",
-  autoBackupProducts: true,
-};
+import { Save, RotateCcw, Loader2 } from 'lucide-react';
+import { SettingsService, productService } from '../services/product.service';
+import { productSettingsSchema, ProductSettings } from '../schemas/product-settings.schema';
 
 export const ProductsSettingsPanel = () => {
   const { toast } = useToast();
-  const form = useForm<ProductSettingsValues>({
+  const [settings, setSettings] = useState<ProductSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await SettingsService.getSettings();
+        setSettings(data);
+      } catch (error) {
+        console.error("Error loading product settings:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load product settings",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [toast]);
+
+  const form = useForm<ProductSettings>({
     resolver: zodResolver(productSettingsSchema),
-    defaultValues,
+    values: settings || undefined,
   });
 
-  const onSubmit = (data: ProductSettingsValues) => {
-    toast({
-      title: "Settings Updated",
-      description: "Product settings have been saved successfully.",
-    });
-    console.log(data);
+  // Update form when settings change
+  useEffect(() => {
+    if (settings) {
+      form.reset(settings);
+    }
+  }, [settings, form]);
+
+  const saveSettings = async (updatedSettings: ProductSettings) => {
+    setSaving(true);
+    try {
+      await SettingsService.saveSettings(updatedSettings);
+      setSettings(updatedSettings);
+      toast({
+        title: "Settings saved",
+        description: "Product settings have been updated successfully",
+      });
+    } catch (error) {
+      console.error("Error saving product settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save product settings",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const handleResetSettings = async () => {
+    try {
+      const defaultSettings = await SettingsService.resetSettings();
+      setSettings(defaultSettings);
+      form.reset(defaultSettings);
+      toast({
+        title: "Settings reset",
+        description: "Product settings have been reset to defaults",
+      });
+    } catch (error) {
+      console.error("Error resetting product settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reset product settings",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onSubmit = (data: ProductSettings) => {
+    saveSettings(data);
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Product Settings</CardTitle>
+          <CardDescription>Configure product settings and behavior</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Product Settings</CardTitle>
+          <CardDescription>Configure product settings and behavior</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground">Failed to load settings. Please try again.</p>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <Button onClick={() => window.location.reload()}>Reload</Button>
+        </CardFooter>
+      </Card>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-auto">
@@ -110,13 +133,12 @@ export const ProductsSettingsPanel = () => {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs defaultValue="general" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="general">General</TabsTrigger>
                 <TabsTrigger value="inventory">Inventory</TabsTrigger>
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>
                 <TabsTrigger value="display">Display</TabsTrigger>
-                <TabsTrigger value="images">Images</TabsTrigger>
-                <TabsTrigger value="import-export">Import/Export</TabsTrigger>
+                <TabsTrigger value="images">Variations</TabsTrigger>
               </TabsList>
 
               {/* General Settings */}
@@ -177,7 +199,7 @@ export const ProductsSettingsPanel = () => {
 
                     <FormField
                       control={form.control}
-                      name="enableVariants"
+                      name="variations.enabled"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
@@ -193,7 +215,7 @@ export const ProductsSettingsPanel = () => {
 
                     <FormField
                       control={form.control}
-                      name="enableBarcodes"
+                      name="inventory.enableBarcodes"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
@@ -207,10 +229,10 @@ export const ProductsSettingsPanel = () => {
                       )}
                     />
 
-                    {form.watch("enableBarcodes") && (
+                    {form.watch("inventory.enableBarcodes") && (
                       <FormField
                         control={form.control}
-                        name="barcodeFormat"
+                        name="inventory.barcodeFormat"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Barcode Format</FormLabel>
@@ -221,9 +243,9 @@ export const ProductsSettingsPanel = () => {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="EAN-13">EAN-13</SelectItem>
-                                <SelectItem value="UPC">UPC</SelectItem>
                                 <SelectItem value="CODE128">CODE128</SelectItem>
+                                <SelectItem value="EAN13">EAN13</SelectItem>
+                                <SelectItem value="UPC">UPC</SelectItem>
                                 <SelectItem value="QR">QR Code</SelectItem>
                               </SelectContent>
                             </Select>
@@ -245,7 +267,7 @@ export const ProductsSettingsPanel = () => {
                   <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="trackInventory"
+                      name="inventory.trackInventory"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
@@ -259,11 +281,11 @@ export const ProductsSettingsPanel = () => {
                       )}
                     />
 
-                    {form.watch("trackInventory") && (
+                    {form.watch("inventory.trackInventory") && (
                       <>
                         <FormField
                           control={form.control}
-                          name="allowNegativeStock"
+                          name="inventory.allowNegativeStock"
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                               <div className="space-y-0.5">
@@ -280,7 +302,7 @@ export const ProductsSettingsPanel = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
-                            name="lowStockThreshold"
+                            name="inventory.lowStockThreshold"
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Low Stock Threshold</FormLabel>
@@ -297,10 +319,10 @@ export const ProductsSettingsPanel = () => {
 
                           <FormField
                             control={form.control}
-                            name="reorderPoint"
+                            name="inventory.autoOrderThreshold"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Reorder Point</FormLabel>
+                                <FormLabel>Auto Order Threshold</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
@@ -328,69 +350,12 @@ export const ProductsSettingsPanel = () => {
                   <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="defaultPriceCalculation"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Default Price Calculation</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select calculation method" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="markup">Markup</SelectItem>
-                              <SelectItem value="margin">Margin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="defaultMarkupPercentage"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Default Markup %</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="defaultMarginPercentage"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Default Margin %</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="enableBulkPricing"
+                      name="pricing.enableTax"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
-                            <FormLabel className="text-base">Bulk Pricing</FormLabel>
-                            <FormDescription>Enable bulk pricing discounts</FormDescription>
+                            <FormLabel className="text-base">Enable Tax</FormLabel>
+                            <FormDescription>Enable tax calculations for products</FormDescription>
                           </div>
                           <FormControl>
                             <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -399,14 +364,103 @@ export const ProductsSettingsPanel = () => {
                       )}
                     />
 
+                    {form.watch("pricing.enableTax") && (
+                      <FormField
+                        control={form.control}
+                        name="pricing.defaultTaxRate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Default Tax Rate (%)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
                     <FormField
                       control={form.control}
-                      name="enableCustomerPricing"
+                      name="pricing.enableDiscount"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
-                            <FormLabel className="text-base">Customer-Specific Pricing</FormLabel>
-                            <FormDescription>Enable customer-specific price lists</FormDescription>
+                            <FormLabel className="text-base">Enable Discounts</FormLabel>
+                            <FormDescription>Enable discount functionality</FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {form.watch("pricing.enableDiscount") && (
+                      <FormField
+                        control={form.control}
+                        name="pricing.maxDiscountPercent"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Maximum Discount (%)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    <FormField
+                      control={form.control}
+                      name="pricing.enableCostTracking"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Cost Tracking</FormLabel>
+                            <FormDescription>Track product costs and calculate margins</FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {form.watch("pricing.enableCostTracking") && (
+                      <FormField
+                        control={form.control}
+                        name="pricing.defaultMarkupPercent"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Default Markup (%)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    <FormField
+                      control={form.control}
+                      name="pricing.roundPricesToNearestCent"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Round Prices</FormLabel>
+                            <FormDescription>Round prices to the nearest cent</FormDescription>
                           </div>
                           <FormControl>
                             <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -428,7 +482,28 @@ export const ProductsSettingsPanel = () => {
                   <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="showOutOfStock"
+                      name="display.defaultView"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Default View</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select view type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="grid">Grid</SelectItem>
+                              <SelectItem value="list">List</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="display.showOutOfStock"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
@@ -444,7 +519,23 @@ export const ProductsSettingsPanel = () => {
 
                     <FormField
                       control={form.control}
-                      name="defaultSortOrder"
+                      name="display.showImages"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Show Images</FormLabel>
+                            <FormDescription>Display product images in listings</FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="display.defaultSortOrder"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Default Sort Order</FormLabel>
@@ -456,9 +547,9 @@ export const ProductsSettingsPanel = () => {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="name">Name</SelectItem>
-                              <SelectItem value="sku">SKU</SelectItem>
                               <SelectItem value="price">Price</SelectItem>
-                              <SelectItem value="category">Category</SelectItem>
+                              <SelectItem value="newest">Newest</SelectItem>
+                              <SelectItem value="bestselling">Best Selling</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormItem>
@@ -467,23 +558,15 @@ export const ProductsSettingsPanel = () => {
 
                     <FormField
                       control={form.control}
-                      name="itemsPerPage"
+                      name="display.itemsPerPage"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Items Per Page</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value.toString()}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select items per page" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="10">10</SelectItem>
-                              <SelectItem value="20">20</SelectItem>
-                              <SelectItem value="50">50</SelectItem>
-                              <SelectItem value="100">100</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Input
+                            type="number"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
                         </FormItem>
                       )}
                     />
@@ -491,22 +574,22 @@ export const ProductsSettingsPanel = () => {
                 </Card>
               </TabsContent>
 
-              {/* Image Settings */}
+              {/* Variations Settings */}
               <TabsContent value="images">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Image Settings</CardTitle>
-                    <CardDescription>Configure product image handling and storage</CardDescription>
+                    <CardTitle>Variations Settings</CardTitle>
+                    <CardDescription>Configure product variations and attributes</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="enableImageUpload"
+                      name="variations.enabled"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
-                            <FormLabel className="text-base">Enable Image Upload</FormLabel>
-                            <FormDescription>Allow product image uploads</FormDescription>
+                            <FormLabel className="text-base">Enable Variations</FormLabel>
+                            <FormDescription>Allow products to have variations</FormDescription>
                           </div>
                           <FormControl>
                             <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -515,14 +598,14 @@ export const ProductsSettingsPanel = () => {
                       )}
                     />
 
-                    {form.watch("enableImageUpload") && (
+                    {form.watch("variations.enabled") && (
                       <>
                         <FormField
                           control={form.control}
-                          name="maxImageSize"
+                          name="variations.maxVariationsPerProduct"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Maximum Image Size (MB)</FormLabel>
+                              <FormLabel>Maximum Variations Per Product</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -534,124 +617,60 @@ export const ProductsSettingsPanel = () => {
                           )}
                         />
 
-                        <FormField
-                          control={form.control}
-                          name="allowMultipleImages"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">Multiple Images</FormLabel>
-                                <FormDescription>Allow multiple images per product</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="compressImages"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">Compress Images</FormLabel>
-                                <FormDescription>Automatically compress uploaded images</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                        <div className="space-y-2">
+                          <Label>Default Attributes</Label>
+                          <div className="border rounded-md p-4">
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Default attributes for product variations (e.g., Size, Color)
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {form.watch("variations.defaultAttributes")?.map((attr, index) => (
+                                <div key={index} className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm flex items-center">
+                                  {attr}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </>
                     )}
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* Import/Export Settings */}
-              <TabsContent value="import-export">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Import/Export Settings</CardTitle>
-                    <CardDescription>Configure product data import and export options</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="importFormat"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Default Import Format</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select import format" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="csv">CSV</SelectItem>
-                              <SelectItem value="excel">Excel</SelectItem>
-                              <SelectItem value="json">JSON</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
 
-                    <FormField
-                      control={form.control}
-                      name="exportFormat"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Default Export Format</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select export format" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="csv">CSV</SelectItem>
-                              <SelectItem value="excel">Excel</SelectItem>
-                              <SelectItem value="json">JSON</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="autoBackupProducts"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Auto Backup</FormLabel>
-                            <FormDescription>Automatically backup product data daily</FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
             </Tabs>
 
             <div className="flex justify-end space-x-4">
-              <Button type="button" variant="outline" onClick={() => form.reset(defaultValues)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetSettings}
+                disabled={loading || saving}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
                 Reset to Defaults
               </Button>
-              <Button type="submit">Save Changes</Button>
+              <Button
+                type="submit"
+                disabled={loading || saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
             </div>
           </form>
         </Form>
       </div>
     </div>
   );
-} 
+}

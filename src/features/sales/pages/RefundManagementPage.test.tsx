@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { RefundManagementPage } from './RefundManagementPage';
 import { vi } from 'vitest';

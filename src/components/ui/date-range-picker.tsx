@@ -14,7 +14,7 @@ import {
 } from "date-fns"
 import { motion } from "framer-motion"
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils/cn';
 import { Button } from "@/components/ui/button"
 import { CustomCalendar } from "@/components/ui/custom-calendar"
 import {

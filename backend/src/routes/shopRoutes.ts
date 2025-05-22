@@ -26,10 +26,17 @@ router.post('/', shopController.createShop.bind(shopController));
 
 /**
  * @route   PUT /api/v1/shops/:id
- * @desc    Update an existing shop
+ * @desc    Update an existing shop (full update)
  * @access  Private
  */
 router.put('/:id', shopController.updateShop.bind(shopController));
+
+/**
+ * @route   PATCH /api/v1/shops/:id
+ * @desc    Update an existing shop (partial update)
+ * @access  Private
+ */
+router.patch('/:id', shopController.updateShop.bind(shopController));
 
 /**
  * @route   DELETE /api/v1/shops/:id
@@ -51,7 +58,7 @@ router.get('/:storeId/inventory', shopController.getShopInventory.bind(shopContr
  * @access  Private
  */
 router.put(
-  '/:storeId/inventory/:productId', 
+  '/:storeId/inventory/:productId',
   shopController.updateInventory.bind(shopController)
 );
 

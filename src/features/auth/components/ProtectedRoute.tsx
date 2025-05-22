@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePermissions } from '../hooks/usePermissions';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { AUTH_EVENTS } from '../constants/authEvents';
 import { ProtectedRouteProps } from '../types/auth.types';
@@ -29,11 +30,10 @@ export function ProtectedRoute({
   const {
     isAuthenticated,
     isLoading,
-    hasPermission,
-    hasRole,
-    isDevelopmentMode,
-    isBypassEnabled
+    isDevelopmentMode
   } = useAuth();
+
+  const { hasAnyPermission, hasAnyRole } = usePermissions();
 
   const location = useLocation();
   const [isVerifying, setIsVerifying] = useState(true);
@@ -41,41 +41,35 @@ export function ProtectedRoute({
 
   // Verify authentication and permissions
   useEffect(() => {
-    let mounted = true;
-
+    // Flag to track if component is mounted
+    let isMounted = true;
+    
+    // Verify user access to the protected route
     const verifyAccess = async () => {
+      if (isLoading || !isMounted) return;
+
+      // Development mode check - always grant access in development mode
+      if (isDevelopmentMode) {
+        console.log('[ROUTE] Development mode: Access automatically granted');
+        setIsVerifying(false);
+        setAccessDenied(false); // Make sure access isn't denied
+        return;
+      }
+
+      setIsVerifying(true);
+
       try {
-        // Small delay to prevent flash of loading state
-        await new Promise(resolve => setTimeout(resolve, 100));
+        console.log('[ROUTE] Verifying access for protected route');
 
-        if (!mounted) return;
-
-        // Always allow access in development mode
-        if (import.meta.env.DEV) {
-          console.log('[ROUTE] Development mode: Access automatically granted');
-          setAccessDenied(false);
-          setIsVerifying(false);
-          return;
-        }
-
-        // Allow access if bypass is enabled
-        if (isBypassEnabled) {
-          console.log('[ROUTE] Auth bypass enabled: Access granted');
-          setAccessDenied(false);
-          setIsVerifying(false);
-          return;
-        }
-
-        // Check if user is authenticated
-        if (!isLoading && !isAuthenticated) {
-          console.log('[ROUTE] User is not authenticated, access denied');
-          setIsVerifying(false);
+        if (!isAuthenticated) {
+          console.log('[ROUTE] User not authenticated, redirecting to login');
+          setAccessDenied(true);
           return;
         }
 
         // Check permissions if specified
         if (permissions.length > 0 && !isLoading && isAuthenticated) {
-          const hasAccess = permissions.some(permission => hasPermission(permission));
+          const hasAccess = hasAnyPermission(permissions);
           if (!hasAccess) {
             console.log('[ROUTE] User lacks required permissions:', permissions);
             setAccessDenied(true);
@@ -86,7 +80,7 @@ export function ProtectedRoute({
 
         // Check roles if specified
         if (roles.length > 0 && !isLoading && isAuthenticated) {
-          const hasRequiredRole = roles.some(role => hasRole(role));
+          const hasRequiredRole = hasAnyRole(roles);
           if (!hasRequiredRole) {
             console.log('[ROUTE] User lacks required roles:', roles);
             setAccessDenied(true);
@@ -97,34 +91,37 @@ export function ProtectedRoute({
 
         // All checks passed
         console.log('[ROUTE] Access granted to:', location.pathname);
-        setAccessDenied(false);
-        setIsVerifying(false);
+        if (isMounted) {
+          setAccessDenied(false);
+          setIsVerifying(false);
+        }
       } catch (error) {
         console.error('[ROUTE] Error verifying access:', error);
-        setIsVerifying(false);
+        if (isMounted) {
+          setIsVerifying(false);
+        }
       }
     };
 
+    // Initial verification
     verifyAccess();
 
-    // Listen for auth events that might affect route access
+    // Event handlers
     const handleAuthEvent = () => {
-      if (mounted) {
+      if (isMounted) {
         verifyAccess();
       }
     };
 
-    // Handle token refresh events specifically
     const handleTokenRefreshed = () => {
       console.log('[ROUTE] Token refreshed event received, re-verifying access');
-      if (mounted) {
-        // Small delay to ensure auth state is updated
-        setTimeout(() => {
-          verifyAccess();
-        }, 100);
+      if (isMounted) {
+        // Use requestAnimationFrame to avoid setTimeout issues
+        requestAnimationFrame(verifyAccess);
       }
     };
 
+    // Set up event listeners
     window.addEventListener(AUTH_EVENTS.LOGIN_SUCCESS, handleAuthEvent);
     window.addEventListener(AUTH_EVENTS.LOGOUT, handleAuthEvent);
     window.addEventListener(AUTH_EVENTS.UNAUTHORIZED, handleAuthEvent);
@@ -132,8 +129,9 @@ export function ProtectedRoute({
     window.addEventListener(AUTH_EVENTS.TOKEN_REFRESHED, handleTokenRefreshed);
     window.addEventListener('auth:token:refreshed', handleTokenRefreshed);
 
+    // Clean up function - ensures no leaked listeners
     return () => {
-      mounted = false;
+      isMounted = false;
       window.removeEventListener(AUTH_EVENTS.LOGIN_SUCCESS, handleAuthEvent);
       window.removeEventListener(AUTH_EVENTS.LOGOUT, handleAuthEvent);
       window.removeEventListener(AUTH_EVENTS.UNAUTHORIZED, handleAuthEvent);
@@ -144,12 +142,12 @@ export function ProtectedRoute({
   }, [
     isLoading,
     isAuthenticated,
-    isBypassEnabled,
+    isDevelopmentMode,
     location.pathname,
     permissions,
     roles,
-    hasPermission,
-    hasRole
+    hasAnyPermission,
+    hasAnyRole
   ]);
 
   // Debug logging
@@ -158,7 +156,7 @@ export function ProtectedRoute({
       isAuthenticated,
       isLoading,
       isVerifying,
-      isBypassEnabled,
+      isDevelopmentMode,
       accessDenied,
       path: location.pathname,
       permissions,
@@ -168,7 +166,7 @@ export function ProtectedRoute({
     isAuthenticated,
     isLoading,
     isVerifying,
-    isBypassEnabled,
+    isDevelopmentMode,
     accessDenied,
     location.pathname,
     permissions,
@@ -176,7 +174,7 @@ export function ProtectedRoute({
   ]);
 
   // Development mode bypass
-  if (isBypassEnabled) {
+  if (isDevelopmentMode) {
     // Development mode indicator component
     const DevelopmentModeIndicator = () => (
       <div className="fixed bottom-4 right-4 bg-yellow-500 text-black px-3 py-1.5 rounded-full

@@ -1,6 +1,6 @@
 /**
  * Customers Table Component
- * 
+ *
  * Displays a table of customers with sorting, filtering, and pagination.
  * Uses real-time updates via WebSocket to keep the customer list up-to-date.
  */
@@ -35,7 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
+import {
   Search,
   ChevronUp,
   ChevronDown,
@@ -58,7 +58,7 @@ import { useToast, useConfirm } from '@/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import CustomerDialog from './CustomerDialog';
 import { useCustomersRealTime, useCustomerEvents } from '../hooks/useCustomerRealTime';
-import { customerService } from '../services/customerService';
+import { customerService } from '../services';
 import type { Customer } from '../types/customer.types';
 import { cn } from '@/lib/utils';
 import { tableStyles } from "@/components/ui/shared-table-styles";
@@ -78,13 +78,18 @@ interface ActionMenuProps {
 }
 
 function ActionMenu({ customer, onEdit, onDelete, onView }: ActionMenuProps) {
+  // Create a button element without using asChild
+  const triggerButton = (
+    <button className="h-8 w-8 p-0 hover:bg-accent">
+      <span className="sr-only">Open menu</span>
+      <MoreHorizontal className="h-4 w-4" />
+    </button>
+  );
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="h-8 w-8 p-0 hover:bg-accent">
-          <span className="sr-only">Open menu</span>
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
+      <DropdownMenuTrigger>
+        {triggerButton}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => onView(customer)}>
@@ -116,37 +121,37 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
   const navigate = useNavigate();
   const { toast } = useToast();
   const { confirm } = useConfirm();
-  
+
   // State for dialog
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
-  
+
   // State for filtering and pagination
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ 
-    key: 'lastName', 
-    direction: 'asc' 
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: 'lastName',
+    direction: 'asc'
   });
-  
+
   // Add selection state
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  
+
   // Use real-time customers hook
-  const { 
-    loading: hookLoading, 
-    error: hookError, 
+  const {
+    loading: hookLoading,
+    error: hookError,
     connected,
-    refreshCustomers 
+    refreshCustomers
   } = useCustomersRealTime();
-  
+
   // Use loading state from props or from the hook
   const loading = isLoading || hookLoading;
-  
+
   // Use error from the hook
   const error = hookError;
-  
+
   // Set up customer event handlers
   useCustomerEvents({
     onCustomerCreated: () => {
@@ -165,23 +170,23 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
       });
     }
   });
-  
+
   // Reset to first page when search query changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
-  
+
   // Handle sorting
   const requestSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
-    
+
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
     }
-    
+
     setSortConfig({ key, direction });
   };
-  
+
   // Handle customer deletion
   const handleDelete = async (customer: Customer) => {
     const confirmed = await confirm({
@@ -191,7 +196,7 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
       cancelText: 'Cancel',
       destructive: true
     });
-    
+
     if (confirmed) {
       try {
         await customerService.delete(customer.id);
@@ -210,79 +215,79 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
       }
     }
   };
-  
+
   // Filter and sort customers
   const filteredAndSortedCustomers = useMemo(() => {
     // Filter customers based on search query
     const filtered = customers.filter(customer => {
       const searchable = `
-        ${customer.firstName} 
-        ${customer.lastName} 
-        ${customer.email || ''} 
+        ${customer.firstName}
+        ${customer.lastName}
+        ${customer.email || ''}
         ${customer.phone || ''}
       `.toLowerCase();
-      
+
       return searchable.includes(searchQuery.toLowerCase());
     });
-    
+
     // Sort customers
     return [...filtered].sort((a, b) => {
       const key = sortConfig.key as keyof Customer;
-      
+
       // Handle nested properties
       if (key === 'loyaltyTier') {
         const tierA = a.loyaltyTier?.name || '';
         const tierB = b.loyaltyTier?.name || '';
-        
+
         if (sortConfig.direction === 'asc') {
           return tierA.localeCompare(tierB);
         } else {
           return tierB.localeCompare(tierA);
         }
       }
-      
+
       // Handle regular properties
       const valueA = a[key] || '';
       const valueB = b[key] || '';
-      
+
       if (typeof valueA === 'string' && typeof valueB === 'string') {
-        return sortConfig.direction === 'asc' 
-          ? valueA.localeCompare(valueB) 
+        return sortConfig.direction === 'asc'
+          ? valueA.localeCompare(valueB)
           : valueB.localeCompare(valueA);
       }
-      
+
       // Handle number comparisons
       if (typeof valueA === 'number' && typeof valueB === 'number') {
-        return sortConfig.direction === 'asc' 
-          ? valueA - valueB 
+        return sortConfig.direction === 'asc'
+          ? valueA - valueB
           : valueB - valueA;
       }
-      
+
       // Handle date comparisons
       if (valueA instanceof Date && valueB instanceof Date) {
-        return sortConfig.direction === 'asc' 
-          ? valueA.getTime() - valueB.getTime() 
+        return sortConfig.direction === 'asc'
+          ? valueA.getTime() - valueB.getTime()
           : valueB.getTime() - valueA.getTime();
       }
-      
+
       return 0;
     });
   }, [customers, searchQuery, sortConfig]);
-  
+
   // Calculate pagination
   const totalPages = Math.ceil(filteredAndSortedCustomers.length / pageSize);
   const paginatedCustomers = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     return filteredAndSortedCustomers.slice(startIndex, startIndex + pageSize);
   }, [filteredAndSortedCustomers, currentPage, pageSize]);
-  
+
   const SortIcon = ({ columnKey }: { columnKey: string }) => {
     if (sortConfig.key !== columnKey) {
       return <ChevronUp className="h-4 w-4 opacity-30" />;
     }
-    
-    return sortConfig.direction === 'asc' 
-      ? <ChevronUp className="h-4 w-4" /> 
+
+    return sortConfig.direction === 'asc'
+      ? <ChevronUp className="h-4 w-4" />
       : <ChevronDown className="h-4 w-4" />;
   };
 
@@ -290,7 +295,7 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
   const toggleAllRows = (checked: boolean) => {
     const newSelected = checked ? filteredAndSortedCustomers.map(customer => customer.id) : [];
     setSelectedItems(newSelected);
-    
+
     // Notify parent component of selection changes
     if (onSelectionChange) {
       onSelectionChange(newSelected);
@@ -306,16 +311,16 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
       } else {
         newSelected = [...prev, id];
       }
-      
+
       // Notify parent component of selection changes
       if (onSelectionChange) {
         onSelectionChange(newSelected);
       }
-      
+
       return newSelected;
     });
   };
-  
+
   // Add renderSortIcon function
   const renderSortIcon = () => {
     if (sortConfig.direction === 'asc') {
@@ -323,7 +328,7 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
     }
     return <ChevronDown className="h-4 w-4 ml-1" />;
   };
-  
+
   // Define view handler
   const handleViewCustomer = (customer: Customer) => {
     navigate(`/customers/${customer.id}`);
@@ -342,7 +347,7 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
           Error loading customers. Please try refreshing the page.
         </div>
       )}
-      
+
       <div className="rounded-md">
         <Table>
           <TableHeader className="bg-muted/50">
@@ -426,7 +431,7 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
               </TableRow>
             ) : (
               paginatedCustomers.map((customer) => (
-                <TableRow 
+                <TableRow
                   key={customer.id}
                   className={cn(
                     "border-b border-border transition-colors hover:bg-muted/50 cursor-pointer",
@@ -469,7 +474,7 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
                     ) : '-'}
                   </TableCell>
                   <TableCell className="text-right">
-                    <ActionMenu 
+                    <ActionMenu
                       customer={customer}
                       onView={handleViewCustomer}
                       onEdit={handleEdit}
@@ -482,7 +487,7 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
           </TableBody>
         </Table>
       </div>
-      
+
       <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4">
         <div className="flex items-center space-x-2">
           <p className="text-sm text-muted-foreground">
@@ -509,8 +514,8 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
         <Pagination className="w-full md:w-auto">
           <PaginationContent>
             <PaginationItem>
-              <PaginationPrevious 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+              <PaginationPrevious
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               />
             </PaginationItem>
@@ -530,15 +535,15 @@ const CustomersTable = ({ filters = {}, customers, onEdit, isLoading = false, on
               );
             })}
             <PaginationItem>
-              <PaginationNext 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+              <PaginationNext
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
               />
             </PaginationItem>
           </PaginationContent>
         </Pagination>
       </div>
-      
+
       <CustomerDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}

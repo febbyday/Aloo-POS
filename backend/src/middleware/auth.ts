@@ -9,11 +9,11 @@ import { AuthenticationError, AuthErrorCode, handleError } from '../utils/errorT
  * Authentication middleware
  * Verifies the user's authentication token and attaches user data to the request
  */
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticateJWT = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Get token from cookies or Authorization header
     const token = getTokenFromCookies(req);
-    
+
     // Check if token exists
     if (!token) {
       throw new AuthenticationError(
@@ -22,7 +22,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         401
       );
     }
-    
+
     // Check if token is blacklisted
     if (isBlacklisted(token)) {
       throw new AuthenticationError(
@@ -31,10 +31,10 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         401
       );
     }
-    
+
     // Verify token
     const decoded = verifyToken(token);
-    
+
     // Check if session is valid (if session ID is present)
     if (req.cookies.session_id) {
       const sessionValid = await SessionManager.validateSession(req.cookies.session_id);
@@ -46,12 +46,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         );
       }
     }
-    
+
     // Get user from database
     const user = await prisma.user.findUnique({
       where: { id: decoded.id }
     });
-    
+
     if (!user) {
       throw new AuthenticationError(
         'User not found',
@@ -59,106 +59,123 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         401
       );
     }
-    
-    // Attach user to request object
+
+    // For security, verify user is active
+    if (!user.isActive) {
+      throw new AuthenticationError(
+        'User account is inactive',
+        AuthErrorCode.USER_INACTIVE,
+        401
+      );
+    }
+
+    // Attach user to request
     req.user = user;
-    
+
+    // Log successful authentication
+    try {
+      const auditLogger = AuditLogger.getInstance();
+      auditLogger.logSecurityEvent(
+        SecurityEvent.AUTHENTICATION_SUCCESS,
+        'SUCCESS',
+        undefined,
+        {
+          userId: user.id,
+          username: user.username,
+          method: 'jwt'
+        }
+      );
+    } catch (logError) {
+      // If audit logging fails, just log to console and continue
+      console.warn('Failed to log authentication success to audit log:', logError);
+    }
+
+    // Continue to the next middleware
     next();
-  } catch (error: unknown) {
-    // Handle token verification errors
-    if (error instanceof Error && error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token',
-        error: {
-          code: AuthErrorCode.TOKEN_INVALID
-        }
-      });
-    }
-    
-    if (error instanceof Error && error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token expired',
-        error: {
-          code: AuthErrorCode.TOKEN_EXPIRED
-        }
-      });
-    }
-    
-    // Handle other authentication errors
-    if (error instanceof AuthenticationError) {
-      const { status, response } = handleError(error);
-      return res.status(status).json(response);
-    }
-    
-    // Handle unexpected errors
+  } catch (error) {
+    // Log authentication error
     console.error('Authentication error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error during authentication',
-      error: {
-        code: 'INTERNAL_SERVER_ERROR'
-      }
-    });
+
+    try {
+      const auditLogger = AuditLogger.getInstance();
+      auditLogger.logSecurityEvent(
+        SecurityEvent.AUTHENTICATION_FAILURE,
+        'FAILURE',
+        undefined,
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          token: getTokenFromCookies(req) ? '[REDACTED]' : 'None'
+        }
+      );
+    } catch (logError) {
+      // If audit logging fails, just log to console and continue
+      console.warn('Failed to log authentication error to audit log:', logError);
+    }
+
+    // Handle error
+    return handleError(error, res);
   }
 };
 
 /**
  * Role-based authorization middleware
  * Verifies the user has the required role
- * 
+ *
  * @param requiredRoles Array of allowed roles
  */
-export const authorize = (requiredRoles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+export const authorizeRoles = (requiredRoles: string[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Make sure user is authenticated and attached to request
+      // Check if user is authenticated
       if (!req.user) {
         throw new AuthenticationError(
           'Authentication required',
-          AuthErrorCode.TOKEN_MISSING,
+          AuthErrorCode.UNAUTHORIZED,
           401
         );
       }
-      
-      // Check if user has one of the required roles
-      if (!requiredRoles.includes(req.user.role)) {
-        // Log unauthorized access attempt
-        AuditLogger.getInstance().logSecurityEvent(
-          SecurityEvent.PERMISSION_DENIED,
-          'FAILURE',
-          req.user.id,
-          {
-            requiredRoles,
-            userRole: req.user.role,
-            endpoint: req.originalUrl,
-            method: req.method
-          }
-        );
-        
+
+      // Check if user has required role
+      const userRole = req.user.role || '';
+
+      // Admin role has access to everything
+      if (userRole === 'ADMIN') {
+        return next();
+      }
+
+      // Check if user has any of the required roles
+      const hasRequiredRole = requiredRoles.includes(userRole);
+
+      if (!hasRequiredRole) {
+        // Log the authorization failure
+        try {
+          const auditLogger = AuditLogger.getInstance();
+          auditLogger.logSecurityEvent(
+            SecurityEvent.AUTHORIZATION_FAILED,
+            'FAILURE',
+            undefined,
+            {
+              requiredRoles,
+              userRole,
+              path: req.path,
+              method: req.method
+            }
+          );
+        } catch (logError) {
+          // If audit logging fails, just log to console and continue
+          console.warn('Failed to log authorization failure to audit log:', logError);
+        }
+
         throw new AuthenticationError(
-          'Insufficient permissions',
+          'Access denied: insufficient permissions',
           AuthErrorCode.INSUFFICIENT_PERMISSIONS,
           403
         );
       }
-      
+
       next();
-    } catch (error: unknown) {
-      if (error instanceof AuthenticationError) {
-        const { status, response } = handleError(error);
-        return res.status(status).json(response);
-      }
-      
-      console.error('Authorization error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Internal server error during authorization',
-        error: {
-          code: 'INTERNAL_SERVER_ERROR'
-        }
-      });
+    } catch (error) {
+      handleError(error, res);
     }
   };
 };
@@ -171,3 +188,8 @@ declare global {
     }
   }
 }
+
+/**
+ * Export authenticate as an alias for authenticateJWT for backward compatibility
+ */
+export const authenticate = authenticateJWT;

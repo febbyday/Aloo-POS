@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { loyaltyApi, LoyaltySettings } from '../api/loyaltyApi';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/lib/toast';
 
 export function useLoyaltySettings() {
   const [settings, setSettings] = useState<LoyaltySettings | null>(null);
@@ -104,4 +104,4 @@ export function useLoyaltySettings() {
     removeSpecialEvent,
     refetch: fetchSettings,
   };
-} 
+}

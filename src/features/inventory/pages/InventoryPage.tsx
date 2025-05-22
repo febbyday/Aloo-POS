@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { 
+import {
   Search,
   RefreshCw,
   Filter,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -38,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { format } from 'date-fns';
 
 interface InventoryItem {
@@ -63,7 +63,7 @@ interface InventoryFilter {
 
 export function InventoryPage() {
   const [filters, setFilters] = useState<InventoryFilter>({});
-  const { toast } = useToast();
+  const toast = useToast();
 
   // Mock inventory data - in a real app, this would come from an API
   const [inventory] = useState<InventoryItem[]>([
@@ -106,24 +106,15 @@ export function InventoryPage() {
   ]);
 
   const handleRefresh = () => {
-    toast({
-      title: "Refreshing data...",
-      description: "Your inventory data is being updated."
-    });
+    toast.info("Refreshing data...", "Your inventory data is being updated.");
   };
 
   const handleExport = () => {
-    toast({
-      title: "Exporting Data",
-      description: "Your inventory data export is being prepared."
-    });
+    toast.info("Exporting Data", "Your inventory data export is being prepared.");
   };
 
   const handleAdjustQuantity = (itemId: string, adjustment: number) => {
-    toast({
-      title: "Quantity Adjusted",
-      description: `Inventory quantity adjusted by ${adjustment}.`
-    });
+    toast.success("Quantity Adjusted", `Inventory quantity adjusted by ${adjustment}.`);
   };
 
   const getStatusBadgeVariant = (status: InventoryItem['status']) => {
@@ -161,16 +152,16 @@ export function InventoryPage() {
           <h1 className="text-2xl font-bold">Inventory Management</h1>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleRefresh}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleExport}
           >
@@ -233,7 +224,7 @@ export function InventoryPage() {
 
         <Select
           value={filters.category}
-          onValueChange={(value: string) => 
+          onValueChange={(value: string) =>
             setFilters(prev => ({ ...prev, category: value }))
           }
         >
@@ -249,7 +240,7 @@ export function InventoryPage() {
 
         <Select
           value={filters.status}
-          onValueChange={(value: InventoryItem['status']) => 
+          onValueChange={(value: InventoryItem['status']) =>
             setFilters(prev => ({ ...prev, status: value }))
           }
         >
@@ -263,7 +254,7 @@ export function InventoryPage() {
           </SelectContent>
         </Select>
 
-        <Button 
+        <Button
           variant="outline"
           onClick={() => setFilters({})}
           className="h-10"

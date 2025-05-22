@@ -5,16 +5,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, LineChart, PieChart, GroupedBarChart } from '@/components/ui/charts';
-import { 
-  Calendar, 
-  Download, 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  ShoppingCart, 
-  Users 
+import {
+  Calendar,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  ShoppingCart,
+  Users
 } from 'lucide-react';
-import { useToastManager } from '@/components/ui/toast-manager';
+import { useToast } from '@/lib/toast';
 import { useNavigate } from 'react-router-dom';
 import type { Product } from '../../types';
 
@@ -29,53 +29,53 @@ const generateMockData = (product: Product, days: number = 30) => {
   const salesData = [];
   const revenueData = [];
   const profitData = [];
-  
+
   // Generate daily data
   for (let i = 0; i < days; i++) {
     const date = new Date(today);
     date.setDate(date.getDate() - (days - i - 1));
-    
+
     // Random sales with some trend and weekend pattern
     const dayOfWeek = date.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const baseSales = isWeekend ? 15 : 10;
     const randomFactor = Math.random() * 0.5 + 0.75; // 0.75 to 1.25
     const sales = Math.round(baseSales * randomFactor * (1 + i/100)); // Slight upward trend
-    
+
     // Calculate revenue and profit
     const revenue = sales * product.retailPrice;
     const profit = sales * (product.retailPrice - product.costPrice);
-    
+
     salesData.push({
       date: date.toISOString().split('T')[0],
       value: sales
     });
-    
+
     revenueData.push({
       date: date.toISOString().split('T')[0],
       value: revenue
     });
-    
+
     profitData.push({
       date: date.toISOString().split('T')[0],
       value: profit
     });
   }
-  
+
   // Customer segments
   const customerSegments = [
     { name: 'Retail', value: 45 },
     { name: 'Wholesale', value: 30 },
     { name: 'Online', value: 25 }
   ];
-  
+
   // Sales by location
   const salesByLocation = [
     { name: 'Main Store', value: 40 },
     { name: 'Branch Store', value: 35 },
     { name: 'Online Shop', value: 25 }
   ];
-  
+
   return {
     salesData,
     revenueData,
@@ -93,49 +93,49 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
   const [analyticsData, setAnalyticsData] = useState(() => generateMockData(product, 30));
   const showToast = useToastManager();
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     // Update data when time range changes
     setAnalyticsData(generateMockData(product, parseInt(timeRange)));
   }, [timeRange, product]);
-  
+
   const handleExport = (format: 'pdf' | 'csv' | 'excel') => {
     showToast.info(
-      "Exporting Data", 
+      "Exporting Data",
       `Preparing to export analytics data as ${format.toUpperCase()}`
     );
-    
+
     // In a real implementation, this would call an API to generate the export
     setTimeout(() => {
       showToast.success(
-        "Export Complete", 
+        "Export Complete",
         `Analytics data has been exported as ${format.toUpperCase()}`
       );
     }, 1500);
   };
-  
+
   const handleViewDetailedAnalytics = () => {
     navigate(`/analytics/products/${product.id}/detailed`);
   };
-  
+
   // Calculate trend percentages
   const calculateTrend = (data: any[]) => {
     if (data.length < 2) return 0;
-    
+
     const firstHalf = data.slice(0, Math.floor(data.length / 2));
     const secondHalf = data.slice(Math.floor(data.length / 2));
-    
+
     const firstHalfAvg = firstHalf.reduce((sum, item) => sum + item.value, 0) / firstHalf.length;
     const secondHalfAvg = secondHalf.reduce((sum, item) => sum + item.value, 0) / secondHalf.length;
-    
+
     if (firstHalfAvg === 0) return 0;
     return ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100;
   };
-  
+
   const salesTrend = calculateTrend(analyticsData.salesData);
   const revenueTrend = calculateTrend(analyticsData.revenueData);
   const profitTrend = calculateTrend(analyticsData.profitData);
-  
+
   return (
     <Card className="w-full max-w-6xl mx-auto">
       <CardHeader>
@@ -186,11 +186,11 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
                 </div>
               </div>
               <div className="mt-4 h-10">
-                <BarChart 
-                  data={analyticsData.salesData.slice(-7)} 
-                  xField="date" 
-                  yField="value" 
-                  height={40} 
+                <BarChart
+                  data={analyticsData.salesData.slice(-7)}
+                  xField="date"
+                  yField="value"
+                  height={40}
                   showXAxis={false}
                   showYAxis={false}
                   color={salesTrend >= 0 ? '#10b981' : '#ef4444'}
@@ -198,7 +198,7 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
@@ -216,11 +216,11 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
                 </div>
               </div>
               <div className="mt-4 h-10">
-                <LineChart 
-                  data={analyticsData.revenueData.slice(-7)} 
-                  xField="date" 
-                  yField="value" 
-                  height={40} 
+                <LineChart
+                  data={analyticsData.revenueData.slice(-7)}
+                  xField="date"
+                  yField="value"
+                  height={40}
                   showXAxis={false}
                   showYAxis={false}
                   color={revenueTrend >= 0 ? '#10b981' : '#ef4444'}
@@ -228,7 +228,7 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
@@ -246,11 +246,11 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
                 </div>
               </div>
               <div className="mt-4 h-10">
-                <LineChart 
-                  data={analyticsData.profitData.slice(-7)} 
-                  xField="date" 
-                  yField="value" 
-                  height={40} 
+                <LineChart
+                  data={analyticsData.profitData.slice(-7)}
+                  xField="date"
+                  yField="value"
+                  height={40}
                   showXAxis={false}
                   showYAxis={false}
                   color={profitTrend >= 0 ? '#10b981' : '#ef4444'}
@@ -259,7 +259,7 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Tabs for different analytics views */}
         <Tabs defaultValue="sales">
           <TabsList className="grid w-full grid-cols-3">
@@ -267,7 +267,7 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
             <TabsTrigger value="segments">Customer Segments</TabsTrigger>
             <TabsTrigger value="locations">Sales by Location</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="sales" className="pt-4">
             <Card>
               <CardHeader>
@@ -311,7 +311,7 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="segments" className="pt-4">
             <Card>
               <CardHeader>
@@ -322,17 +322,17 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
               </CardHeader>
               <CardContent className="h-80">
                 <div className="flex items-center justify-center h-full">
-                  <PieChart 
-                    data={analyticsData.customerSegments} 
-                    nameField="name" 
-                    valueField="value" 
+                  <PieChart
+                    data={analyticsData.customerSegments}
+                    nameField="name"
+                    valueField="value"
                     height={300}
                   />
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="locations" className="pt-4">
             <Card>
               <CardHeader>
@@ -342,10 +342,10 @@ export function ProductSalesAnalytics({ product, onClose }: ProductSalesAnalytic
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-80">
-                <BarChart 
-                  data={analyticsData.salesByLocation} 
-                  xField="name" 
-                  yField="value" 
+                <BarChart
+                  data={analyticsData.salesByLocation}
+                  xField="name"
+                  yField="value"
                   height={300}
                 />
               </CardContent>

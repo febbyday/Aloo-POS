@@ -43,7 +43,7 @@ import {
   Loader2,
   Trash2
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 

@@ -5,7 +5,7 @@ import { AddCategoryPopup } from '../components/AddCategoryPopup'
 import { EditCategoryPopup } from '../components/EditCategoryPopup'
 import { DeleteCategoryPopup } from '../components/DeleteCategoryPopup'
 import { ProductsToolbar } from '../components/ProductsToolbar'
-import { 
+import {
   FolderPlus,
   Pencil,
   Printer,
@@ -21,13 +21,13 @@ import {
   AlignLeft,
   FolderTree
 } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -61,23 +61,23 @@ const categories = [
 ]
 
 const columns = [
-  { 
-    id: 'name', 
+  {
+    id: 'name',
     label: 'Name',
     icon: FolderOpen
   },
-  { 
-    id: 'products', 
+  {
+    id: 'products',
     label: 'Products',
     icon: Hash
   },
-  { 
-    id: 'description', 
+  {
+    id: 'description',
     label: 'Description',
     icon: AlignLeft
   },
-  { 
-    id: 'parent', 
+  {
+    id: 'parent',
     label: 'Parent Category',
     icon: FolderTree
   }
@@ -88,7 +88,7 @@ export function CategoriesPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
   const [sortConfig, setSortConfig] = useState<{column: string, direction: 'asc' | 'desc'} | null>(null)
   const [visibleColumns, setVisibleColumns] = useState(columns.map(col => col.id))
   const [isAddCategoryPopupOpen, setIsAddCategoryPopupOpen] = useState(false)
@@ -154,15 +154,15 @@ export function CategoriesPage() {
 
   // Filter and sort data
   const filteredData = categories.filter(item => {
-    const matchesSearch = searchTerm === "" || 
-      Object.values(item).some(val => 
+    const matchesSearch = searchTerm === "" ||
+      Object.values(item).some(val =>
         val?.toString().toLowerCase().includes(searchTerm.toLowerCase())
       )
     return matchesSearch
   })
 
   // Sort data
-  const sortedData = sortConfig 
+  const sortedData = sortConfig
     ? [...filteredData].sort((a, b) => {
         const aVal = a[sortConfig.column as keyof typeof a]
         const bVal = b[sortConfig.column as keyof typeof b]
@@ -186,17 +186,17 @@ export function CategoriesPage() {
   }
 
   const toggleRowSelection = (id: string) => {
-    setSelectedCategories(current => 
-      current.includes(id) 
+    setSelectedCategories(current =>
+      current.includes(id)
         ? current.filter(rowId => rowId !== id)
         : [...current, id]
     )
   }
 
   const toggleAllRows = () => {
-    setSelectedCategories(current => 
-      current.length === paginatedData.length 
-        ? [] 
+    setSelectedCategories(current =>
+      current.length === paginatedData.length
+        ? []
         : paginatedData.map(item => item.id)
     )
   }
@@ -204,7 +204,7 @@ export function CategoriesPage() {
   return (
     <div className="space-y-4">
       <ProductsToolbar groups={toolbarGroups} />
-      
+
       <div className="space-y-4">
         {/* Search */}
         <div className="flex flex-col md:flex-row gap-4">
@@ -225,7 +225,7 @@ export function CategoriesPage() {
             <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead className="w-[40px] h-12">
-                  <Checkbox 
+                  <Checkbox
                     checked={selectedCategories.length === paginatedData.length}
                     onCheckedChange={toggleAllRows}
                   />
@@ -235,10 +235,10 @@ export function CategoriesPage() {
                   const Icon = col?.icon
                   const isSorted = sortConfig?.column === column
                   const sortDir = sortConfig?.direction
-                  
+
                   return (
-                    <TableHead 
-                      key={column} 
+                    <TableHead
+                      key={column}
                       className="h-12 cursor-pointer hover:bg-muted/50"
                       onClick={() => handleSort(column)}
                     >
@@ -281,7 +281,7 @@ export function CategoriesPage() {
                   }}
                 >
                   <TableCell className="h-[50px] py-3">
-                    <Checkbox 
+                    <Checkbox
                       checked={selectedCategories.includes(item.id)}
                       onCheckedChange={() => toggleRowSelection(item.id)}
                     />
@@ -319,8 +319,8 @@ export function CategoriesPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-zinc-500">Show</span>
-              <Select 
-                value={itemsPerPage.toString()} 
+              <Select
+                value={itemsPerPage.toString()}
                 onValueChange={(value) => {
                   setItemsPerPage(Number(value))
                   setCurrentPage(1)
@@ -330,11 +330,10 @@ export function CategoriesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="15">15 per page</SelectItem>
+                  <SelectItem value="25">25 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                  <SelectItem value="100">100 per page</SelectItem>
                 </SelectContent>
               </Select>
               <span className="text-sm text-zinc-500">entries</span>

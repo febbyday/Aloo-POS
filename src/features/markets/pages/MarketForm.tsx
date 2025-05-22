@@ -31,7 +31,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import PageHeader from '@/components/layout/PageHeader';
 
@@ -370,4 +370,4 @@ const MarketForm = () => {
   );
 };
 
-export default MarketForm; 
+export default MarketForm;

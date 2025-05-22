@@ -18,7 +18,7 @@ import {
   ResponsiveContainer 
 } from "recharts";
 import type { PriceHistory } from "../../types";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface ProductPriceHistoryTableProps {
   productId: string;

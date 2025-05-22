@@ -370,6 +370,13 @@ export class ShopService {
       where: { id: assignmentId },
     });
   }
+
+  /**
+   * Find a shop by code
+   */
+  async findShopByCode(code: string): Promise<Shop | null> {
+    return this.repository.findByCode(code);
+  }
 }
 
 // Export singleton instance

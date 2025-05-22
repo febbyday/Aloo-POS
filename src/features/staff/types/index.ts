@@ -1,30 +1,20 @@
 /**
  * Staff Types
- * 
+ *
  * This module exports type definitions for the staff feature.
  */
 
-// Export all types here
+// Re-export role types from the centralized roles module
+export {
+  IRole as Role,
+  CreateRoleData,
+  UpdateRoleData,
+  RolePermissions,
+  permissionsList
+} from '@/features/roles/types/role';
 
-// Role definition
-export interface Role {
-  id: string;
-  name: string;
-  description: string;
-  permissions: string[];
-  staffCount: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+// Import permission types directly from shared schemas
+export { getDefaultPermissions } from '@/shared/schemas/permissions';
 
-// Create role data type
-export type CreateRoleData = {
-  name: string;
-  description?: string;
-  permissions?: string[];
-  isActive?: boolean;
-};
-
-// Update role data type
-export type UpdateRoleData = Partial<CreateRoleData>;
+// Import AccessLevel directly from the standardized schema
+export { AccessLevel } from '@/shared/schemas/accessLevel';

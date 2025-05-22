@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { useState } from "react"
 import {
   Table,
@@ -33,7 +31,7 @@ import {
   ChevronsUpDown,
 } from "lucide-react"
 import { ActionMenu } from "./ActionMenu"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import { Repair, RepairStatus } from "../types"
 
 const columns = [
@@ -105,8 +103,8 @@ export function RepairsTable({
   const [sortConfig, setSortConfig] = useState<{column: string; direction: 'asc' | 'desc'}>({ column: 'createdAt', direction: 'desc' })
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
 
   const startIndex = currentPage * itemsPerPage
   const endIndex = startIndex + itemsPerPage
@@ -266,11 +264,10 @@ export function RepairsTable({
                 <SelectValue placeholder={itemsPerPage} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="30">30</SelectItem>
-                <SelectItem value="40">40</SelectItem>
-                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="15">15 per page</SelectItem>
+                <SelectItem value="25">25 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+                <SelectItem value="100">100 per page</SelectItem>
               </SelectContent>
             </Select>
             <span className="text-sm text-muted-foreground">entries</span>

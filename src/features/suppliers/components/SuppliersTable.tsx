@@ -27,7 +27,7 @@ import {
   Hash,
 } from "lucide-react"
 import { useState } from 'react'
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils/cn';
 import { Supplier, SUPPLIER_STATUS } from '../types'
 
 interface SuppliersTableProps {

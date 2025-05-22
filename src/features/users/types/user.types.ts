@@ -1,29 +1,20 @@
 /**
  * User Types
- * 
+ *
  * This file defines the types used in the user management system.
+ * It imports the core User schema from auth schemas to ensure consistency.
  */
 
 import { z } from 'zod';
-import { UserRole } from '@/features/auth/types/auth.types';
+import { UserSchema as CoreUserSchema, UserRole } from '@/features/auth/schemas/auth.schemas';
+import { passwordSchema } from '../utils/validation-utils';
 
-// User schema for validation
-export const UserSchema = z.object({
-  id: z.string(),
-  username: z.string().min(3).max(50),
-  email: z.string().email(),
-  firstName: z.string().min(1).max(50),
-  lastName: z.string().min(1).max(50),
-  fullName: z.string().optional(),
-  role: z.nativeEnum(UserRole),
-  roleId: z.string().optional(),
-  roles: z.array(z.string()).optional(),
-  permissions: z.array(z.string()),
-  isActive: z.boolean(),
-  lastLogin: z.string().nullable().optional(),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional(),
-  avatar: z.string().nullable().optional(),
+/**
+ * Extended User Schema
+ * Extends the core user schema with additional fields specific to the user management module
+ */
+export const UserSchema = CoreUserSchema.extend({
+  // Additional fields for user management
   phoneNumber: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -33,42 +24,84 @@ export const UserSchema = z.object({
 // User type
 export type User = z.infer<typeof UserSchema>;
 
-// Re-export UserRole from auth types
+// Re-export UserRole from auth schemas
 export { UserRole };
 
-// Create user schema
+// Create user schema with enhanced validation
 export const CreateUserSchema = z.object({
-  username: z.string().min(3).max(50),
-  email: z.string().email(),
-  firstName: z.string().min(1).max(50),
-  lastName: z.string().min(1).max(50),
-  password: z.string().min(6).max(100),
-  role: z.nativeEnum(UserRole),
+  username: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(50, "Username cannot exceed 50 characters")
+    .regex(/^[a-zA-Z0-9._-]+$/, "Username can only contain letters, numbers, and ._-"),
+
+  email: z.string()
+    .email("Please enter a valid email address")
+    .min(5, "Email must be at least 5 characters")
+    .max(100, "Email cannot exceed 100 characters"),
+
+  firstName: z.string()
+    .min(1, "First name is required")
+    .max(50, "First name cannot exceed 50 characters")
+    .regex(/^[a-zA-Z\s'-]+$/, "First name can only contain letters, spaces, apostrophes, and hyphens"),
+
+  lastName: z.string()
+    .min(1, "Last name is required")
+    .max(50, "Last name cannot exceed 50 characters")
+    .regex(/^[a-zA-Z\s'-]+$/, "Last name can only contain letters, spaces, apostrophes, and hyphens"),
+
+  password: passwordSchema,
+
+  role: z.nativeEnum(UserRole, {
+    errorMap: () => ({ message: "Please select a valid role" })
+  }),
+
   isActive: z.boolean().default(true),
-  avatar: z.string().nullable().optional(),
-  phoneNumber: z.string().nullable().optional(),
-  address: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
-  metadata: z.record(z.any()).nullable().optional()
+
+  isPinEnabled: z.boolean().default(false),
+
+  avatar: z.string().nullable().optional()
 });
 
 // Create user type
 export type CreateUserData = z.infer<typeof CreateUserSchema>;
 
-// Update user schema
+// Update user schema with enhanced validation
 export const UpdateUserSchema = z.object({
-  username: z.string().min(3).max(50).optional(),
-  email: z.string().email().optional(),
-  firstName: z.string().min(1).max(50).optional(),
-  lastName: z.string().min(1).max(50).optional(),
-  password: z.string().min(6).max(100).optional(),
-  role: z.nativeEnum(UserRole).optional(),
+  username: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(50, "Username cannot exceed 50 characters")
+    .regex(/^[a-zA-Z0-9._-]+$/, "Username can only contain letters, numbers, and ._-")
+    .optional(),
+
+  email: z.string()
+    .email("Please enter a valid email address")
+    .min(5, "Email must be at least 5 characters")
+    .max(100, "Email cannot exceed 100 characters")
+    .optional(),
+
+  firstName: z.string()
+    .min(1, "First name is required")
+    .max(50, "First name cannot exceed 50 characters")
+    .regex(/^[a-zA-Z\s'-]+$/, "First name can only contain letters, spaces, apostrophes, and hyphens")
+    .optional(),
+
+  lastName: z.string()
+    .min(1, "Last name is required")
+    .max(50, "Last name cannot exceed 50 characters")
+    .regex(/^[a-zA-Z\s'-]+$/, "Last name can only contain letters, spaces, apostrophes, and hyphens")
+    .optional(),
+
+  password: passwordSchema.optional(),
+
+  role: z.nativeEnum(UserRole, {
+    errorMap: () => ({ message: "Please select a valid role" })
+  }).optional(),
+
   isActive: z.boolean().optional(),
-  avatar: z.string().nullable().optional(),
-  phoneNumber: z.string().nullable().optional(),
-  address: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
-  metadata: z.record(z.any()).nullable().optional()
+
+  isPinEnabled: z.boolean().optional(),
+
+  avatar: z.string().nullable().optional()
 });
 
 // Update user type
@@ -99,7 +132,8 @@ export const USER_EVENTS = {
   CREATED: 'user:created',
   UPDATED: 'user:updated',
   DELETED: 'user:deleted',
-  PASSWORD_CHANGED: 'user:password:changed',
-  ROLE_CHANGED: 'user:role:changed',
-  STATUS_CHANGED: 'user:status:changed'
+  STATUS_CHANGED: 'user:status-changed',
+  ROLE_CHANGED: 'user:role-changed',
+  PASSWORD_CHANGED: 'user:password-changed',
+  PIN_CHANGED: 'user:pin-changed'
 };

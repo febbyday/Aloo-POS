@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Filter, Download, RefreshCw } from 'lucide-react'
+import { Search, Filter, Download, RefreshCw, ChevronRight } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { format } from 'date-fns'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useCustomerHistory, OrderHistoryItem } from '../hooks/useCustomerHistory'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -55,6 +55,15 @@ export function CustomerHistoryPage() {
 
   return (
     <div className="space-y-4">
+      {/* Breadcrumb navigation */}
+      <div className="flex items-center text-sm text-muted-foreground">
+        <Link to="/customers" className="hover:text-foreground transition-colors">
+          Customers
+        </Link>
+        <ChevronRight className="h-4 w-4 mx-1" />
+        <span className="font-medium text-foreground">Purchase History</span>
+      </div>
+      
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold tracking-tight">Purchase History</h2>
         <div className="flex gap-2">

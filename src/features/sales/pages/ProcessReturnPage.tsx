@@ -41,7 +41,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/use-toast'
 import { format } from 'date-fns'
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 
 // Mock data for sales lookup
 const mockSales = [

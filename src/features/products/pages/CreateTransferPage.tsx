@@ -1,10 +1,10 @@
 import { TransferWizard } from '../components/TransferWizard'
 import { useNavigate } from 'react-router-dom'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 
 export function CreateTransferPage() {
   const navigate = useNavigate()
-  const { toast } = useToast()
+  const toast = useToast()
 
   return (
     <div className="w-full px-4 py-6 space-y-6">
@@ -15,7 +15,7 @@ export function CreateTransferPage() {
         </p>
       </div>
 
-      <TransferWizard 
+      <TransferWizard
         onComplete={(transferData) => {
           // TODO: Handle transfer creation
           console.log('Transfer created:', transferData)
@@ -23,10 +23,10 @@ export function CreateTransferPage() {
             title: "Transfer Created",
             description: "Stock transfer has been created successfully."
           })
-          navigate('/products/transfers')
+          navigate('/products/stock/transfers')
         }}
         onCancel={() => {
-          navigate('/products/transfers')
+          navigate('/products/stock/transfers')
         }}
       />
     </div>

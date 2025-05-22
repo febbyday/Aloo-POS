@@ -1,4 +1,4 @@
-import { getApiEndpoint } from '@/lib/api/config';
+import { getApiUrl } from '@/lib/api/enhanced-config';
 import {
   Market,
   CreateMarketInput,
@@ -13,6 +13,12 @@ import {
   MarketFilter,
   MARKET_STATUS
 } from '../types';
+
+/**
+ * @deprecated Use the factory-based marketsService instead
+ * This service uses the legacy API client and will be removed in a future release.
+ * Import from 'src/features/markets/services' instead of directly from this file.
+ */
 
 // Mock data for development purposes
 const MOCK_MARKETS: Market[] = [
@@ -227,12 +233,12 @@ const MOCK_STAFF_ASSIGNMENTS: StaffAssignment[] = [
   }
 ];
 
-// API endpoint
-const MARKETS_ENDPOINT = `${getApiEndpoint()}/markets`;
+// API endpoint - use relative path without /api/v1 prefix (added by API client)
+const MARKETS_ENDPOINT = '/markets';
 
 /**
  * Markets Service
- * 
+ *
  * This service handles all operations related to markets, including CRUD operations,
  * stock allocations, and staff assignments.
  */
@@ -244,33 +250,33 @@ export const marketsService = {
     // In a real application, this would make an API call
     // For now, we'll just return mock data
     console.log('Getting all markets with filters:', filters);
-    
+
     let filteredMarkets = [...MOCK_MARKETS];
-    
+
     // Apply filters if provided
     if (filters) {
       if (filters.status) {
         filteredMarkets = filteredMarkets.filter(market => market.status === filters.status);
       }
-      
+
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
-        filteredMarkets = filteredMarkets.filter(market => 
-          market.name.toLowerCase().includes(searchLower) || 
+        filteredMarkets = filteredMarkets.filter(market =>
+          market.name.toLowerCase().includes(searchLower) ||
           market.description.toLowerCase().includes(searchLower)
         );
       }
-      
+
       if (filters.city) {
-        filteredMarkets = filteredMarkets.filter(market => 
+        filteredMarkets = filteredMarkets.filter(market =>
           market.location.city.toLowerCase() === filters.city?.toLowerCase()
         );
       }
     }
-    
+
     return filteredMarkets;
   },
-  
+
   /**
    * Get a market by ID
    */
@@ -279,16 +285,16 @@ export const marketsService = {
     const market = MOCK_MARKETS.find(m => m.id === id);
     return market || null;
   },
-  
+
   /**
    * Create a new market
    */
   async createMarket(data: CreateMarketInput): Promise<Market> {
     console.log('Creating new market:', data);
-    
+
     // Generate a new ID (in a real app, the server would do this)
     const newId = (Math.max(...MOCK_MARKETS.map(m => parseInt(m.id))) + 1).toString();
-    
+
     const newMarket: Market = {
       id: newId,
       name: data.name,
@@ -318,54 +324,54 @@ export const marketsService = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    
+
     // In a real app, this would be saved to a database
     MOCK_MARKETS.push(newMarket);
-    
+
     return newMarket;
   },
-  
+
   /**
    * Update an existing market
    */
   async updateMarket(id: string, data: UpdateMarketInput): Promise<Market | null> {
     console.log(`Updating market with ID: ${id}`, data);
-    
+
     const marketIndex = MOCK_MARKETS.findIndex(m => m.id === id);
     if (marketIndex === -1) {
       return null;
     }
-    
+
     // Update the market with the new data
     const updatedMarket = {
       ...MOCK_MARKETS[marketIndex],
       ...data,
       updatedAt: new Date().toISOString()
     };
-    
+
     // In a real app, this would update a database record
     MOCK_MARKETS[marketIndex] = updatedMarket;
-    
+
     return updatedMarket;
   },
-  
+
   /**
    * Delete a market
    */
   async deleteMarket(id: string): Promise<boolean> {
     console.log(`Deleting market with ID: ${id}`);
-    
+
     const marketIndex = MOCK_MARKETS.findIndex(m => m.id === id);
     if (marketIndex === -1) {
       return false;
     }
-    
+
     // In a real app, this would delete from a database
     MOCK_MARKETS.splice(marketIndex, 1);
-    
+
     return true;
   },
-  
+
   /**
    * Get stock allocations for a market
    */
@@ -373,16 +379,16 @@ export const marketsService = {
     console.log(`Getting stock allocations for market ID: ${marketId}`);
     return MOCK_STOCK_ALLOCATIONS.filter(sa => sa.marketId === marketId);
   },
-  
+
   /**
    * Create a new stock allocation
    */
   async createStockAllocation(data: CreateStockAllocationInput): Promise<StockAllocation> {
     console.log('Creating new stock allocation:', data);
-    
+
     // Generate a new ID
     const newId = (Math.max(...MOCK_STOCK_ALLOCATIONS.map(sa => parseInt(sa.id))) + 1).toString();
-    
+
     const newAllocation: StockAllocation = {
       id: newId,
       marketId: data.marketId,
@@ -392,13 +398,13 @@ export const marketsService = {
       status: 'ALLOCATED',
       notes: data.notes || ''
     };
-    
+
     // In a real app, this would be saved to a database
     MOCK_STOCK_ALLOCATIONS.push(newAllocation);
-    
+
     return newAllocation;
   },
-  
+
   /**
    * Get staff assignments for a market
    */
@@ -406,16 +412,16 @@ export const marketsService = {
     console.log(`Getting staff assignments for market ID: ${marketId}`);
     return MOCK_STAFF_ASSIGNMENTS.filter(sa => sa.marketId === marketId);
   },
-  
+
   /**
    * Create a new staff assignment
    */
   async createStaffAssignment(data: CreateStaffAssignmentInput): Promise<StaffAssignment> {
     console.log('Creating new staff assignment:', data);
-    
+
     // Generate a new ID
     const newId = (Math.max(...MOCK_STAFF_ASSIGNMENTS.map(sa => parseInt(sa.id))) + 1).toString();
-    
+
     const newAssignment: StaffAssignment = {
       id: newId,
       marketId: data.marketId,
@@ -424,42 +430,42 @@ export const marketsService = {
       schedule: data.schedule,
       assignedAt: new Date().toISOString()
     };
-    
+
     // In a real app, this would be saved to a database
     MOCK_STAFF_ASSIGNMENTS.push(newAssignment);
-    
+
     return newAssignment;
   },
-  
+
   /**
    * Get market performance data
    */
   async getMarketPerformance(marketId: string): Promise<MarketPerformance | null> {
     console.log(`Getting performance data for market ID: ${marketId}`);
-    
+
     const market = MOCK_MARKETS.find(m => m.id === marketId);
     if (!market) {
       return null;
     }
-    
+
     return market.performance;
   },
-  
+
   /**
    * Update market settings
    */
   async updateMarketSettings(marketId: string, settings: MarketSettings): Promise<Market | null> {
     console.log(`Updating settings for market ID: ${marketId}`, settings);
-    
+
     const marketIndex = MOCK_MARKETS.findIndex(m => m.id === marketId);
     if (marketIndex === -1) {
       return null;
     }
-    
+
     // Update the settings
     MOCK_MARKETS[marketIndex].settings = settings;
     MOCK_MARKETS[marketIndex].updatedAt = new Date().toISOString();
-    
+
     return MOCK_MARKETS[marketIndex];
   }
 };

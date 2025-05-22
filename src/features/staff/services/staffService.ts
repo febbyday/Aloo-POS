@@ -1,6 +1,6 @@
 /**
  * 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
- * 
+ *
  * Staff Service
  * Connects to backend API endpoints for staff management
  */
@@ -39,12 +39,12 @@ const handleApiError = (error: unknown, message: string): never => {
       authenticationFailed = true;
       throw new Error('Authentication required. Please log in to access staff data.');
     }
-    
+
     // Log the original error for debugging
     console.error(`${message}:`, error);
     throw new Error(`${message}: ${error.message}`);
   }
-  
+
   // For unknown error types
   console.error(`${message} (unknown error type):`, error);
   throw new Error(`${message}: An unexpected error occurred`);
@@ -60,6 +60,11 @@ export const staffService = {
    * @returns True if authenticated, false otherwise
    */
   isAuthenticated(): boolean {
+    // In development mode, always return true to bypass authentication checks
+    if (import.meta.env.DEV) {
+      console.log('[StaffService] Development mode: Authentication bypass enabled');
+      return true;
+    }
     return !authenticationFailed && authService.isAuthenticated();
   },
 
@@ -99,17 +104,17 @@ export const staffService = {
 
     try {
       const response = await apiClient.get<Staff[]>(API_ENDPOINT);
-      
+
       if (!response.success) {
         // Handle authentication errors in the response
-        if (response.error && typeof response.error === 'string' && 
+        if (response.error && typeof response.error === 'string' &&
             (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
           authenticationFailed = true;
           throw new Error('Authentication required. Please log in to access staff data.');
         }
         throw new Error(response.error || 'Failed to fetch staff');
       }
-      
+
       return response.data;
     } catch (error) {
       return handleApiError(error, 'Error fetching staff');
@@ -129,17 +134,17 @@ export const staffService = {
 
     try {
       const response = await apiClient.get<Staff>(`${API_ENDPOINT}/${id}`);
-      
+
       if (!response.success) {
         // Handle authentication errors in the response
-        if (response.error && typeof response.error === 'string' && 
+        if (response.error && typeof response.error === 'string' &&
             (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
           authenticationFailed = true;
           throw new Error('Authentication required. Please log in to access staff data.');
         }
         throw new Error(response.error || 'Failed to fetch staff member');
       }
-      
+
       return response.data;
     } catch (error) {
       return handleApiError(error, `Error fetching staff member ${id}`);
@@ -161,7 +166,7 @@ export const staffService = {
       const response = await apiClient.post<Staff>(API_ENDPOINT, data);
       if (!response.success) {
         // Handle authentication errors in the response
-        if (response.error && typeof response.error === 'string' && 
+        if (response.error && typeof response.error === 'string' &&
             (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
           authenticationFailed = true;
           throw new Error('Authentication required. Please log in to access staff data.');
@@ -190,7 +195,7 @@ export const staffService = {
       const response = await apiClient.patch<Staff>(`${API_ENDPOINT}/${id}`, data);
       if (!response.success) {
         // Handle authentication errors in the response
-        if (response.error && typeof response.error === 'string' && 
+        if (response.error && typeof response.error === 'string' &&
             (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
           authenticationFailed = true;
           throw new Error('Authentication required. Please log in to access staff data.');
@@ -218,7 +223,7 @@ export const staffService = {
       const response = await apiClient.delete<void>(`${API_ENDPOINT}/${id}`);
       if (!response.success) {
         // Handle authentication errors in the response
-        if (response.error && typeof response.error === 'string' && 
+        if (response.error && typeof response.error === 'string' &&
             (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
           authenticationFailed = true;
           throw new Error('Authentication required. Please log in to access staff data.');
@@ -245,7 +250,7 @@ export const staffService = {
       const response = await apiClient.get<Shift[]>(`${API_ENDPOINT}/${staffId}/shifts`);
       if (!response.success) {
         // Handle authentication errors in the response
-        if (response.error && typeof response.error === 'string' && 
+        if (response.error && typeof response.error === 'string' &&
             (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
           authenticationFailed = true;
           throw new Error('Authentication required. Please log in to access staff data.');
@@ -274,7 +279,7 @@ export const staffService = {
       const response = await apiClient.post<Shift>(`${API_ENDPOINT}/${staffId}/shifts`, data);
       if (!response.success) {
         // Handle authentication errors in the response
-        if (response.error && typeof response.error === 'string' && 
+        if (response.error && typeof response.error === 'string' &&
             (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
           authenticationFailed = true;
           throw new Error('Authentication required. Please log in to access staff data.');
@@ -304,7 +309,7 @@ export const staffService = {
       const response = await apiClient.put<Shift>(`${API_ENDPOINT}/${staffId}/shifts/${shiftId}`, data);
       if (!response.success) {
         // Handle authentication errors in the response
-        if (response.error && typeof response.error === 'string' && 
+        if (response.error && typeof response.error === 'string' &&
             (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
           authenticationFailed = true;
           throw new Error('Authentication required. Please log in to access staff data.');
@@ -333,7 +338,7 @@ export const staffService = {
       const response = await apiClient.delete<void>(`${API_ENDPOINT}/${staffId}/shifts/${shiftId}`);
       if (!response.success) {
         // Handle authentication errors in the response
-        if (response.error && typeof response.error === 'string' && 
+        if (response.error && typeof response.error === 'string' &&
             (response.error.includes('Invalid token') || response.error.includes('Authentication'))) {
           authenticationFailed = true;
           throw new Error('Authentication required. Please log in to access staff data.');

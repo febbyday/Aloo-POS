@@ -139,7 +139,19 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+/**
+ * @deprecated Use the new standardized toast system from '@/lib/toast' instead.
+ * Import { toast } from '@/lib/toast' and use toast.success(), toast.error(), etc.
+ */
 function toast({ ...props }: Toast) {
+  // Show deprecation warning in development
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(
+      'Warning: The toast function from @/components/ui/use-toast is deprecated. ' +
+      'Please use the new standardized toast system by importing { toast } from "@/lib/toast" instead.'
+    );
+  }
+
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -152,8 +164,8 @@ function toast({ ...props }: Toast) {
   try {
     // Check if description is an object that would cause React rendering errors
     if (
-      props.description && 
-      typeof props.description === 'object' && 
+      props.description &&
+      typeof props.description === 'object' &&
       !(props.description as any).$$typeof // Not a React element
     ) {
       try {
@@ -164,7 +176,7 @@ function toast({ ...props }: Toast) {
         props.description = "Error: Cannot display object directly. Use string properties instead.";
       }
     }
-    
+
     dispatch({
       type: "ADD_TOAST",
       toast: {
@@ -201,7 +213,19 @@ function toast({ ...props }: Toast) {
   }
 }
 
+/**
+ * @deprecated Use the new standardized toast system from '@/lib/toast' instead.
+ * Import { useToast } from '@/lib/toast' and use toast.success(), toast.error(), etc.
+ */
 function useToast() {
+  // Show deprecation warning in development
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(
+      'Warning: The useToast hook from @/components/ui/use-toast is deprecated. ' +
+      'Please use the new standardized toast system by importing { useToast } from "@/lib/toast" instead.'
+    );
+  }
+
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {

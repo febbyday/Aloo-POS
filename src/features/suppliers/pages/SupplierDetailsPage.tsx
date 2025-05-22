@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
   TabsTrigger,
   Card,
   CardContent,
@@ -14,9 +14,9 @@ import {
   Button,
   Badge,
 } from '@/components/ui';
-import { 
-  ArrowLeft, 
-  Edit, 
+import {
+  ArrowLeft,
+  Edit,
   Trash2,
   ShoppingCart,
   Building2,
@@ -30,7 +30,7 @@ import {
   Clock,
   DollarSign
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { Supplier, SUPPLIER_STATUS } from '../types';
 import { Toolbar } from "@/components/ui/toolbar/toolbar";
 
@@ -38,7 +38,7 @@ export function SupplierDetailsPage() {
   const { supplierId } = useParams<{ supplierId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -68,7 +68,7 @@ export function SupplierDetailsPage() {
 
   const handleDelete = () => {
     if (!supplier) return;
-    
+
     if (confirm(`Are you sure you want to delete ${supplier.name}?`)) {
       // In a real app, you would call an API to delete the supplier
       toast({
@@ -83,32 +83,32 @@ export function SupplierDetailsPage() {
   const toolbarGroups = supplier ? [
     {
       buttons: [
-        { 
-          icon: ArrowLeft, 
-          label: "Back", 
+        {
+          icon: ArrowLeft,
+          label: "Back",
           onClick: () => navigate('/suppliers')
         }
       ]
     },
     {
       buttons: [
-        { 
-          icon: Edit, 
-          label: "Edit Supplier", 
+        {
+          icon: Edit,
+          label: "Edit Supplier",
           onClick: () => navigate(`/suppliers/${supplierId}/edit`)
         },
-        { 
-          icon: Trash2, 
-          label: "Delete", 
+        {
+          icon: Trash2,
+          label: "Delete",
           onClick: handleDelete
         }
       ]
     },
     {
       buttons: [
-        { 
-          icon: ShoppingCart, 
-          label: "Create Order", 
+        {
+          icon: ShoppingCart,
+          label: "Create Order",
           onClick: () => {
             toast({
               title: "Create New Order",
@@ -131,12 +131,12 @@ export function SupplierDetailsPage() {
   return (
     <div className="space-y-6">
       {/* Toolbar */}
-      <Toolbar 
+      <Toolbar
         groups={toolbarGroups}
         variant="default"
         size="default"
       />
-      
+
       {/* Supplier Header */}
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1">
@@ -153,7 +153,7 @@ export function SupplierDetailsPage() {
           </div>
         </div>
       </div>
-      
+
       {/* Supplier Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Contact Card */}
@@ -172,7 +172,7 @@ export function SupplierDetailsPage() {
                   <p className="text-sm">{supplier.contactPerson}</p>
                 </div>
               )}
-              
+
               {supplier.email && (
                 <div>
                   <p className="text-xs text-muted-foreground uppercase mb-1">Email</p>
@@ -182,7 +182,7 @@ export function SupplierDetailsPage() {
                   </div>
                 </div>
               )}
-              
+
               {supplier.phone && (
                 <div>
                   <p className="text-xs text-muted-foreground uppercase mb-1">Phone</p>
@@ -192,7 +192,7 @@ export function SupplierDetailsPage() {
                   </div>
                 </div>
               )}
-              
+
               {supplier.website && (
                 <div>
                   <p className="text-xs text-muted-foreground uppercase mb-1">Website</p>
@@ -202,7 +202,7 @@ export function SupplierDetailsPage() {
                   </div>
                 </div>
               )}
-              
+
               {supplier.address && (
                 <div>
                   <p className="text-xs text-muted-foreground uppercase mb-1">Address</p>
@@ -215,7 +215,7 @@ export function SupplierDetailsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Products Card */}
         <Card>
           <CardHeader className="pb-2">
@@ -230,7 +230,7 @@ export function SupplierDetailsPage() {
                 <p className="text-xs text-muted-foreground uppercase mb-1">Total Products</p>
                 <p className="text-3xl font-bold">{supplier.products}</p>
               </div>
-              
+
               <div>
                 <p className="text-xs text-muted-foreground uppercase mb-1">Rating</p>
                 <div className="flex items-center">
@@ -238,7 +238,7 @@ export function SupplierDetailsPage() {
                   <span className="text-yellow-500 ml-2">★★★★☆</span>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-xs text-muted-foreground uppercase mb-1">Last Order</p>
                 <p className="text-sm">{supplier.lastOrder}</p>
@@ -251,7 +251,7 @@ export function SupplierDetailsPage() {
             </Button>
           </CardFooter>
         </Card>
-        
+
         {/* Notes Card */}
         <Card>
           <CardHeader className="pb-2">
@@ -265,7 +265,7 @@ export function SupplierDetailsPage() {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Tabs Section */}
       <Tabs defaultValue="orders" className="w-full">
         <TabsList className="grid grid-cols-3 w-full md:w-auto">
@@ -282,7 +282,7 @@ export function SupplierDetailsPage() {
             History
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="orders" className="mt-6">
           <Card>
             <CardHeader>
@@ -294,7 +294,7 @@ export function SupplierDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="performance" className="mt-6">
           <Card>
             <CardHeader>
@@ -306,7 +306,7 @@ export function SupplierDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="history" className="mt-6">
           <Card>
             <CardHeader>

@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { FormBuilder, FormFieldConfig } from './FormBuilder';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 
 export interface FormDialogProps<T extends FieldValues> {
   open: boolean;

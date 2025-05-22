@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
-import { 
+import {
   ArrowLeft,
   Printer,
   FileDown,
@@ -27,6 +27,7 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/formatters';
 
 import {
   AreaChart,
@@ -41,12 +42,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
   TableRow,
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -58,33 +59,7 @@ import { useGiftCards } from '../hooks/gift-cards/useGiftCards';
 import { GiftCard, GiftCardTransaction } from '../types/gift-cards';
 import GiftCardService from '../services/gift-cards/giftCardService';
 
-// Helper to format currency
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(amount);
-};
-
-// Helper to format dates
-const formatDate = (date: Date | null) => {
-  if (!date) return 'N/A';
-  return format(new Date(date), 'MMM d, yyyy');
-};
-
-// Helper to format relative time (for transaction history)
-const formatRelativeTime = (date: Date) => {
-  const now = new Date();
-  const diffInDays = Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (diffInDays === 0) return 'Today';
-  if (diffInDays === 1) return 'Yesterday';
-  if (diffInDays < 7) return `${diffInDays} days ago`;
-  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
-  if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`;
-  return `${Math.floor(diffInDays / 365)} years ago`;
-};
+// Using imported formatCurrency, formatDate, and formatRelativeTime from formatters.ts
 
 // Helper to generate status badge
 const getStatusBadge = (status: string) => {
@@ -123,12 +98,12 @@ const getTransactionTypeLabel = (type: string) => {
 // Transaction history chart data preparation
 const prepareChartData = (transactions: GiftCardTransaction[]) => {
   if (!transactions.length) return [];
-  
+
   // Sort transactions by date
-  const sortedTransactions = [...transactions].sort((a, b) => 
+  const sortedTransactions = [...transactions].sort((a, b) =>
     new Date(a.date).getTime() - new Date(b.date).getTime()
   );
-  
+
   // Map transactions to chart data
   return sortedTransactions.map(tx => ({
     date: format(new Date(tx.date), 'MMM d'),
@@ -142,7 +117,7 @@ export function GiftCardDetailsPage() {
   const { giftCardId } = useParams();
   const { toast } = useToast();
   const { selectGiftCard } = useGiftCards();
-  
+
   const [loading, setLoading] = useState(true);
   const [giftCard, setGiftCard] = useState<GiftCard | null>(null);
   const [transactionHistory, setTransactionHistory] = useState<GiftCardTransaction[]>([]);
@@ -170,7 +145,7 @@ export function GiftCardDetailsPage() {
         setLoading(true);
         // Get gift card details
         const card = await GiftCardService.getGiftCardById(giftCardId);
-        
+
         if (!card) {
           toast({
             title: 'Error',
@@ -180,9 +155,9 @@ export function GiftCardDetailsPage() {
           navigate('/sales/gift-cards');
           return;
         }
-        
+
         setGiftCard(card);
-        
+
         // Get transaction history
         const history = await GiftCardService.getTransactionHistory(giftCardId);
         setTransactionHistory(history);
@@ -308,9 +283,9 @@ export function GiftCardDetailsPage() {
               </h2>
               <p className="text-muted-foreground text-sm">Current Balance</p>
             </div>
-            
+
             <Separator className="my-4" />
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Initial Value</p>
@@ -329,10 +304,10 @@ export function GiftCardDetailsPage() {
                 <p className="font-medium">{giftCard.lastUsedDate ? formatDate(giftCard.lastUsedDate) : 'Never'}</p>
               </div>
             </div>
-            
+
             <div className="mt-6">
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 onClick={() => {
                   setAdjustmentType('add');
                   setShowAdjustBalanceDialog(true);
@@ -343,7 +318,7 @@ export function GiftCardDetailsPage() {
               </Button>
             </div>
           </CardContent>
-          
+
           <div className="md:col-span-8 p-0">
             <Tabs defaultValue="activity" className="w-full">
               <div className="px-6 pt-6">
@@ -353,15 +328,15 @@ export function GiftCardDetailsPage() {
                   <TabsTrigger value="balance">Balance History</TabsTrigger>
                 </TabsList>
               </div>
-              
+
               <TabsContent value="activity" className="p-6 pt-4">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Recent Activity</h3>
-                  
+
                   {transactionHistory.length === 0 ? (
                     <div className="p-8 text-center bg-muted/20 rounded-lg">
                       <p className="text-muted-foreground">No transactions found</p>
-                      <Button 
+                      <Button
                         variant="ghost"
                         size="sm"
                         className="mt-4"
@@ -380,8 +355,8 @@ export function GiftCardDetailsPage() {
                           <div key={tx.id} className="flex justify-between items-center p-3 rounded-lg border bg-card">
                             <div className="flex items-center gap-3">
                               <div className={`p-2 rounded-full ${
-                                tx.type === 'redeem' || tx.type === 'expire' 
-                                  ? 'bg-red-50 text-red-600' 
+                                tx.type === 'redeem' || tx.type === 'expire'
+                                  ? 'bg-red-50 text-red-600'
                                   : 'bg-green-50 text-green-600'
                               }`}>
                                 {tx.type === 'redeem' ? <DollarSign className="h-4 w-4" /> :
@@ -397,8 +372,8 @@ export function GiftCardDetailsPage() {
                             </div>
                             <div className="text-right">
                               <p className={`font-medium ${
-                                tx.type === 'redeem' || tx.type === 'expire' 
-                                  ? 'text-red-600' 
+                                tx.type === 'redeem' || tx.type === 'expire'
+                                  ? 'text-red-600'
                                   : 'text-green-600'
                               }`}>
                                 {tx.type === 'redeem' || tx.type === 'expire' ? '-' : '+'}
@@ -408,10 +383,10 @@ export function GiftCardDetailsPage() {
                             </div>
                           </div>
                         ))}
-                        
+
                       {transactionHistory.length > 5 && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="w-full mt-2"
                           onClick={() => document.getElementById('transactions-tab')?.click()}
                         >
@@ -422,7 +397,7 @@ export function GiftCardDetailsPage() {
                   )}
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="recipient" className="p-6 pt-4">
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
@@ -432,7 +407,7 @@ export function GiftCardDetailsPage() {
                       Email Card
                     </Button>
                   </div>
-                  
+
                   <div className="grid md:grid-cols-2 gap-4">
                     <Card className="overflow-hidden">
                       <CardHeader className="bg-primary/5 pb-3">
@@ -462,7 +437,7 @@ export function GiftCardDetailsPage() {
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     <Card className="overflow-hidden">
                       <CardHeader className="bg-primary/5 pb-3">
                         <div className="flex items-center gap-2">
@@ -484,7 +459,7 @@ export function GiftCardDetailsPage() {
                       </CardContent>
                     </Card>
                   </div>
-                  
+
                   <Card className="overflow-hidden">
                     <CardHeader className="bg-primary/5 pb-3">
                       <div className="flex items-center gap-2">
@@ -504,7 +479,7 @@ export function GiftCardDetailsPage() {
                       )}
                     </CardContent>
                   </Card>
-                  
+
                   <Card className="overflow-hidden">
                     <CardHeader className="bg-primary/5 pb-3">
                       <div className="flex items-center gap-2">
@@ -537,11 +512,11 @@ export function GiftCardDetailsPage() {
                   </Card>
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="balance" className="p-6 pt-4">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Balance History</h3>
-                  
+
                   {chartData.length === 0 ? (
                     <div className="p-8 text-center bg-muted/20 rounded-lg">
                       <p className="text-muted-foreground">No balance history available</p>
@@ -559,29 +534,29 @@ export function GiftCardDetailsPage() {
                               <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.1}/>
                             </linearGradient>
                           </defs>
-                          <XAxis 
-                            dataKey="date" 
+                          <XAxis
+                            dataKey="date"
                             axisLine={false}
                             tickLine={false}
                             tick={{ fontSize: 12 }}
                           />
-                          <YAxis 
+                          <YAxis
                             axisLine={false}
                             tickLine={false}
                             tick={{ fontSize: 12 }}
                             tickFormatter={(value) => `$${value}`}
                           />
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                          <ChartTooltip 
+                          <ChartTooltip
                             formatter={(value: number) => [`$${value.toFixed(2)}`, "Balance"]}
                             labelFormatter={(label) => `Date: ${label}`}
                           />
-                          <Area 
-                            type="monotone" 
-                            dataKey="balance" 
-                            stroke="#4f46e5" 
+                          <Area
+                            type="monotone"
+                            dataKey="balance"
+                            stroke="#4f46e5"
                             fillOpacity={1}
-                            fill="url(#colorBalance)" 
+                            fill="url(#colorBalance)"
                           />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -593,7 +568,7 @@ export function GiftCardDetailsPage() {
           </div>
         </div>
       </Card>
-      
+
       {/* Transactions Table */}
       <Card id="transactions-table">
         <CardHeader>
@@ -604,7 +579,7 @@ export function GiftCardDetailsPage() {
           {transactionHistory.length === 0 ? (
             <div className="p-8 text-center bg-muted/20 rounded-lg">
               <p className="text-muted-foreground">No transactions found</p>
-              <Button 
+              <Button
                 variant="ghost"
                 size="sm"
                 className="mt-4"
@@ -667,7 +642,7 @@ export function GiftCardDetailsPage() {
               </div>
               <Badge variant="outline">Current: {giftCard ? formatCurrency(giftCard.balance) : '$0.00'}</Badge>
             </div>
-            
+
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col space-y-1.5">
@@ -692,8 +667,8 @@ export function GiftCardDetailsPage() {
                   <label htmlFor="type" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Adjustment Type
                   </label>
-                  <select 
-                    id="type" 
+                  <select
+                    id="type"
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     value={adjustmentType}
                     onChange={(e) => setAdjustmentType(e.target.value as 'add' | 'subtract')}
@@ -703,7 +678,7 @@ export function GiftCardDetailsPage() {
                   </select>
                 </div>
               </div>
-              
+
               <div className="flex flex-col space-y-1.5">
                 <label htmlFor="notes" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   Notes (Optional)
@@ -714,7 +689,7 @@ export function GiftCardDetailsPage() {
                   placeholder="Enter notes about this adjustment..."
                 ></textarea>
               </div>
-              
+
               <div className="rounded-md bg-muted p-4">
                 <div className="flex items-center gap-2">
                   <div className={adjustmentType === 'add' ? "text-green-500" : "text-red-500"}>
@@ -767,7 +742,7 @@ export function GiftCardDetailsPage() {
                 defaultValue={giftCard?.recipient.email || ''}
               />
             </div>
-            
+
             <div className="flex flex-col space-y-1.5">
               <label htmlFor="email-subject" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                 Subject
@@ -780,7 +755,7 @@ export function GiftCardDetailsPage() {
                 defaultValue={`Your ${formatCurrency(giftCard?.initialValue || 0)} Gift Card`}
               />
             </div>
-            
+
             <div className="flex flex-col space-y-1.5">
               <label htmlFor="email-message" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                 Message
@@ -792,7 +767,7 @@ export function GiftCardDetailsPage() {
                 defaultValue={giftCard?.message || ''}
               ></textarea>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <input
                 id="include-balance"
@@ -846,7 +821,7 @@ export function GiftCardDetailsPage() {
                     Include transaction history
                   </label>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <input
                     id="include-qr"
@@ -858,7 +833,7 @@ export function GiftCardDetailsPage() {
                     Include QR code for gift card
                   </label>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <input
                     id="include-card-image"
@@ -872,7 +847,7 @@ export function GiftCardDetailsPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="rounded-lg border p-4">
               <h3 className="mb-2 text-sm font-medium">PDF Layout</h3>
               <div className="grid grid-cols-2 gap-2">
@@ -888,7 +863,7 @@ export function GiftCardDetailsPage() {
                     Portrait
                   </label>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <input
                     id="layout-landscape"
@@ -902,11 +877,11 @@ export function GiftCardDetailsPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="rounded-lg border p-4">
               <h3 className="mb-2 text-sm font-medium">Paper Size</h3>
-              <select 
-                id="paper-size" 
+              <select
+                id="paper-size"
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="letter">Letter (8.5" x 11")</option>
@@ -960,4 +935,4 @@ export function GiftCardDetailsPage() {
       </Dialog>
     </div>
   );
-} 
+}

@@ -1,59 +1,20 @@
-import React, { createContext, useContext, useState } from "react"
+import React, { createContext, useContext, useState, useEffect } from "react"
+import { PricingSettings, pricingSettingsSchema } from "../schemas/pricing-settings.schema"
+import { SettingsService } from "../services/pricing.service"
+import { useToast } from "@/lib/toast"
 
-interface PricingSettings {
-  // Price Calculation Settings
-  defaultPriceCalculation: "markup" | "margin"
-  defaultMarkupPercentage: number
-  defaultMarginPercentage: number
-  minimumMarginPercentage: number
-  roundPricesToNearest: number
-  enforceMinimumMargin: boolean
-
-  // Tax Settings
-  defaultTaxRate: number
-  includeTaxInPrice: boolean
-  enableAutomaticTaxCalculation: boolean
-  taxCalculationMethod: "inclusive" | "exclusive"
-
-  // Currency Settings
-  defaultCurrency: string
-  currencyPosition: "before" | "after"
-  thousandsSeparator: string
-  decimalSeparator: string
-  decimalPlaces: number
-
-  // Discount Settings
-  maximumDiscountPercentage: number
-  allowStackingDiscounts: boolean
-  minimumOrderValueForDiscount: number
-  enableAutomaticDiscounts: boolean
+/**
+ * Helper function to get empty settings with default values
+ * @returns Empty settings with default values
+ */
+function getEmptySettings(): PricingSettings {
+  return pricingSettingsSchema.parse({});
 }
 
 interface PricingSettingsContextType extends PricingSettings {
   updateSettings: (settings: Partial<PricingSettings>) => void
   resetSettings: () => void
-}
-
-const defaultSettings: PricingSettings = {
-  defaultPriceCalculation: "markup",
-  defaultMarkupPercentage: 50,
-  defaultMarginPercentage: 33,
-  minimumMarginPercentage: 10,
-  roundPricesToNearest: 0.99,
-  enforceMinimumMargin: true,
-  defaultTaxRate: 20,
-  includeTaxInPrice: true,
-  enableAutomaticTaxCalculation: true,
-  taxCalculationMethod: "inclusive",
-  defaultCurrency: "USD",
-  currencyPosition: "before",
-  thousandsSeparator: ",",
-  decimalSeparator: ".",
-  decimalPlaces: 2,
-  maximumDiscountPercentage: 50,
-  allowStackingDiscounts: false,
-  minimumOrderValueForDiscount: 0,
-  enableAutomaticDiscounts: true,
+  isLoading: boolean
 }
 
 const PricingSettingsContext = createContext<PricingSettingsContextType | undefined>(
@@ -65,23 +26,91 @@ export function PricingSettingsProvider({
 }: {
   children: React.ReactNode
 }) {
-  const [settings, setSettings] = useState<PricingSettings>(() => {
-    // Load settings from localStorage if available
-    const savedSettings = localStorage.getItem("pricing-settings")
-    return savedSettings ? JSON.parse(savedSettings) : defaultSettings
-  })
+  const toast = useToast();
+  const [settings, setSettings] = useState<PricingSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const updateSettings = (newSettings: Partial<PricingSettings>) => {
-    setSettings((prev) => {
-      const updated = { ...prev, ...newSettings }
-      localStorage.setItem("pricing-settings", JSON.stringify(updated))
-      return updated
-    })
-  }
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setIsLoading(true);
+        const data = await SettingsService.getSettings();
+        setSettings(data);
+      } catch (error) {
+        console.error("Error loading pricing settings:", error);
+        toast.error(
+          "Error",
+          "Failed to load pricing settings"
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const resetSettings = () => {
-    setSettings(defaultSettings)
-    localStorage.setItem("pricing-settings", JSON.stringify(defaultSettings))
+    loadSettings();
+  }, [toast]);
+
+  const updateSettings = async (newSettings: Partial<PricingSettings>) => {
+    if (!settings) return;
+
+    try {
+      const updatedSettings = { ...settings, ...newSettings };
+
+      // Save settings using the settings service
+      await SettingsService.saveSettings(updatedSettings);
+
+      // Update local state
+      setSettings(updatedSettings);
+
+      toast.success(
+        "Settings updated",
+        "Pricing settings have been updated successfully."
+      );
+    } catch (error) {
+      console.error("Error updating pricing settings:", error);
+      toast.error(
+        "Error",
+        "Failed to update pricing settings"
+      );
+    }
+  };
+
+  const resetSettings = async () => {
+    try {
+      // Reset settings using the settings service
+      const defaultSettings = await SettingsService.resetSettings();
+
+      // Update local state
+      setSettings(defaultSettings);
+
+      toast.success(
+        "Settings reset",
+        "Pricing settings have been reset to defaults."
+      );
+    } catch (error) {
+      console.error("Error resetting pricing settings:", error);
+      toast.error(
+        "Error",
+        "Failed to reset pricing settings"
+      );
+    }
+  };
+
+  // If settings are still loading or not available, provide a loading state
+  if (isLoading || !settings) {
+    return (
+      <PricingSettingsContext.Provider
+        value={{
+          ...getEmptySettings(),
+          updateSettings,
+          resetSettings,
+          isLoading,
+        }}
+      >
+        {children}
+      </PricingSettingsContext.Provider>
+    );
   }
 
   return (
@@ -90,6 +119,7 @@ export function PricingSettingsProvider({
         ...settings,
         updateSettings,
         resetSettings,
+        isLoading,
       }}
     >
       {children}

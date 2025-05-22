@@ -1,26 +1,26 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card"
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from "@/components/ui/tabs"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -39,7 +39,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
-import { useToast } from "@/components/ui/use-toast"
+// Import useToast from @/lib/toast instead (see line 96)
 import {
   Select,
   SelectContent,
@@ -57,31 +57,31 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  ArrowLeft, 
-  Building, 
-  Briefcase, 
-  Calendar, 
+  ArrowLeft,
+  Building,
+  Briefcase,
+  Calendar,
   ChevronDown,
-  Clock, 
-  CreditCard, 
-  Download, 
+  Clock,
+  CreditCard,
+  Download,
   Edit,
   Eye,
-  File, 
+  File,
   FileSpreadsheet,
-  FileText, 
+  FileText,
   FileType,
   Home,
   Info,
-  Mail, 
+  Mail,
   MapPin,
   MoreHorizontal,
   Phone,
   Plus,
   School,
-  Trash2, 
-  Upload, 
-  User, 
+  Trash2,
+  Upload,
+  User,
   X,
   Camera,
   Undo2,
@@ -93,6 +93,7 @@ import { AttendanceTable } from "../components/AttendanceTable"
 import { AttendanceRecord } from "../types/attendance"
 import { AttendanceNotesModal } from "../components/AttendanceNotesModal"
 import { generateMockAttendanceData, getStaffAttendance, addNoteToAttendanceRecord } from "../services/attendanceService"
+import { useToast } from '@/lib/toast'
 import { useToastManager } from '@/components/ui/toast-manager'
 import { useStaffHistory } from '../context/StaffHistoryContext'
 import { FieldHelpTooltip, InfoBox } from '@/components/ui/help-tooltip'
@@ -139,7 +140,7 @@ export function StaffDetailsPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)) // YYYY-MM format
   const [calendarData, setCalendarData] = useState<Array<{date: string; status: string; hours?: number}>>([])
   const [error, setError] = useState<string | null>(null)
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
   const showToast = useToastManager()
@@ -160,7 +161,7 @@ export function StaffDetailsPage() {
         setError(null)
 
         const staffData = await staffService.fetchById(staffId)
-        
+
         if (!staffData) {
           setError("Staff not found")
           toast({
@@ -198,7 +199,7 @@ export function StaffDetailsPage() {
           showToast.info("Undo", "Last action has been undone")
         }
       }
-      
+
       // Check for Ctrl+Shift+Z or Command+Shift+Z (Redo)
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey && canRedo) {
         e.preventDefault()
@@ -208,7 +209,7 @@ export function StaffDetailsPage() {
         }
       }
     }
-    
+
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [canUndo, canRedo, undo, redo, showToast])
@@ -217,12 +218,12 @@ export function StaffDetailsPage() {
     // Simulate loading staff data
     setTimeout(() => {
       setIsLoading(false)
-      
+
       // Set emergency contact if available
       if (staff && staff.emergencyContact) {
         setEmergencyContact(staff.emergencyContact)
       }
-      
+
       // Set identification if available
       if (staff && staff.identification) {
         setIdentification(staff.identification)
@@ -240,14 +241,14 @@ export function StaffDetailsPage() {
   const generateCalendarData = (monthStr: string) => {
     const [year, month] = monthStr.split('-').map(Number)
     const daysInMonth = new Date(year, month, 0).getDate()
-    
+
     // Generate random attendance data for the month
     const data = []
-    
+
     for (let day = 1; day <= daysInMonth; day++) {
       const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
       const dayOfWeek = new Date(date).getDay()
-      
+
       // Skip weekends (0 = Sunday, 6 = Saturday)
       if (dayOfWeek === 0 || dayOfWeek === 6) {
         data.push({
@@ -256,12 +257,12 @@ export function StaffDetailsPage() {
         })
         continue
       }
-      
+
       // Random status (present, late, absent, leave)
       const rand = Math.random()
       let status
       let hours
-      
+
       if (rand < 0.7) {
         status = 'present'
         hours = 8 + Math.floor(Math.random() * 3) // 8-10 hours
@@ -273,14 +274,14 @@ export function StaffDetailsPage() {
       } else {
         status = 'leave'
       }
-      
+
       data.push({
         date,
         status,
         hours
       })
     }
-    
+
     setCalendarData(data)
   }
 
@@ -308,10 +309,10 @@ export function StaffDetailsPage() {
 
   const changeMonth = (increment: number) => {
     const [year, month] = selectedMonth.split('-').map(Number)
-    
+
     let newMonth = month + increment
     let newYear = year
-    
+
     if (newMonth > 12) {
       newMonth = 1
       newYear += 1
@@ -319,7 +320,7 @@ export function StaffDetailsPage() {
       newMonth = 12
       newYear -= 1
     }
-    
+
     setSelectedMonth(`${newYear}-${newMonth.toString().padStart(2, '0')}`)
   }
 
@@ -328,16 +329,16 @@ export function StaffDetailsPage() {
 
     try {
       setIsLoading(true)
-      
+
       const updatedStaff = await staffService.update(staffId, updatedStaffData)
-      
+
       setStaff(updatedStaff)
-      
+
       toast({
         title: "Staff Updated",
         description: `${updatedStaff.firstName} ${updatedStaff.lastName}'s information has been updated.`
       })
-      
+
       setIsEditModalOpen(false)
     } catch (error) {
       console.error("Error updating staff:", error)
@@ -356,15 +357,15 @@ export function StaffDetailsPage() {
 
     try {
       setIsLoading(true)
-      
+
       const success = await staffService.delete(staffId)
-      
+
       if (success) {
         toast({
           title: "Staff Deleted",
           description: `${staff.firstName} ${staff.lastName} has been deleted.`
         })
-        
+
         // Navigate back to staff list
         navigate("/staff", { replace: true })
       }
@@ -384,32 +385,32 @@ export function StaffDetailsPage() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    
+
     // Check file type
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || ''
     const allowedTypes = ['pdf', 'docx', 'doc', 'xlsx', 'xls']
-    
+
     if (!allowedTypes.includes(fileExtension)) {
       showToast.error("Invalid file type", "Please upload PDF, Word, or Excel files only")
       return
     }
-    
+
     // Mock file upload with progress
     setIsUploading(true)
     setUploadProgress(0)
-    
+
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval)
           setIsUploading(false)
-          
+
           // Determine file type for icon
           let fileType = "other"
           if (fileExtension === 'pdf') fileType = "pdf"
           else if (['doc', 'docx'].includes(fileExtension)) fileType = "word"
           else if (['xls', 'xlsx'].includes(fileExtension)) fileType = "excel"
-          
+
           // Add the uploaded file to documents
           const newDoc = {
             id: `doc${Date.now()}`,
@@ -418,18 +419,18 @@ export function StaffDetailsPage() {
             size: `${(file.size / 1024).toFixed(0)} KB`,
             uploadDate: new Date().toISOString().split('T')[0]
           }
-          
+
           setDocuments(prev => [newDoc, ...prev])
-          
+
           showToast.success("Upload complete", `${file.name} has been uploaded successfully.`)
-          
+
           return 0
         }
         return prev + 10
       })
     }, 300)
   }
-  
+
   const handleViewDocument = (doc: {id: string; name: string; type: string}) => {
     // In a real app, this would fetch the document URL from the server
     setSelectedDocument({
@@ -438,7 +439,7 @@ export function StaffDetailsPage() {
     })
     setIsDocumentViewerOpen(true)
   }
-  
+
   const getDocumentIcon = (type: string) => {
     switch (type) {
       case 'pdf':
@@ -454,7 +455,7 @@ export function StaffDetailsPage() {
 
   const renderDocumentPreview = () => {
     if (!selectedDocument) return null;
-    
+
     switch (selectedDocument.type) {
       case 'pdf':
         return (
@@ -474,7 +475,7 @@ export function StaffDetailsPage() {
             </p>
           </div>
         );
-        
+
       case 'word':
         return (
           <div className="h-full flex flex-col bg-white rounded-md overflow-hidden">
@@ -498,7 +499,7 @@ export function StaffDetailsPage() {
             </p>
           </div>
         );
-        
+
       case 'excel':
         return (
           <div className="h-full flex flex-col bg-white rounded-md overflow-hidden">
@@ -517,7 +518,7 @@ export function StaffDetailsPage() {
                 <div className="p-2 border-r bg-gray-100 font-medium text-xs text-center">E</div>
                 <div className="p-2 bg-gray-100 font-medium text-xs text-center">F</div>
               </div>
-              
+
               {[...Array(10)].map((_, rowIndex) => (
                 <div key={rowIndex} className="grid grid-cols-6 border-b">
                   <div className="p-2 border-r bg-gray-50 font-medium text-xs text-center">{rowIndex + 1}</div>
@@ -532,7 +533,7 @@ export function StaffDetailsPage() {
             </p>
           </div>
         );
-        
+
       default:
         return (
           <div className="h-full flex items-center justify-center">
@@ -559,54 +560,54 @@ export function StaffDetailsPage() {
 
   const handleSaveStaffNotes = () => {
     if (!staff || !staffNotes.trim()) return;
-    
+
     // In a real app, this would be an API call to update the staff notes
     const newNote = {
       date: new Date().toISOString().split('T')[0],
       note: staffNotes,
       author: "Current User" // In a real app, this would be the logged-in user
     };
-    
+
     setNotesHistory(prev => [newNote, ...prev]);
     setStaffNotes("");
-    
+
     showToast.success("Success", "Staff note added successfully")
   };
 
   const handleProfileImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    
+
     // Check file type
     if (!file.type.startsWith('image/')) {
       showToast.error("Invalid file type", "Please upload an image file")
       return
     }
-    
+
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       showToast.error("File too large", "Profile image must be less than 5MB")
       return
     }
-    
+
     // Create a preview URL
     const previewUrl = URL.createObjectURL(file)
     setProfileImagePreview(previewUrl)
-    
+
     // Start mock upload
     setIsUploading(true)
     setUploadProgress(0)
-    
+
     // Simulate upload progress
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval)
           setIsUploading(false)
-          
+
           // In a real app, you would send the file to the server here
           showToast.success("Profile image updated", "Your profile image has been updated successfully")
-          
+
           setIsProfileImageUploadOpen(false)
           return 100
         }
@@ -614,7 +615,7 @@ export function StaffDetailsPage() {
       })
     }, 300)
   }
-  
+
   const triggerProfileImageUpload = () => {
     fileInputRef.current?.click()
   }
@@ -626,7 +627,7 @@ export function StaffDetailsPage() {
         ...staff,
         status: newStatus
       })
-      
+
       showToast.success(`Staff ${newStatus === 'active' ? 'activated' : 'deactivated'}`, `${staff.firstName} ${staff.lastName} has been ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`)
     }
   }
@@ -639,8 +640,8 @@ export function StaffDetailsPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <h2 className="text-2xl font-bold">Staff not found</h2>
-        <Button 
-          variant="link" 
+        <Button
+          variant="link"
           onClick={(e) => {
             e.preventDefault();
             navigate("/staff", { replace: true });
@@ -664,9 +665,9 @@ export function StaffDetailsPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -680,8 +681,8 @@ export function StaffDetailsPage() {
               <div className="flex items-center gap-2">
                 {/* Add Undo/Redo buttons */}
                 <div className="flex items-center mr-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="icon"
                     onClick={() => {
                       if (canUndo) {
@@ -696,8 +697,8 @@ export function StaffDetailsPage() {
                   >
                     <Undo2 className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="icon"
                     onClick={() => {
                       if (canRedo) {
@@ -713,7 +714,7 @@ export function StaffDetailsPage() {
                     <Redo2 className="h-4 w-4" />
                   </Button>
                 </div>
-                
+
                 {/* Wrap the main content in ActionFeedback */}
                 <ActionFeedback
                   status={operationStatus}
@@ -766,9 +767,9 @@ export function StaffDetailsPage() {
                       <Label htmlFor="staff-status" className="text-sm">
                         {staff.status === 'active' ? 'Active' : 'Inactive'}
                       </Label>
-                      <Switch 
-                        id="staff-status" 
-                        checked={staff.status === 'active'} 
+                      <Switch
+                        id="staff-status"
+                        checked={staff.status === 'active'}
                         onCheckedChange={toggleStaffStatus}
                       />
                     </div>
@@ -799,8 +800,8 @@ export function StaffDetailsPage() {
                     <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2">
                       <div className="relative w-24 h-24 rounded-full border-4 border-background overflow-hidden bg-background">
                         {profileImagePreview ? (
-                          <img 
-                            src={profileImagePreview} 
+                          <img
+                            src={profileImagePreview}
                             alt={`${staff.firstName} ${staff.lastName}`}
                             className="w-full h-full object-cover"
                           />
@@ -809,9 +810,9 @@ export function StaffDetailsPage() {
                             <User className="h-12 w-12 text-muted-foreground/30" />
                           </div>
                         )}
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
+                        <Button
+                          size="icon"
+                          variant="ghost"
                           className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                           onClick={() => setIsProfileImageUploadOpen(true)}
                         >
@@ -847,9 +848,9 @@ export function StaffDetailsPage() {
                       <Badge variant={staff.status === 'active' ? 'default' : 'secondary'}>
                         {staff.status === 'active' ? 'Active' : 'Inactive'}
                       </Badge>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         className="h-8 w-8 rounded-full"
                         onClick={() => setIsProfileImageUploadOpen(true)}
                       >
@@ -885,7 +886,7 @@ export function StaffDetailsPage() {
                       Notes
                     </TabsTrigger>
                   </TabsList>
-                  
+
                   <TabsContent value="details" className="mt-4">
                     <Card>
                       <CardHeader>
@@ -920,7 +921,7 @@ export function StaffDetailsPage() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div>
                               <h3 className="text-sm font-medium flex items-center mb-2">
                                 <Mail className="h-4 w-4 mr-2" />
@@ -937,7 +938,7 @@ export function StaffDetailsPage() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div>
                               <h3 className="text-base font-semibold flex items-center justify-between">
                                 <span className="flex items-center">
@@ -945,8 +946,8 @@ export function StaffDetailsPage() {
                                   Emergency Contact
                                 </span>
                                 {emergencyContact && (
-                                  <Button 
-                                    variant="ghost" 
+                                  <Button
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => setIsEmergencyContactModalOpen(true)}
                                   >
@@ -986,8 +987,8 @@ export function StaffDetailsPage() {
                                 ) : (
                                   <div className="flex flex-col items-center justify-center py-4">
                                     <p className="text-sm text-muted-foreground mb-3">No emergency contact information available</p>
-                                    <Button 
-                                      variant="outline" 
+                                    <Button
+                                      variant="outline"
                                       size="sm"
                                       onClick={() => setIsEmergencyContactModalOpen(true)}
                                     >
@@ -999,7 +1000,7 @@ export function StaffDetailsPage() {
                               </div>
                             </div>
                           </div>
-                          
+
                           <div className="space-y-4">
                             <div>
                               <h3 className="text-sm font-medium flex items-center mb-2">
@@ -1035,7 +1036,7 @@ export function StaffDetailsPage() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div>
                               <h3 className="text-base font-semibold flex items-center justify-between">
                                 <span className="flex items-center">
@@ -1043,8 +1044,8 @@ export function StaffDetailsPage() {
                                   Identification
                                 </span>
                                 {identification && (
-                                  <Button 
-                                    variant="ghost" 
+                                  <Button
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => setIsIdentificationModalOpen(true)}
                                   >
@@ -1086,8 +1087,8 @@ export function StaffDetailsPage() {
                                 ) : (
                                   <div className="flex flex-col items-center justify-center py-4">
                                     <p className="text-sm text-muted-foreground mb-3">No identification details available</p>
-                                    <Button 
-                                      variant="outline" 
+                                    <Button
+                                      variant="outline"
                                       size="sm"
                                       onClick={() => setIsIdentificationModalOpen(true)}
                                     >
@@ -1098,7 +1099,7 @@ export function StaffDetailsPage() {
                                 )}
                               </div>
                             </div>
-                            
+
                             <div>
                               <h3 className="text-sm font-medium flex items-center mb-2">
                                 <Building className="h-4 w-4 mr-2" />
@@ -1109,8 +1110,8 @@ export function StaffDetailsPage() {
                                   <>
                                     <div className="flex items-center justify-between mb-3">
                                       <span className="text-sm font-medium">Banking Information</span>
-                                      <Button 
-                                        variant="ghost" 
+                                      <Button
+                                        variant="ghost"
                                         size="sm"
                                         onClick={() => setIsBankingDetailsModalOpen(true)}
                                       >
@@ -1150,8 +1151,8 @@ export function StaffDetailsPage() {
                                 ) : (
                                   <div className="flex flex-col items-center justify-center py-4">
                                     <p className="text-sm text-muted-foreground mb-3">No banking details available</p>
-                                    <Button 
-                                      variant="outline" 
+                                    <Button
+                                      variant="outline"
                                       size="sm"
                                       onClick={() => setIsBankingDetailsModalOpen(true)}
                                     >
@@ -1167,7 +1168,7 @@ export function StaffDetailsPage() {
                       </CardContent>
                     </Card>
                   </TabsContent>
-                  
+
                   <TabsContent value="settings" className="mt-4">
                     <Card>
                       <CardHeader>
@@ -1213,7 +1214,7 @@ export function StaffDetailsPage() {
                       </CardContent>
                     </Card>
                   </TabsContent>
-                  
+
                   <TabsContent value="documents" className="mt-4">
                     <Card>
                       <CardHeader>
@@ -1232,7 +1233,7 @@ export function StaffDetailsPage() {
                             <p className="text-xs text-muted-foreground mb-4">
                               Supported formats: PDF, Word (docx/doc), Excel (xlsx/xls)
                             </p>
-                            
+
                             <input
                               type="file"
                               ref={fileInputRef}
@@ -1240,7 +1241,7 @@ export function StaffDetailsPage() {
                               accept=".pdf,.doc,.docx,.xls,.xlsx"
                               onChange={handleFileUpload}
                             />
-                            
+
                             {isUploading ? (
                               <div className="space-y-2">
                                 <Progress value={uploadProgress} className="h-2" />
@@ -1249,8 +1250,8 @@ export function StaffDetailsPage() {
                                 </p>
                               </div>
                             ) : (
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 className="w-full"
                                 onClick={() => fileInputRef.current?.click()}
                               >
@@ -1259,15 +1260,15 @@ export function StaffDetailsPage() {
                               </Button>
                             )}
                           </div>
-                          
+
                           <div>
                             <h3 className="text-sm font-medium mb-3">Document List</h3>
-                            
+
                             {documents.length > 0 ? (
                               <div className="space-y-2">
                                 {documents.map(doc => (
-                                  <div 
-                                    key={doc.id} 
+                                  <div
+                                    key={doc.id}
                                     className="flex items-center justify-between p-3 border rounded-md hover:bg-muted/50 transition-colors"
                                   >
                                     <div className="flex items-center space-x-3">
@@ -1279,17 +1280,17 @@ export function StaffDetailsPage() {
                                         </p>
                                       </div>
                                     </div>
-                                    
+
                                     <div className="flex space-x-2">
-                                      <Button 
-                                        variant="ghost" 
+                                      <Button
+                                        variant="ghost"
                                         size="sm"
                                         onClick={() => handleViewDocument(doc)}
                                       >
                                         <Eye className="h-4 w-4" />
                                       </Button>
-                                      <Button 
-                                        variant="ghost" 
+                                      <Button
+                                        variant="ghost"
                                         size="sm"
                                         onClick={() => {
                                           // Mock download functionality
@@ -1298,12 +1299,12 @@ export function StaffDetailsPage() {
                                       >
                                         <Download className="h-4 w-4" />
                                       </Button>
-                                      <Button 
-                                        variant="ghost" 
+                                      <Button
+                                        variant="ghost"
                                         size="sm"
                                         onClick={() => {
                                           // Remove document
-                                          setDocuments(prev => 
+                                          setDocuments(prev =>
                                             prev.filter(d => d.id !== doc.id)
                                           )
                                           showToast.success("Document deleted", `${doc.name} has been removed`)
@@ -1326,7 +1327,7 @@ export function StaffDetailsPage() {
                       </CardContent>
                     </Card>
                   </TabsContent>
-                  
+
                   <TabsContent value="attendance" className="space-y-6">
                     <Card>
                       <CardHeader>
@@ -1352,7 +1353,7 @@ export function StaffDetailsPage() {
                             <div key={day} className="text-sm font-medium py-1">{day}</div>
                           ))}
                         </div>
-                        
+
                         <div className="grid grid-cols-7 gap-1">
                           {/* Add empty cells for days before the 1st of the month */}
                           {(() => {
@@ -1362,13 +1363,13 @@ export function StaffDetailsPage() {
                               <div key={`empty-${i}`} className="h-16 border rounded-md"></div>
                             ))
                           })()}
-                          
+
                           {/* Calendar days */}
                           {calendarData.map((day) => {
                             const dayNum = parseInt(day.date.split('-')[2])
                             return (
-                              <div 
-                                key={day.date} 
+                              <div
+                                key={day.date}
                                 className={`h-16 border rounded-md p-1 flex flex-col ${getStatusColor(day.status)}`}
                               >
                                 <div className="text-xs font-medium self-end">{dayNum}</div>
@@ -1382,7 +1383,7 @@ export function StaffDetailsPage() {
                             )
                           })}
                         </div>
-                        
+
                         <div className="flex justify-center mt-4 space-x-4">
                           <div className="flex items-center">
                             <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
@@ -1403,7 +1404,7 @@ export function StaffDetailsPage() {
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center">
@@ -1412,8 +1413,8 @@ export function StaffDetailsPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <AttendanceTable 
-                          records={attendanceRecords} 
+                        <AttendanceTable
+                          records={attendanceRecords}
                           onViewNotes={(record) => {
                             setSelectedAttendanceRecord(record)
                             setIsAttendanceNotesModalOpen(true)
@@ -1422,7 +1423,7 @@ export function StaffDetailsPage() {
                       </CardContent>
                     </Card>
                   </TabsContent>
-                  
+
                   <TabsContent value="notes" className="mt-4">
                     <Card>
                       <CardHeader>
@@ -1445,7 +1446,7 @@ export function StaffDetailsPage() {
                               onChange={(e) => setStaffNotes(e.target.value)}
                             />
                             <div className="flex justify-end">
-                              <Button 
+                              <Button
                                 onClick={handleSaveStaffNotes}
                                 disabled={!staffNotes.trim()}
                               >
@@ -1454,7 +1455,7 @@ export function StaffDetailsPage() {
                               </Button>
                             </div>
                           </div>
-                          
+
                           <div>
                             <h3 className="text-sm font-medium mb-3">Notes History</h3>
                             <div className="space-y-4">
@@ -1542,11 +1543,11 @@ export function StaffDetailsPage() {
               )}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 h-[450px] overflow-hidden bg-muted/30 rounded-md border">
             {renderDocumentPreview()}
           </div>
-          
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setIsDocumentViewerOpen(false)}>
               Close
@@ -1570,18 +1571,18 @@ export function StaffDetailsPage() {
               Upload a new profile image. The image should be a square JPG, PNG, or WebP file.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             {profileImagePreview && (
               <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-full border">
-                <img 
-                  src={profileImagePreview} 
-                  alt="Profile preview" 
+                <img
+                  src={profileImagePreview}
+                  alt="Profile preview"
                   className="w-full h-full object-cover"
                 />
               </div>
             )}
-            
+
             <div className="flex items-center justify-center">
               <input
                 ref={fileInputRef}
@@ -1595,7 +1596,7 @@ export function StaffDetailsPage() {
                 {profileImagePreview ? "Change Image" : "Upload Image"}
               </Button>
             </div>
-            
+
             {isUploading && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
@@ -1606,10 +1607,10 @@ export function StaffDetailsPage() {
               </div>
             )}
           </div>
-          
+
           <DialogFooter className="sm:justify-between">
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               size="sm"
               onClick={() => {
                 setProfileImagePreview(null)
@@ -1623,14 +1624,14 @@ export function StaffDetailsPage() {
               Remove
             </Button>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsProfileImageUploadOpen(false)}
                 disabled={isUploading}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   if (profileImagePreview) {
                     showToast.success("Profile image updated", "Your profile image has been updated successfully")
@@ -1657,7 +1658,7 @@ export function StaffDetailsPage() {
               Add or update emergency contact information for this staff member.
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={(e) => {
             e.preventDefault()
             const formData = new FormData(e.currentTarget)
@@ -1668,67 +1669,67 @@ export function StaffDetailsPage() {
               email: formData.get('emergencyEmail') as string || undefined,
               address: formData.get('emergencyAddress') as string || undefined,
             }
-            
+
             setEmergencyContact(newEmergencyContact)
-            
+
             showToast.success("Emergency contact updated", "Emergency contact information has been updated successfully")
-            
+
             setIsEmergencyContactModalOpen(false)
           }} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="emergencyName">Name *</Label>
-                <Input 
-                  id="emergencyName" 
-                  name="emergencyName" 
-                  defaultValue={emergencyContact?.name || ''} 
-                  required 
+                <Input
+                  id="emergencyName"
+                  name="emergencyName"
+                  defaultValue={emergencyContact?.name || ''}
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="emergencyRelationship">Relationship *</Label>
-                <Input 
-                  id="emergencyRelationship" 
-                  name="emergencyRelationship" 
-                  defaultValue={emergencyContact?.relationship || ''} 
-                  required 
+                <Input
+                  id="emergencyRelationship"
+                  name="emergencyRelationship"
+                  defaultValue={emergencyContact?.relationship || ''}
+                  required
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="emergencyPhone">Phone *</Label>
-                <Input 
-                  id="emergencyPhone" 
-                  name="emergencyPhone" 
-                  defaultValue={emergencyContact?.phone || ''} 
-                  required 
+                <Input
+                  id="emergencyPhone"
+                  name="emergencyPhone"
+                  defaultValue={emergencyContact?.phone || ''}
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="emergencyEmail">Email</Label>
-                <Input 
-                  id="emergencyEmail" 
-                  name="emergencyEmail" 
+                <Input
+                  id="emergencyEmail"
+                  name="emergencyEmail"
                   type="email"
-                  defaultValue={emergencyContact?.email || ''} 
+                  defaultValue={emergencyContact?.email || ''}
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="emergencyAddress">Address</Label>
-              <Textarea 
-                id="emergencyAddress" 
-                name="emergencyAddress" 
-                defaultValue={emergencyContact?.address || ''} 
+              <Textarea
+                id="emergencyAddress"
+                name="emergencyAddress"
+                defaultValue={emergencyContact?.address || ''}
                 rows={3}
               />
             </div>
-            
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsEmergencyContactModalOpen(false)}>
                 Cancel
@@ -1738,7 +1739,7 @@ export function StaffDetailsPage() {
           </form>
         </DialogContent>
       </Dialog>
-      
+
       {/* Identification Modal */}
       <Dialog open={isIdentificationModalOpen} onOpenChange={setIsIdentificationModalOpen}>
         <DialogContent className="sm:max-w-md">
@@ -1748,7 +1749,7 @@ export function StaffDetailsPage() {
               Add or update identification information for this staff member.
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={(e) => {
             e.preventDefault()
             const formData = new FormData(e.currentTarget)
@@ -1759,11 +1760,11 @@ export function StaffDetailsPage() {
               issueDate: formData.get('idIssueDate') as string || undefined,
               expiryDate: formData.get('idExpiryDate') as string || undefined,
             }
-            
+
             setIdentification(newIdentification)
-            
+
             showToast.success("Identification updated", "Identification information has been updated successfully")
-            
+
             setIsIdentificationModalOpen(false)
           }} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -1781,49 +1782,49 @@ export function StaffDetailsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="idNumber">ID Number *</Label>
-                <Input 
-                  id="idNumber" 
-                  name="idNumber" 
-                  defaultValue={identification?.number || ''} 
-                  required 
+                <Input
+                  id="idNumber"
+                  name="idNumber"
+                  defaultValue={identification?.number || ''}
+                  required
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="idIssuedBy">Issued By</Label>
-              <Input 
-                id="idIssuedBy" 
-                name="idIssuedBy" 
-                defaultValue={identification?.issuedBy || ''} 
+              <Input
+                id="idIssuedBy"
+                name="idIssuedBy"
+                defaultValue={identification?.issuedBy || ''}
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="idIssueDate">Issue Date</Label>
-                <Input 
-                  id="idIssueDate" 
-                  name="idIssueDate" 
+                <Input
+                  id="idIssueDate"
+                  name="idIssueDate"
                   type="date"
-                  defaultValue={identification?.issueDate || ''} 
+                  defaultValue={identification?.issueDate || ''}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="idExpiryDate">Expiry Date</Label>
-                <Input 
-                  id="idExpiryDate" 
-                  name="idExpiryDate" 
+                <Input
+                  id="idExpiryDate"
+                  name="idExpiryDate"
                   type="date"
-                  defaultValue={identification?.expiryDate || ''} 
+                  defaultValue={identification?.expiryDate || ''}
                 />
               </div>
             </div>
-            
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsIdentificationModalOpen(false)}>
                 Cancel
@@ -1840,13 +1841,13 @@ export function StaffDetailsPage() {
           <DialogHeader>
             <DialogTitle>Banking Details</DialogTitle>
             <DialogDescription>
-              {staff.bankingDetails 
-                ? "Update banking details for this staff member." 
+              {staff.bankingDetails
+                ? "Update banking details for this staff member."
                 : "Add banking details for this staff member."
               }
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={(e) => {
             e.preventDefault()
             const formData = new FormData(e.currentTarget)
@@ -1859,29 +1860,29 @@ export function StaffDetailsPage() {
               branchCode: formData.get('branchCode') as string || undefined,
               swiftCode: formData.get('swiftCode') as string || undefined,
             }
-            
+
             if (staff) {
               setStaff({
                 ...staff,
                 bankingDetails: newBankingDetails
               })
             }
-            
+
             showToast.success("Banking details updated", "Banking information has been updated successfully")
-            
+
             setIsBankingDetailsModalOpen(false)
           }} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="bankName">Bank Name *</Label>
-                <Input 
-                  id="bankName" 
-                  name="bankName" 
-                  defaultValue={staff?.bankingDetails?.bankName || ''} 
-                  required 
+                <Input
+                  id="bankName"
+                  name="bankName"
+                  defaultValue={staff?.bankingDetails?.bankName || ''}
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="accountType">Account Type *</Label>
                 <Select defaultValue={staff?.bankingDetails?.accountType || 'checking'} name="accountType">
@@ -1897,58 +1898,58 @@ export function StaffDetailsPage() {
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="accountName">Account Holder Name *</Label>
-                <Input 
-                  id="accountName" 
-                  name="accountName" 
-                  defaultValue={staff?.bankingDetails?.accountName || ''} 
-                  required 
+                <Input
+                  id="accountName"
+                  name="accountName"
+                  defaultValue={staff?.bankingDetails?.accountName || ''}
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="accountNumber">Account Number *</Label>
-                <Input 
-                  id="accountNumber" 
-                  name="accountNumber" 
-                  defaultValue={staff?.bankingDetails?.accountNumber || ''} 
-                  required 
+                <Input
+                  id="accountNumber"
+                  name="accountNumber"
+                  defaultValue={staff?.bankingDetails?.accountNumber || ''}
+                  required
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="branchLocation">Branch Location</Label>
-                <Input 
-                  id="branchLocation" 
-                  name="branchLocation" 
-                  defaultValue={staff?.bankingDetails?.branchLocation || ''} 
+                <Input
+                  id="branchLocation"
+                  name="branchLocation"
+                  defaultValue={staff?.bankingDetails?.branchLocation || ''}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="branchCode">Branch Code</Label>
-                <Input 
-                  id="branchCode" 
-                  name="branchCode" 
-                  defaultValue={staff?.bankingDetails?.branchCode || ''} 
+                <Input
+                  id="branchCode"
+                  name="branchCode"
+                  defaultValue={staff?.bankingDetails?.branchCode || ''}
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="swiftCode">SWIFT/BIC Code</Label>
-              <Input 
-                id="swiftCode" 
-                name="swiftCode" 
-                defaultValue={staff?.bankingDetails?.swiftCode || ''} 
+              <Input
+                id="swiftCode"
+                name="swiftCode"
+                defaultValue={staff?.bankingDetails?.swiftCode || ''}
               />
             </div>
-            
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsBankingDetailsModalOpen(false)}>
                 Cancel

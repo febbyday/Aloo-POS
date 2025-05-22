@@ -1,19 +1,21 @@
 /**
  * API Connection Test
- * 
+ *
  * This file provides utilities to test the connection to the shops API
  * and diagnose any connection issues.
+ * Uses the enhanced API configuration for consistent endpoint access.
  */
 
-import { getApiEndpoint } from '@/lib/api/config';
+import { getApiUrl } from '@/lib/api/enhanced-config';
+import { SHOP_ENDPOINTS } from '@/lib/api/endpoint-registry';
 
 /**
  * Test the connection to the shops API
  */
 export async function testShopsApiConnection() {
-  const apiUrl = getApiEndpoint('shops');
+  const apiUrl = getApiUrl('shops', 'LIST');
   console.log('Testing connection to shops API at:', apiUrl);
-  
+
   try {
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -26,9 +28,9 @@ export async function testShopsApiConnection() {
       // Add credentials to include cookies if needed
       credentials: 'include'
     });
-    
+
     console.log('API response status:', response.status);
-    
+
     if (response.ok) {
       const data = await response.json();
       console.log('API response data:', data);
@@ -49,12 +51,13 @@ export async function testShopsApiConnection() {
  */
 export async function isApiServerRunning() {
   try {
-    const response = await fetch(getApiEndpoint('health'), {
+    const healthUrl = getApiUrl('health', 'CHECK');
+    const response = await fetch(healthUrl, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
       cache: 'no-cache'
     });
-    
+
     return response.ok;
   } catch (error) {
     console.error('Health check failed:', error);

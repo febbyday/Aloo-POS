@@ -1,27 +1,54 @@
 import { generateId } from '@/lib/utils';
-import { apiConfig } from './config';
+import { apiConfig, API_CONSTANTS } from './config';
 import { AUTH_CONFIG } from '@/features/auth/config/authConfig';
 import { isProduction } from '@/lib/utils/env';
+import {
+  handleApiError,
+  ApiError,
+  ApiErrorType,
+  safeApiCall
+} from './api-error-handler';
 
 // Check if development mode
 const isDevelopment = import.meta.env.MODE === 'development';
 const isAuthBypassEnabled = AUTH_CONFIG.DEV_MODE.BYPASS_AUTH;
 
-// Development headers to include in every request in dev mode
-const DEV_HEADERS = {
-  'X-Development-Mode': 'true',
-  'X-Auth-Bypass': isAuthBypassEnabled ? 'true' : 'false'
-};
+// Development headers to include in every request in dev mode - removed all custom headers
+const DEV_HEADERS = {};
 
 /**
  * Normalize URL to prevent issues with double slashes or missing prefixes
  */
 const normalizeUrl = (path: string): string => {
-  // Remove leading slash if exists
+  // Skip processing for absolute URLs
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+
+  // Remove leading slash for consistent processing
   const trimmedPath = path.startsWith('/') ? path.substring(1) : path;
-  
-  // Construct the full URL with the proper API base URL
-  return `${apiConfig.baseUrl}/${apiConfig.apiPrefix}/${trimmedPath}`.replace(/([^:]\/)\/+/g, '$1');
+
+  // Extract API prefix without leading slash for comparison
+  const apiPrefixTrimmed = apiConfig.apiPrefix.startsWith('/')
+    ? apiConfig.apiPrefix.substring(1)
+    : apiConfig.apiPrefix;
+
+  // Special case for empty path - just return the base URL with API prefix
+  if (trimmedPath === '') {
+    return `${apiConfig.baseUrl}/${apiPrefixTrimmed}`;
+  }
+
+  // Check if the path already includes the API prefix
+  const hasApiPrefix = trimmedPath.startsWith(apiPrefixTrimmed) ||
+                       trimmedPath.startsWith(`${apiPrefixTrimmed}/`);
+
+  // Build the full URL with API prefix only if needed
+  const fullUrl = hasApiPrefix
+    ? `${apiConfig.baseUrl}/${trimmedPath}`
+    : `${apiConfig.baseUrl}/${apiPrefixTrimmed}/${trimmedPath}`;
+
+  // Replace any double slashes that aren't part of http(s)://
+  return fullUrl.replace(/([^:]\/)\/+/g, '$1');
 };
 
 /**
@@ -36,25 +63,38 @@ const getAuthToken = (): string | null => {
  */
 const buildHeaders = (contentType: string = 'application/json'): Record<string, string> => {
   const headers: Record<string, string> = {
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Origin': window.location.origin
   };
-  
+
+  // Log the current origin for debugging
+  console.log('[API] Request origin:', window.location.origin);
+
   // Only add Content-Type for non-empty values (allows FormData to set its own)
   if (contentType) {
     headers['Content-Type'] = contentType;
   }
-  
+
   // Add auth token if available
   const token = getAuthToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+    console.log('[API] Using Bearer token for authentication');
+  } else {
+    console.log('[API] No Bearer token found, relying on cookies for authentication');
   }
-  
-  // Add development headers in dev mode
-  if (isDevelopment) {
-    Object.assign(headers, DEV_HEADERS);
+
+  // Add CSRF token if available
+  const csrfToken = localStorage.getItem('csrf_token') || sessionStorage.getItem('csrf_token');
+  if (csrfToken) {
+    headers['x-csrf-token'] = csrfToken;
+    console.log('[API] CSRF token included in request');
+  } else {
+    console.log('[API] No CSRF token found');
   }
-  
+
   return headers;
 };
 
@@ -62,53 +102,70 @@ const buildHeaders = (contentType: string = 'application/json'): Record<string, 
  * Process API response
  */
 const processResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
-  // Handle 401 Unauthorized globally by dispatching an auth event
-  if (response.status === 401) {
-    console.error('[API] Unauthorized request');
-    
-    // Dispatch an unauthorized event that the auth system can listen for
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auth:unauthorized', {
-        detail: { timestamp: new Date().toISOString() }
-      }));
-    }
-  }
-  
-  // Handle 403 Forbidden (e.g., insufficient permissions)
-  if (response.status === 403) {
-    console.error('[API] Forbidden request - insufficient permissions');
-    
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auth:forbidden', {
-        detail: { timestamp: new Date().toISOString() }
-      }));
-    }
-  }
+  const contentType = response.headers.get('content-type');
+  const isJson = contentType && contentType.includes('application/json');
 
-  try {
-    // Try to parse JSON response
-    const data = await response.json();
-    
-    // Standard response format
+  // Handle empty responses
+  if (response.status === 204 || !isJson) {
     return {
       success: response.ok,
       status: response.status,
-      data: response.ok ? data as T : null as unknown as T,
-      error: !response.ok ? (data.message || data.error || 'Unknown error') : null
+      data: null as unknown as T,
+      error: response.ok ? null : 'Non-JSON response received',
+      message: response.ok ? 'Success' : 'Error'
     };
-  } catch (error) {
-    // Handle non-JSON responses (e.g., server errors)
+  }
+
+  try {
+    const data = await response.json();
+
+    // Check if response includes a refreshed token
+    const newToken = response.headers.get('X-Refreshed-Token');
+    const tokenRefreshed = !!newToken;
+
+    if (tokenRefreshed && newToken) {
+      // Store the new token
+      localStorage.setItem('auth_token', newToken);
+    }
+
+    if (!response.ok) {
+      // Handle error responses
+      return {
+        success: false,
+        status: response.status,
+        data: data.data || null as unknown as T,
+        error: data.message || data.error || 'Unknown error',
+        message: data.message || 'Error',
+        tokenRefreshed
+      };
+    }
+
+    // Handle successful responses
+    return {
+      success: true,
+      status: response.status,
+      data: data.data || data,
+      message: data.message || 'Success',
+      tokenRefreshed
+    };
+  } catch (err) {
+    // Handle JSON parsing errors
+    const error = err instanceof Error ? err : new Error('Failed to parse response');
+
+    console.error('Error parsing API response:', error);
+
     return {
       success: false,
       status: response.status,
       data: null as unknown as T,
-      error: `Failed to parse response: ${response.statusText}`
+      error: error.message || 'Failed to parse response',
+      message: 'Error parsing response'
     };
   }
 };
 
 // API response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T> {
   success: boolean;
   status?: number;
   data: T;
@@ -117,21 +174,20 @@ export interface ApiResponse<T = any> {
   tokenRefreshed?: boolean;
 }
 
-export interface PaginatedApiResponse<T = any> extends ApiResponse<T[]> {
+export interface PaginatedApiResponse<T> extends ApiResponse<T[]> {
   pagination: {
     page: number;
     limit: number;
     total: number;
     totalPages: number;
   };
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
-export interface ApiError {
-  status: number;
-  message: string;
-  errors?: Record<string, string[]> | null;
-}
-
+// API client configuration
 export interface ApiClientConfig {
   baseUrl: string;
   headers?: Record<string, string>;
@@ -144,54 +200,28 @@ export interface ApiClientConfig {
   apiPrefix?: string;
 }
 
-// API constants
-const DEFAULT_TIMEOUT = 30000;
-const DEFAULT_RETRY_COUNT = 3;
-const DEFAULT_RETRY_DELAY = 1000;
-const DEFAULT_API_PREFIX = 'api/v1';
-
-/**
- * Handle API errors in a consistent way
- * @param error Error object from catch block
- * @param fallbackMessage Default message if error cannot be parsed
- * @returns Formatted error message
- */
-export function handleApiError(error: any, fallbackMessage = 'An unexpected error occurred'): string {
-  // Handle API error responses
-  if (error.response) {
-    // Try to extract error message from response
-    if (error.response.data?.message) return error.response.data.message;
-    if (error.response.data?.error) return error.response.data.error;
-    if (error.response.statusText) return `${error.response.status}: ${error.response.statusText}`;
-    return `Error ${error.response.status}`;
-  }
-
-  // Handle network errors
-  if (error.request) return 'Network error: Server not responding';
-
-  // Handle other errors
-  return error.message || fallbackMessage;
-}
+// API constants - using values from centralized config
+const DEFAULT_TIMEOUT = API_CONSTANTS.TIMEOUT;
+const DEFAULT_RETRY_COUNT = API_CONSTANTS.RETRY_COUNT;
+const DEFAULT_RETRY_DELAY = API_CONSTANTS.RETRY_DELAY;
+const DEFAULT_API_PREFIX = API_CONSTANTS.PREFIX.substring(1); // Remove leading slash
 
 /**
  * API Client class for making HTTP requests
  */
-export class ApiClient {
+export class ApiClient<T = any> {
   private config: ApiClientConfig;
   private authToken?: string;
   private connectionFailed: boolean = false;
 
   constructor(config: Partial<ApiClientConfig> = {}) {
-    // Set default config values
+    // Set default config values using centralized configuration
     this.config = {
-      baseUrl: config.baseUrl || 'http://localhost:5000',
-      headers: config.headers || {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
+      baseUrl: config.baseUrl || API_CONSTANTS.URL,
+      headers: config.headers || apiConfig.headers,
       timeout: config.timeout || DEFAULT_TIMEOUT,
       mockDelay: config.mockDelay || 500,
-      useMock: config.useMock ?? false,
+      useMock: config.useMock ?? apiConfig.useMockData,
       retryCount: config.retryCount || DEFAULT_RETRY_COUNT,
       retryDelay: config.retryDelay || DEFAULT_RETRY_DELAY,
       withCredentials: config.withCredentials ?? true,
@@ -202,14 +232,14 @@ export class ApiClient {
   /**
    * Set configuration options
    */
-  setConfig(config: Partial<ApiClientConfig>) {
+  setConfig(config: Partial<ApiClientConfig>): void {
     this.config = { ...this.config, ...config };
   }
 
   /**
    * Alias for setConfig for backward compatibility
    */
-  updateConfig(config: Partial<ApiClientConfig>) {
+  updateConfig(config: Partial<ApiClientConfig>): void {
     this.setConfig(config);
   }
 
@@ -223,7 +253,7 @@ export class ApiClient {
   /**
    * Set connection failed state
    */
-  setConnectionFailed(failed: boolean) {
+  setConnectionFailed(failed: boolean): void {
     this.connectionFailed = failed;
   }
 
@@ -239,7 +269,7 @@ export class ApiClient {
    * Note: This is only used for non-cookie authentication as a fallback
    * The primary authentication method is HttpOnly cookies
    */
-  setAuthToken(token: string | undefined) {
+  setAuthToken(token: string | undefined): void {
     this.authToken = token;
   }
 
@@ -263,138 +293,74 @@ export class ApiClient {
    * Clear authentication token
    * Note: This doesn't clear HttpOnly cookies, only the fallback token
    */
-  clearAuthToken() {
+  clearAuthToken(): void {
     this.authToken = undefined;
   }
 
   /**
    * Build the complete URL for an API request
    */
-  private buildUrl(endpoint: string, params?: Record<string, any>): string {
-    // Remove any leading slashes from the endpoint
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-
-    // Ensure the base URL doesn't have a trailing slash
-    const baseUrl = this.config.baseUrl.endsWith('/')
-      ? this.config.baseUrl.slice(0, -1)
-      : this.config.baseUrl;
-
-    // Ensure the API prefix has leading slash but no trailing slash
-    let apiPrefix = this.config.apiPrefix || '';
-    if (!apiPrefix.startsWith('/')) apiPrefix = `/${apiPrefix}`;
-    if (apiPrefix.endsWith('/')) apiPrefix = apiPrefix.slice(0, -1);
-
-    // Construct the full URL
-    let url = `${baseUrl}${apiPrefix}/${cleanEndpoint}`;
+  buildUrl(endpoint: string, params?: Record<string, any>): string {
+    // Start with the normalized URL
+    let url = normalizeUrl(endpoint);
 
     // Add query parameters if provided
     if (params && Object.keys(params).length > 0) {
-      const queryString = new URLSearchParams(params as Record<string, string>).toString();
-      url += `?${queryString}`;
-    }
+      const queryParams = new URLSearchParams();
 
-    // Add cache-busting parameter in development
-    if (!isProduction) {
-      const separator = url.includes('?') ? '&' : '?';
-      url += `${separator}_=${Date.now()}`;
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+          if (Array.isArray(value)) {
+            value.forEach((v) => queryParams.append(`${key}[]`, String(v)));
+          } else {
+            queryParams.append(key, String(value));
+          }
+        }
+      }
+
+      const queryString = queryParams.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
+      }
     }
 
     return url;
   }
 
   /**
-   * Process API response
+   * Process API response with enhanced error handling
    */
-  private async processResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    // Handle 401 Unauthorized globally by attempting token refresh
-    if (response.status === 401) {
-      console.log('[API] Unauthorized request, attempting token refresh');
-
-      // Import dynamically to avoid circular dependency
-      const { authService } = await import('../../features/auth/services/authService');
-
-      try {
-        // Attempt to refresh the token
-        const refreshResult = await authService.refreshToken();
-
-        if (refreshResult) {
-          console.log('[API] Token refreshed successfully, dispatching token refreshed event');
-          // Dispatch token refreshed event
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('auth:token:refreshed', {
-              detail: { timestamp: new Date().toISOString() }
-            }));
-          }
-
-          // Return a special response indicating token was refreshed
-          return {
-            success: false,
-            status: 401,
-            data: null as unknown as T,
-            error: 'Token refreshed. Please retry the request.',
-            tokenRefreshed: true
-          };
-        } else {
-          console.error('[API] Token refresh failed');
-          // Dispatch an unauthorized event that the auth system can listen for
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('auth:unauthorized', {
-              detail: { timestamp: new Date().toISOString() }
-            }));
-          }
-        }
-      } catch (refreshError) {
-        console.error('[API] Error during token refresh:', refreshError);
-        // Dispatch an unauthorized event that the auth system can listen for
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('auth:unauthorized', {
-            detail: { timestamp: new Date().toISOString(), error: refreshError }
-          }));
-        }
-      }
-    }
-
-    // Handle 403 Forbidden (e.g., insufficient permissions)
-    if (response.status === 403) {
-      console.error('[API] Forbidden request - insufficient permissions');
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('auth:forbidden', {
-          detail: { timestamp: new Date().toISOString() }
-        }));
-      }
-    }
-
+  async processResponse<T>(response: Response, endpoint: string): Promise<ApiResponse<T>> {
     try {
-      // Try to parse JSON response
-      const data = await response.json();
-      
-      // Log the response structure in development mode for debugging
-      if (isDevelopment) {
-        console.debug(`[API] Response structure for ${response.url}:`, {
-          status: response.status,
-          ok: response.ok,
-          dataType: typeof data,
-          isArray: Array.isArray(data),
-          keys: data && typeof data === 'object' ? Object.keys(data) : 'N/A'
-        });
+      // Process the response normally first
+      const result = await processResponse<T>(response);
+
+      // If there's an error, enhance it with our error handling
+      if (!result.success) {
+        throw new ApiError(
+          result.error || 'Unknown error',
+          response.status === 0 ? ApiErrorType.NETWORK :
+          response.status === 401 || response.status === 403 ? ApiErrorType.AUTHORIZATION :
+          response.status === 404 ? ApiErrorType.NOT_FOUND :
+          response.status >= 500 ? ApiErrorType.SERVER :
+          ApiErrorType.UNKNOWN,
+          response.status,
+          endpoint
+        );
       }
 
-      // Standard response format
-      return {
-        success: response.ok,
-        status: response.status,
-        data: response.ok ? data as T : null as unknown as T,
-        error: !response.ok ? (data.message || data.error || 'Unknown error') : null
-      };
+      return result;
     } catch (error) {
-      // Handle non-JSON responses (e.g., server errors)
-      console.error(`[API] Failed to parse JSON response from ${response.url}:`, error);
+      // Use our centralized error handler
+      const enhancedError = handleApiError(error, endpoint);
+
+      // Return a standardized error response
       return {
         success: false,
-        status: response.status,
+        status: enhancedError.statusCode,
         data: null as unknown as T,
-        error: `Failed to parse response: ${response.statusText}`
+        error: enhancedError.message,
+        message: enhancedError.getUserFriendlyMessage()
       };
     }
   }
@@ -406,222 +372,617 @@ export class ApiClient {
    * @param retryCount Number of retries attempted (internal use)
    * @returns Promise with standardized response
    */
-  async get<T = any>(path: string, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
-    try {
-      const url = this.buildUrl(path);
-      const headers = { ...this.config.headers };
+  async get<T = any>(
+    path: string,
+    options: RequestInit = {},
+    retryCount = 0
+  ): Promise<ApiResponse<T>> {
+    const url = this.buildUrl(path);
+    const headers = buildHeaders();
 
-      // Only add Authorization header if an auth token is explicitly set
-      if (this.authToken) {
-        headers['Authorization'] = `Bearer ${this.authToken}`;
+    try {
+      // Use existing signal from options if provided, otherwise create a new one
+      const existingSignal = options.signal as AbortSignal;
+      const controller = existingSignal ? null : new AbortController();
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      // Only set timeout if we created our own controller
+      if (controller) {
+        timeoutId = setTimeout(() => {
+          controller.abort(new Error('Request timed out'));
+        }, this.config.timeout);
       }
-      
+
+      // Merge headers properly
+      const mergedHeaders = { ...headers, ...(options.headers || {}) };
+
+      // Use the existing signal or our controller's signal
+      const signal = existingSignal || (controller ? controller.signal : undefined);
+
       const response = await fetch(url, {
         method: 'GET',
-        headers,
-        credentials: 'include',
-        ...options
+        credentials: this.config.withCredentials ? 'include' : 'same-origin',
+        signal,
+        ...options,
+        headers: mergedHeaders
       });
-      
-      const processedResponse = await this.processResponse<T>(response);
 
-      // If token was refreshed and we haven't exceeded retry limit, retry the request
-      if (processedResponse.tokenRefreshed && retryCount < 1) {
-        console.log(`[API] Retrying GET ${path} after token refresh`);
+      // Clear timeout if we set one
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      return this.processResponse<T>(response, path);
+    } catch (error) {
+      // Handle fetch errors (network, timeout, etc.)
+      const originalError = error instanceof Error ? error : new Error(String(error));
+
+      // Special handling for aborted requests
+      if (originalError.name === 'AbortError') {
+        console.log(`Request to ${path} was aborted`, originalError);
+
+        // If it's our timeout abort, we can retry
+        if (retryCount < (this.config.retryCount || 0) &&
+            originalError.message === 'Request timed out') {
+          // Exponential backoff
+          const delay = this.config.retryDelay! * Math.pow(2, retryCount);
+          await new Promise(resolve => setTimeout(resolve, delay));
+
+          // Retry the request
+          return this.get<T>(path, options, retryCount + 1);
+        }
+
+        // If it's an external abort (like component unmounting), just return gracefully
+        // with a standardized response
+        const abortError = new Error('Request was cancelled');
+        abortError.name = 'AbortError';
+
+        return {
+          success: false,
+          status: 0, // Use 0 to indicate client-side abort
+          data: null as unknown as T,
+          error: 'Request was cancelled',
+          message: 'The request was cancelled'
+        };
+      }
+
+      // For network errors, retry if we haven't exceeded retry count
+      if (retryCount < (this.config.retryCount || 0) &&
+          originalError.message.includes('network')) {
+        // Exponential backoff
+        const delay = this.config.retryDelay! * Math.pow(2, retryCount);
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Retry the request
         return this.get<T>(path, options, retryCount + 1);
       }
 
-      return processedResponse;
-    } catch (error: any) {
-      console.error(`[API] GET ${path} failed:`, error);
-      
+      // Use our enhanced error handling
+      const apiError = handleApiError(error, path);
+
       return {
         success: false,
-        status: 0,
         data: null as unknown as T,
-        error: error.message || 'Network error'
+        error: apiError.message,
+        message: apiError.getUserFriendlyMessage()
       };
     }
   }
-  
+
   /**
-   * Make a POST request
+   * Make a POST request with enhanced error handling
    * @param path API endpoint path
    * @param data Request body data
    * @param options Optional fetch options
    * @param retryCount Number of retries attempted (internal use)
    * @returns Promise with standardized response
    */
-  async post<T = any>(path: string, data: any = {}, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
-    try {
-      const url = this.buildUrl(path);
-      const headers = { ...this.config.headers };
+  async post<T = any>(
+    path: string,
+    data: any = {},
+    options: RequestInit = {},
+    retryCount = 0
+  ): Promise<ApiResponse<T>> {
+    const url = this.buildUrl(path);
+    const isFormData = data instanceof FormData;
+    const headers = buildHeaders(isFormData ? '' : 'application/json');
 
-      if (this.authToken) {
-        headers['Authorization'] = `Bearer ${this.authToken}`;
+    try {
+      // Use existing signal from options if provided, otherwise create a new one
+      const existingSignal = options.signal as AbortSignal;
+      const controller = existingSignal ? null : new AbortController();
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      // Only set timeout if we created our own controller
+      if (controller) {
+        // Use a longer timeout for specific requests that might take longer
+        const isUserCreation = path.includes('users') && !path.includes('/');
+        const isRoleCreation = path.includes('roles') && (path.includes('CREATE') || !path.includes('/'));
+
+        let timeout = this.config.timeout;
+
+        // Apply longer timeouts for specific operations
+        if (isUserCreation || isRoleCreation) {
+          timeout = this.config.timeout * 3; // Triple the timeout for user/role creation
+          console.log(`Using extended timeout (${timeout}ms) for ${path}`);
+        }
+
+        timeoutId = setTimeout(() => {
+          console.log(`Request timeout after ${timeout}ms for ${path}`);
+          controller.abort(new Error('Request timed out'));
+        }, timeout);
       }
-      
+
+      const body = isFormData ? data : JSON.stringify(data);
+
+      // Merge headers properly
+      const mergedHeaders = { ...headers, ...(options.headers || {}) };
+
+      // Use the existing signal or our controller's signal
+      const signal = existingSignal || (controller ? controller.signal : undefined);
+
+      console.log(`Making POST request to ${path}`, {
+        hasExistingSignal: !!existingSignal,
+        timeout: controller ? (path.includes('users') && !path.includes('/') ? this.config.timeout * 2 : this.config.timeout) : 'using external signal'
+      });
+
       const response = await fetch(url, {
         method: 'POST',
-        headers,
-        body: JSON.stringify(data),
-        credentials: 'include',
-        ...options
+        credentials: this.config.withCredentials ? 'include' : 'same-origin',
+        body,
+        signal,
+        ...options,
+        headers: mergedHeaders
       });
-      
-      const processedResponse = await this.processResponse<T>(response);
 
-      // If token was refreshed and we haven't exceeded retry limit, retry the request
-      if (processedResponse.tokenRefreshed && retryCount < 1) {
-        console.log(`[API] Retrying POST ${path} after token refresh`);
+      // Clear timeout if we set one
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      return this.processResponse<T>(response, path);
+    } catch (error) {
+      // Handle fetch errors (network, timeout, etc.)
+      const originalError = error instanceof Error ? error : new Error(String(error));
+
+      // Special handling for aborted requests
+      if (originalError.name === 'AbortError') {
+        console.log(`POST request to ${path} was aborted`, originalError);
+
+        // If it's our timeout abort, we can retry
+        if (retryCount < (this.config.retryCount || 0) &&
+            originalError.message === 'Request timed out') {
+
+          // For role-related requests, use more aggressive retry strategy
+          const isRoleRequest = path.includes('roles');
+          const maxRetries = isRoleRequest ? (this.config.retryCount || 0) + 2 : (this.config.retryCount || 0);
+
+          if (retryCount < maxRetries) {
+            console.log(`Retrying POST request to ${path} after timeout (attempt ${retryCount + 1}/${maxRetries})`);
+
+            // Exponential backoff with a base delay
+            let delay = this.config.retryDelay! * Math.pow(1.5, retryCount);
+
+            // For role requests, use a more aggressive retry strategy with shorter initial delays
+            if (isRoleRequest && retryCount === 0) {
+              delay = this.config.retryDelay! / 2; // Start with a shorter delay for the first retry
+            }
+
+            console.log(`Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+
+            // Retry the request
+            return this.post<T>(path, data, options, retryCount + 1);
+          }
+        }
+
+        // If it's an external abort (like component unmounting), just return gracefully
+        // with a standardized response
+        console.log(`POST request to ${path} was cancelled externally`);
+        const abortError = new Error('Request was cancelled');
+        abortError.name = 'AbortError';
+
+        return {
+          success: false,
+          status: 0, // Use 0 to indicate client-side abort
+          data: null as unknown as T,
+          error: 'Request was cancelled',
+          message: 'The request was cancelled'
+        };
+      }
+
+      // Check if we should retry for network issues
+      if (retryCount < (this.config.retryCount || 0) && originalError.message.includes('network')) {
+        // Exponential backoff
+        const delay = this.config.retryDelay! * Math.pow(2, retryCount);
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Retry the request
         return this.post<T>(path, data, options, retryCount + 1);
       }
 
-      return processedResponse;
-    } catch (error: any) {
-      console.error(`[API] POST ${path} failed:`, error);
-      
+      // Use our enhanced error handling
+      const apiError = handleApiError(error, path);
+
       return {
         success: false,
-        status: 0,
         data: null as unknown as T,
-        error: error.message || 'Network error'
+        error: apiError.message,
+        message: apiError.getUserFriendlyMessage()
       };
     }
   }
-  
+
   /**
-   * Make a PUT request
+   * Make a PUT request with enhanced error handling
    * @param path API endpoint path
    * @param data Request body data
    * @param options Optional fetch options
    * @param retryCount Number of retries attempted (internal use)
    * @returns Promise with standardized response
    */
-  async put<T = any>(path: string, data: any = {}, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
-    try {
-      const url = this.buildUrl(path);
-      const headers = { ...this.config.headers };
+  async put<T = any>(
+    path: string,
+    data: any = {},
+    options: RequestInit = {},
+    retryCount = 0
+  ): Promise<ApiResponse<T>> {
+    const url = this.buildUrl(path);
+    const isFormData = data instanceof FormData;
+    const headers = buildHeaders(isFormData ? '' : 'application/json');
 
-      if (this.authToken) {
-        headers['Authorization'] = `Bearer ${this.authToken}`;
-      }
-      
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+
+      const body = isFormData ? data : JSON.stringify(data);
+
+      // Merge headers properly
+      const mergedHeaders = { ...headers, ...(options.headers || {}) };
+
       const response = await fetch(url, {
         method: 'PUT',
-        headers,
-        body: JSON.stringify(data),
-        credentials: 'include',
-        ...options
+        credentials: this.config.withCredentials ? 'include' : 'same-origin',
+        body,
+        signal: controller.signal,
+        ...options,
+        headers: mergedHeaders
       });
-      
-      const processedResponse = await this.processResponse<T>(response);
 
-      // If token was refreshed and we haven't exceeded retry limit, retry the request
-      if (processedResponse.tokenRefreshed && retryCount < 1) {
-        console.log(`[API] Retrying PUT ${path} after token refresh`);
+      clearTimeout(timeoutId);
+
+      return this.processResponse<T>(response, path);
+    } catch (error) {
+      // Handle fetch errors (network, timeout, etc.)
+      const originalError = error instanceof Error ? error : new Error(String(error));
+
+      // Check if we should retry
+      if (retryCount < (this.config.retryCount || 0) &&
+         (originalError.name === 'AbortError' || originalError.message.includes('network'))) {
+        // Exponential backoff
+        const delay = this.config.retryDelay! * Math.pow(2, retryCount);
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Retry the request
         return this.put<T>(path, data, options, retryCount + 1);
       }
 
-      return processedResponse;
-    } catch (error: any) {
-      console.error(`[API] PUT ${path} failed:`, error);
-      
+      // Use our enhanced error handling
+      const apiError = handleApiError(error, path);
+
       return {
         success: false,
-        status: 0,
         data: null as unknown as T,
-        error: error.message || 'Network error'
+        error: apiError.message,
+        message: apiError.getUserFriendlyMessage()
       };
     }
   }
-  
+
   /**
-   * Make a DELETE request
+   * Make a DELETE request with enhanced error handling
    * @param path API endpoint path
    * @param options Optional fetch options
    * @param retryCount Number of retries attempted (internal use)
    * @returns Promise with standardized response
    */
-  async delete<T = any>(path: string, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
-    try {
-      const url = this.buildUrl(path);
-      const headers = { ...this.config.headers };
+  async delete<T = any>(
+    path: string,
+    options: RequestInit = {},
+    retryCount = 0
+  ): Promise<ApiResponse<T>> {
+    const url = this.buildUrl(path);
+    const headers = buildHeaders();
 
-      if (this.authToken) {
-        headers['Authorization'] = `Bearer ${this.authToken}`;
-      }
-      
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+
+      // Merge headers properly
+      const mergedHeaders = { ...headers, ...(options.headers || {}) };
+
       const response = await fetch(url, {
         method: 'DELETE',
-        headers,
-        credentials: 'include',
-        ...options
+        credentials: this.config.withCredentials ? 'include' : 'same-origin',
+        signal: controller.signal,
+        ...options,
+        headers: mergedHeaders
       });
-      
-      const processedResponse = await this.processResponse<T>(response);
 
-      // If token was refreshed and we haven't exceeded retry limit, retry the request
-      if (processedResponse.tokenRefreshed && retryCount < 1) {
-        console.log(`[API] Retrying DELETE ${path} after token refresh`);
+      clearTimeout(timeoutId);
+
+      return this.processResponse<T>(response, path);
+    } catch (error) {
+      // Handle fetch errors (network, timeout, etc.)
+      const originalError = error instanceof Error ? error : new Error(String(error));
+
+      // Check if we should retry
+      if (retryCount < (this.config.retryCount || 0) &&
+         (originalError.name === 'AbortError' || originalError.message.includes('network'))) {
+        // Exponential backoff
+        const delay = this.config.retryDelay! * Math.pow(2, retryCount);
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Retry the request
         return this.delete<T>(path, options, retryCount + 1);
       }
 
-      return processedResponse;
-    } catch (error: any) {
-      console.error(`[API] DELETE ${path} failed:`, error);
-      
+      // Use our enhanced error handling
+      const apiError = handleApiError(error, path);
+
       return {
         success: false,
-        status: 0,
         data: null as unknown as T,
-        error: error.message || 'Network error'
+        error: apiError.message,
+        message: apiError.getUserFriendlyMessage()
       };
     }
   }
-  
+
   /**
-   * Make a PATCH request
+   * Make a PATCH request with enhanced error handling
    * @param path API endpoint path
    * @param data Request body data
    * @param options Optional fetch options
    * @param retryCount Number of retries attempted (internal use)
    * @returns Promise with standardized response
    */
-  async patch<T = any>(path: string, data: any = {}, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
-    try {
-      const url = this.buildUrl(path);
-      const headers = { ...this.config.headers };
+  async patch<T = any>(
+    path: string,
+    data: any = {},
+    options: RequestInit = {},
+    retryCount = 0
+  ): Promise<ApiResponse<T>> {
+    const url = this.buildUrl(path);
+    const isFormData = data instanceof FormData;
+    const headers = buildHeaders(isFormData ? '' : 'application/json');
 
-      if (this.authToken) {
-        headers['Authorization'] = `Bearer ${this.authToken}`;
-      }
-      
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+
+      const body = isFormData ? data : JSON.stringify(data);
+
+      // Merge headers properly
+      const mergedHeaders = { ...headers, ...(options.headers || {}) };
+
       const response = await fetch(url, {
         method: 'PATCH',
-        headers,
-        body: JSON.stringify(data),
-        credentials: 'include',
-        ...options
+        credentials: this.config.withCredentials ? 'include' : 'same-origin',
+        body,
+        signal: controller.signal,
+        ...options,
+        headers: mergedHeaders
       });
-      
-      const processedResponse = await this.processResponse<T>(response);
 
-      // If token was refreshed and we haven't exceeded retry limit, retry the request
-      if (processedResponse.tokenRefreshed && retryCount < 1) {
-        console.log(`[API] Retrying PATCH ${path} after token refresh`);
+      clearTimeout(timeoutId);
+
+      return this.processResponse<T>(response, path);
+    } catch (error) {
+      // Handle fetch errors (network, timeout, etc.)
+      const originalError = error instanceof Error ? error : new Error(String(error));
+
+      // Check if we should retry
+      if (retryCount < (this.config.retryCount || 0) &&
+         (originalError.name === 'AbortError' || originalError.message.includes('network'))) {
+        // Exponential backoff
+        const delay = this.config.retryDelay! * Math.pow(2, retryCount);
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Retry the request
         return this.patch<T>(path, data, options, retryCount + 1);
       }
 
-      return processedResponse;
-    } catch (error: any) {
-      console.error(`[API] PATCH ${path} failed:`, error);
-      
+      // Use our enhanced error handling
+      const apiError = handleApiError(error, path);
+
       return {
         success: false,
-        status: 0,
         data: null as unknown as T,
-        error: error.message || 'Network error'
+        error: apiError.message,
+        message: apiError.getUserFriendlyMessage()
+      };
+    }
+  }
+
+  /**
+   * Make a GET request with pagination support and enhanced error handling
+   * @param path API endpoint path
+   * @param params Query parameters including pagination options
+   * @param options Optional fetch options
+   * @param retryCount Number of retries attempted (internal use)
+   * @returns Promise with standardized paginated response
+   */
+  async getPaginated<T = any>(
+    path: string,
+    params: any = {},
+    options: RequestInit = {},
+    retryCount = 0
+  ): Promise<PaginatedApiResponse<T>> {
+    try {
+      // Extract pagination params
+      const { page = 1, limit = 20, ...restParams } = params;
+
+      // Build query parameters with pagination
+      const queryParams = {
+        ...restParams,
+        page,
+        limit
+      };
+
+      // Make the request
+      const response = await this.get<any>(path, {
+        ...options,
+        params: queryParams
+      }, retryCount);
+
+      // If successful, process pagination
+      if (response.success) {
+        // Check if response is already in paginated format
+        if (response.data &&
+            (response.data.pagination ||
+             (typeof response.data.total !== 'undefined' &&
+              typeof response.data.page !== 'undefined'))) {
+
+          const result: PaginatedApiResponse<T> = {
+            ...response,
+            data: response.data.data || response.data.items || [],
+            pagination: response.data.pagination || {
+              page: response.data.page || page,
+              limit: response.data.limit || limit,
+              total: response.data.total || 0,
+              totalPages: response.data.totalPages || Math.ceil((response.data.total || 0) / limit)
+            },
+            page: response.data.page || page,
+            limit: response.data.limit || limit,
+            total: response.data.total || 0,
+            totalPages: response.data.totalPages || Math.ceil((response.data.total || 0) / limit)
+          };
+
+          return result;
+        }
+
+        // If response is not in paginated format, create pagination info
+        return {
+          ...response,
+          data: Array.isArray(response.data) ? response.data : [],
+          pagination: {
+            page,
+            limit,
+            total: Array.isArray(response.data) ? response.data.length : 0,
+            totalPages: 1
+          },
+          page,
+          limit,
+          total: Array.isArray(response.data) ? response.data.length : 0,
+          totalPages: 1
+        };
+      }
+
+      // Return error response
+      return {
+        ...response,
+        data: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0
+        },
+        page,
+        limit,
+        total: 0,
+        totalPages: 0
+      };
+    } catch (error) {
+      // Use our enhanced error handling
+      const apiError = handleApiError(error, path);
+
+      return {
+        success: false,
+        data: [],
+        error: apiError.message,
+        message: apiError.getUserFriendlyMessage(),
+        pagination: {
+          page: params.page || 1,
+          limit: params.limit || 20,
+          total: 0,
+          totalPages: 0
+        },
+        page: params.page || 1,
+        limit: params.limit || 20,
+        total: 0,
+        totalPages: 0
+      };
+    }
+  }
+
+  /**
+   * Safe API call with fallback data support
+   * @param apiCall Function that calls an API endpoint
+   * @param fallbackData Optional fallback data to return on error
+   * @param silent Whether to suppress error messages
+   * @returns API response or fallback data
+   */
+  async safeCall<T = any>(
+    apiCall: () => Promise<ApiResponse<T>>,
+    fallbackData?: T,
+    silent: boolean = false
+  ): Promise<ApiResponse<T>> {
+    try {
+      return await apiCall();
+    } catch (error) {
+      // Log error but don't show toast if silent
+      console.error('API call failed:', error);
+
+      const apiError = handleApiError(error);
+
+      // Return fallback response
+      return {
+        success: false,
+        data: fallbackData as unknown as T,
+        error: apiError.message,
+        message: apiError.getUserFriendlyMessage()
+      };
+    }
+  }
+
+  /**
+   * Safe paginated API call with fallback
+   * @param apiCall Function that calls a paginated API endpoint
+   * @param fallbackData Optional fallback data to return on error
+   * @param silent Whether to suppress error messages
+   * @returns Paginated API response or fallback data
+   */
+  async safePaginatedCall<T = any>(
+    apiCall: () => Promise<PaginatedApiResponse<T>>,
+    fallbackData: T[] = [],
+    silent: boolean = false
+  ): Promise<PaginatedApiResponse<T>> {
+    try {
+      return await apiCall();
+    } catch (error) {
+      // Log error but don't show toast if silent
+      console.error('API call failed:', error);
+
+      const apiError = handleApiError(error);
+
+      // Return fallback response
+      return {
+        success: false,
+        data: fallbackData,
+        error: apiError.message,
+        message: apiError.getUserFriendlyMessage(),
+        pagination: {
+          page: 1,
+          limit: fallbackData.length || 20,
+          total: fallbackData.length,
+          totalPages: fallbackData.length ? 1 : 0
+        },
+        page: 1,
+        limit: fallbackData.length || 20,
+        total: fallbackData.length,
+        totalPages: fallbackData.length ? 1 : 0
       };
     }
   }
@@ -629,31 +990,6 @@ export class ApiClient {
 
 // Create a default instance
 export const apiClient = new ApiClient();
-
-// Helper functions for mocking API (needed by some imports)
-export function createMockEntity<T>(data: T): ApiResponse<T> {
-      return {
-    success: true,
-    status: 201,
-    data
-  };
-}
-
-export function updateMockEntity<T>(data: T): ApiResponse<T> {
-  return {
-    success: true,
-    status: 200,
-    data
-  };
-}
-
-export function deleteMockEntity(): ApiResponse<void> {
-  return {
-    success: true,
-    status: 204,
-    data: undefined as any
-  };
-}
 
 // Default export for compatibility
 export default apiClient;

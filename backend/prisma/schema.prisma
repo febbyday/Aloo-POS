@@ -68,13 +68,13 @@ model OrderItem {
 }
 
 model Category {
-  id             String     @id
+  id             String     @id @default(cuid())
   name           String     @unique
   description    String?
   parentId       String?
   isActive       Boolean    @default(true)
   createdAt      DateTime   @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime   @updatedAt
   Category       Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
   other_Category Category[] @relation("CategoryToCategory")
   Product        Product[]
@@ -239,10 +239,7 @@ model Shop {
   code                 String            @unique
   name                 String
   description          String?
-
-  // Address as a JSON object
   address              Json
-
   phone                String
   email                String?
   status               ShopStatus        @default(ACTIVE)
@@ -259,15 +256,11 @@ model Shop {
   timezone             String            @default("UTC")
   website              String?
   settings             Json?
-
-  // Analytics fields
   salesLastMonth       Decimal?          @db.Decimal(10, 2)
   inventoryCount       Int?              @default(0)
   averageOrderValue    Decimal?          @db.Decimal(10, 2)
   topSellingCategories String[]          @default([])
   recentActivity       Json?
-
-  // Staff related
   staffCount           Int?              @default(0)
   orders               Order[]
   productLocations     ProductLocation[]
@@ -452,22 +445,30 @@ model PaymentRecord {
 }
 
 model User {
-  id                   String         @id @default(uuid())
-  username             String         @unique
+  id                   String            @id @default(uuid())
+  username             String            @unique
   password             String
-  email                String         @unique
+  email                String            @unique
   firstName            String
   lastName             String
-  role                 UserRole       @default(CASHIER)
+  role                 UserRole          @default(CASHIER)
   avatar               String?
-  createdAt            DateTime       @default(now())
+  createdAt            DateTime          @default(now())
   lastLogin            DateTime?
   permissions          String[]
+  pinHash              String?
+  isPinEnabled         Boolean           @default(false)
+  lastPinChange        DateTime?
+  failedPinAttempts    Int               @default(0)
+  pinLockedUntil       DateTime?
+  isActive             Boolean           @default(true)
   auditLogs            AuditLog[]
-  createdNotifications Notification[] @relation("NotificationCreator")
-  notifications        Notification[] @relation("UserNotifications")
+  createdNotifications Notification[]    @relation("NotificationCreator")
+  notifications        Notification[]    @relation("UserNotifications")
   refreshTokens        RefreshToken[]
   sessions             Session[]
+  trustedDevices       TrustedDevice[]
+  settingsChanges      SettingsHistory[] @relation("SettingsChangedBy")
 }
 
 model LoyaltyTransaction {
@@ -610,6 +611,24 @@ model SessionActivity {
   @@index([timestamp])
 }
 
+model TrustedDevice {
+  id         String   @id @default(uuid())
+  userId     String
+  deviceId   String
+  deviceName String?
+  browser    String?
+  os         String?
+  lastUsed   DateTime @default(now())
+  isTrusted  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@index([deviceId])
+}
+
 model Notification {
   id          String               @id @default(uuid())
   title       String
@@ -633,6 +652,40 @@ model Notification {
   @@index([type])
   @@index([isRead])
   @@index([createdAt])
+}
+
+model Settings {
+  id        Int              @id @default(autoincrement())
+  module    String
+  key       String
+  value     Json
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  version   Int              @default(1)
+  history   SettingsHistory[]
+
+  @@unique([module, key])
+  @@index([module])
+  @@map("settings")
+}
+
+model SettingsHistory {
+  id          Int      @id @default(autoincrement())
+  settingsId  Int      @map("settings_id")
+  module      String
+  key         String
+  value       Json
+  changedAt   DateTime @default(now()) @map("changed_at")
+  changedById String?  @map("changed_by_id")
+  version     Int
+  changeType  String   @map("change_type") // 'UPDATE', 'CREATE', 'DELETE'
+  settings    Settings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+  changedBy   User?    @relation("SettingsChangedBy", fields: [changedById], references: [id])
+
+  @@index([settingsId])
+  @@index([module])
+  @@index([changedAt])
+  @@map("settings_history")
 }
 
 enum UserRole {

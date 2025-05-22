@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 /**
  * Create Admin User Script
  * 
@@ -15,7 +13,8 @@ const ADMIN_USER = {
   email: 'admin@example.com',
   firstName: 'Admin',
   lastName: 'User',
-  role: 'ADMIN'
+  role: 'ADMIN',
+  isActive: true // ensure admin is active
 };
 
 // Function to create admin user
@@ -58,9 +57,11 @@ async function createAdmin() {
       username: ADMIN_USER.username,
       password: ADMIN_USER.password,
       email: ADMIN_USER.email,
+      name: `${ADMIN_USER.firstName} ${ADMIN_USER.lastName}`,
       firstName: ADMIN_USER.firstName,
       lastName: ADMIN_USER.lastName,
-      role: ADMIN_USER.role
+      role: ADMIN_USER.role,
+      isActive: ADMIN_USER.isActive,
     });
     
     console.log('✅ Admin user created successfully!');
@@ -70,7 +71,7 @@ async function createAdmin() {
     console.log('----------------------------------');
     console.log('You can now log in with these credentials.');
   } catch (error) {
-    console.error('❌ Error creating admin user:', error instanceof Error ? error.message : error);
+    console.error('❌ Failed to create admin user:', error instanceof Error ? error.message : error);
     throw error;
   }
 }

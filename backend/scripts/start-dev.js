@@ -1,34 +1,60 @@
 #!/usr/bin/env node
 
-/**
- * Development server startup script for POS System backend
- */
+// This script ensures the backend server starts from the correct directory
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import fs from 'fs';
 
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+// Get the directory where this script is located
+const __filename = fileURLToPath(import.meta.url);
+const scriptsDir = dirname(__filename);
+const backendDir = resolve(scriptsDir, '..');
 
-// Ensure dist directory exists
-const distDir = path.join(__dirname, '../dist');
-if (!fs.existsSync(distDir)) {
-  fs.mkdirSync(distDir, { recursive: true });
+// Check if server.ts exists in the expected location
+const serverPath = resolve(backendDir, 'src', 'server.ts');
+if (!fs.existsSync(serverPath)) {
+  console.error(`Error: server.ts file not found at expected path: ${serverPath}`);
+  process.exit(1);
 }
 
-// Run the server with ts-node-dev
-const tscChild = spawn('npx', ['ts-node-dev', '--respawn', '--transpile-only', 'src/server.ts'], {
-  cwd: path.join(__dirname, '..'),
-  stdio: 'inherit',
-  shell: true
+console.log(`Starting backend server from directory: ${backendDir}`);
+console.log(`Using server file: ${serverPath}`);
+
+// Use process.env to pass the script path to ts-node-dev
+console.log('Command to execute:', 'npx ts-node-dev --respawn --transpile-only --esm src/server.ts');
+
+// Run ts-node-dev with explicit parameters
+const child = spawn(
+  'npx',
+  ['ts-node-dev', '--respawn', '--transpile-only', '--esm', 'src/server.ts'],
+  {
+    cwd: backendDir,
+    stdio: 'inherit',
+    env: process.env,
+    shell: true
+  }
+);
+
+child.on('error', (error) => {
+  console.error(`Error starting dev server: ${error.message}`);
+  process.exit(1);
 });
 
-// Handle process exit
+child.on('close', (code) => {
+  if (code !== 0) {
+    console.error(`Dev server exited with code ${code}`);
+    process.exit(code);
+  }
+});
+
+// Handle termination signals
 process.on('SIGINT', () => {
-  tscChild.kill('SIGINT');
-  process.exit(0);
+  console.log('Received SIGINT. Shutting down backend server...');
+  child.kill('SIGINT');
 });
 
-tscChild.on('close', (code) => {
-  console.log(`Server process exited with code ${code}`);
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM. Shutting down backend server...');
+  child.kill('SIGTERM');
 });
-
-console.log('Starting development server...'); 

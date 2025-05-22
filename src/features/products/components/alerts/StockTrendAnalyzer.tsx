@@ -4,29 +4,29 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { 
-  LineChart, 
-  Line, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
-import { 
-  TrendingDown, 
-  TrendingUp, 
-  AlertTriangle, 
-  Calendar, 
+import {
+  TrendingDown,
+  TrendingUp,
+  AlertTriangle,
+  Calendar,
   Download,
   ArrowRight,
   Clock
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 
 interface StockHistoryPoint {
   date: string;
@@ -103,28 +103,28 @@ export const StockTrendAnalyzer: React.FC<StockTrendAnalyzerProps> = ({
 
   const getTrendIndicator = () => {
     if (product.stockHistory.length < 2) return null;
-    
+
     const firstStock = product.stockHistory[0].stock;
     const lastStock = product.stockHistory[product.stockHistory.length - 1].stock;
     const stockChange = lastStock - firstStock;
-    
+
     if (stockChange < 0) {
-      return { 
-        icon: <TrendingDown className="h-5 w-5 text-red-500" />, 
-        text: "Decreasing", 
-        color: "text-red-500" 
+      return {
+        icon: <TrendingDown className="h-5 w-5 text-red-500" />,
+        text: "Decreasing",
+        color: "text-red-500"
       };
     } else if (stockChange > 0) {
-      return { 
-        icon: <TrendingUp className="h-5 w-5 text-green-500" />, 
-        text: "Increasing", 
-        color: "text-green-500" 
+      return {
+        icon: <TrendingUp className="h-5 w-5 text-green-500" />,
+        text: "Increasing",
+        color: "text-green-500"
       };
     } else {
-      return { 
-        icon: <ArrowRight className="h-5 w-5 text-yellow-500" />, 
-        text: "Stable", 
-        color: "text-yellow-500" 
+      return {
+        icon: <ArrowRight className="h-5 w-5 text-yellow-500" />,
+        text: "Stable",
+        color: "text-yellow-500"
       };
     }
   };
@@ -180,7 +180,7 @@ export const StockTrendAnalyzer: React.FC<StockTrendAnalyzerProps> = ({
               {product.currentStock <= product.criticalThreshold && (
                 <Badge variant="destructive">Critical</Badge>
               )}
-              {product.currentStock > product.criticalThreshold && 
+              {product.currentStock > product.criticalThreshold &&
                 product.currentStock <= product.warningThreshold && (
                 <Badge variant="warning">Warning</Badge>
               )}
@@ -197,8 +197,8 @@ export const StockTrendAnalyzer: React.FC<StockTrendAnalyzerProps> = ({
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Days Until Stockout</p>
                 <p className="text-2xl font-bold">
-                  {product.projectedDaysUntilStockout < 0 
-                    ? 'Stocked Out' 
+                  {product.projectedDaysUntilStockout < 0
+                    ? 'Stocked Out'
                     : `${Math.round(product.projectedDaysUntilStockout)} days`}
                 </p>
               </div>
@@ -214,7 +214,7 @@ export const StockTrendAnalyzer: React.FC<StockTrendAnalyzerProps> = ({
             <TabsTrigger value="stock">Stock History</TabsTrigger>
             <TabsTrigger value="movement">Stock Movement</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="stock" className="pt-4">
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -223,41 +223,41 @@ export const StockTrendAnalyzer: React.FC<StockTrendAnalyzerProps> = ({
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date" 
+                  <XAxis
+                    dataKey="date"
                     tickFormatter={formatDate}
                     minTickGap={30}
                   />
                   <YAxis />
-                  <Tooltip 
+                  <Tooltip
                     labelFormatter={(value) => `Date: ${new Date(value).toLocaleDateString()}`}
                     formatter={(value) => [`${value} units`, 'Stock']}
                   />
                   <Legend />
-                  <ReferenceLine 
-                    y={product.warningThreshold} 
-                    stroke="#ff9800" 
-                    strokeDasharray="3 3" 
-                    label={{ value: 'Warning', position: 'insideTopRight' }} 
+                  <ReferenceLine
+                    y={product.warningThreshold}
+                    stroke="#ff9800"
+                    strokeDasharray="3 3"
+                    label={{ value: 'Warning', position: 'insideTopRight' }}
                   />
-                  <ReferenceLine 
-                    y={product.criticalThreshold} 
-                    stroke="#f44336" 
-                    strokeDasharray="3 3" 
-                    label={{ value: 'Critical', position: 'insideBottomRight' }} 
+                  <ReferenceLine
+                    y={product.criticalThreshold}
+                    stroke="#f44336"
+                    strokeDasharray="3 3"
+                    label={{ value: 'Critical', position: 'insideBottomRight' }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="stock" 
-                    stroke="#8884d8" 
-                    activeDot={{ r: 8 }} 
+                  <Line
+                    type="monotone"
+                    dataKey="stock"
+                    stroke="#8884d8"
+                    activeDot={{ r: 8 }}
                     name="Stock Level"
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="movement" className="pt-4">
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -266,13 +266,13 @@ export const StockTrendAnalyzer: React.FC<StockTrendAnalyzerProps> = ({
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date" 
+                  <XAxis
+                    dataKey="date"
                     tickFormatter={formatDate}
                     minTickGap={30}
                   />
                   <YAxis />
-                  <Tooltip 
+                  <Tooltip
                     labelFormatter={(value) => `Date: ${new Date(value).toLocaleDateString()}`}
                   />
                   <Legend />
@@ -295,7 +295,7 @@ export const StockTrendAnalyzer: React.FC<StockTrendAnalyzerProps> = ({
             <li className="flex items-start">
               <Clock className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground" />
               <span>
-                At the current usage rate of <strong>{product.averageDailyUsage.toFixed(1)} units/day</strong>, 
+                At the current usage rate of <strong>{product.averageDailyUsage.toFixed(1)} units/day</strong>,
                 stock will be depleted in approximately <strong>{Math.round(product.projectedDaysUntilStockout)} days</strong>.
               </span>
             </li>
@@ -315,14 +315,14 @@ export const StockTrendAnalyzer: React.FC<StockTrendAnalyzerProps> = ({
         </div>
       </CardContent>
       <CardFooter className="flex justify-between border-t pt-4">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => onViewStockHistory(product.productId)}
         >
           View Full History
         </Button>
-        <Button 
-          onClick={handleCreatePurchaseOrder} 
+        <Button
+          onClick={handleCreatePurchaseOrder}
           disabled={isProcessing}
         >
           {isProcessing ? 'Processing...' : `Reorder ${product.restockRecommendation} Units`}

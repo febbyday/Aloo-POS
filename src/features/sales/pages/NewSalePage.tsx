@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { 
-  Plus, 
-  Search, 
-  ShoppingCart, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  ShoppingCart,
+  Trash2,
   User,
   CreditCard,
   Wallet,
@@ -13,23 +13,23 @@ import {
   X
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
-  Card, 
-  CardContent, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
 import {
   Select,
@@ -82,8 +82,8 @@ export function NewSalePage() {
   const handleAddToCart = (product: typeof mockProducts[0]) => {
     const existingItem = cart.find(item => item.productId === product.id)
     if (existingItem) {
-      setCart(cart.map(item => 
-        item.productId === product.id 
+      setCart(cart.map(item =>
+        item.productId === product.id
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ))
@@ -105,8 +105,8 @@ export function NewSalePage() {
     if (quantity === 0) {
       setCart(cart.filter(item => item.productId !== productId))
     } else {
-      setCart(cart.map(item => 
-        item.productId === productId 
+      setCart(cart.map(item =>
+        item.productId === productId
           ? { ...item, quantity }
           : item
       ))
@@ -146,7 +146,7 @@ export function NewSalePage() {
     })
   }
 
-  const filteredProducts = mockProducts.filter(product => 
+  const filteredProducts = mockProducts.filter(product =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.barcode.includes(searchQuery)
   )

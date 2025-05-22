@@ -1,18 +1,126 @@
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NotificationSettings } from '../types/settings.types';
+import { useToast } from "@/components/ui/use-toast";
+import { Save, RotateCcw, Loader2 } from 'lucide-react';
+import { SettingsService, notificationService } from '../services/notification.service';
+import { NotificationSettings } from '../schemas/notification-settings.schema';
 
-interface NotificationSettingsProps {
-    settings: NotificationSettings;
-    onUpdate: (settings: NotificationSettings) => void;
-}
+export function NotificationSettingsPanel() {
+    const { toast } = useToast();
+    const [settings, setSettings] = useState<NotificationSettings | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
-export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSettingsProps) {
+    // Load settings on component mount
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const data = await SettingsService.getSettings();
+                setSettings(data);
+            } catch (error) {
+                console.error("Error loading notification settings:", error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load notification settings",
+                    variant: "destructive",
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadSettings();
+    }, [toast]);
+
+    const saveSettings = async (updatedSettings: NotificationSettings) => {
+        setSaving(true);
+        try {
+            await SettingsService.saveSettings(updatedSettings);
+            setSettings(updatedSettings);
+            toast({
+                title: "Settings saved",
+                description: "Notification settings have been updated successfully",
+            });
+        } catch (error) {
+            console.error("Error saving notification settings:", error);
+            toast({
+                title: "Error",
+                description: "Failed to save notification settings",
+                variant: "destructive",
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUpdateSetting = <K extends keyof NotificationSettings>(
+        section: K,
+        value: NotificationSettings[K]
+    ) => {
+        if (!settings) return;
+
+        const updatedSettings = {
+            ...settings,
+            [section]: value
+        };
+
+        setSettings(updatedSettings);
+    };
+
+    const handleResetSettings = async () => {
+        try {
+            const defaultSettings = await SettingsService.resetSettings();
+            setSettings(defaultSettings);
+            toast({
+                title: "Settings reset",
+                description: "Notification settings have been reset to defaults",
+            });
+        } catch (error) {
+            console.error("Error resetting notification settings:", error);
+            toast({
+                title: "Error",
+                description: "Failed to reset notification settings",
+                variant: "destructive",
+            });
+        }
+    };
+
+    if (loading) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Notification Preferences</CardTitle>
+                    <CardDescription>Configure how and when you receive notifications</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (!settings) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Notification Preferences</CardTitle>
+                    <CardDescription>Configure how and when you receive notifications</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-center text-muted-foreground">Failed to load settings. Please try again.</p>
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                    <Button onClick={() => window.location.reload()}>Reload</Button>
+                </CardFooter>
+            </Card>
+        );
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -29,9 +137,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.email.enabled}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            email: { ...settings.email, enabled: checked },
+                                        handleUpdateSetting('email', {
+                                            ...settings.email,
+                                            enabled: checked
                                         })
                                     }
                                 />
@@ -41,9 +149,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.email.salesReports}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            email: { ...settings.email, salesReports: checked },
+                                        handleUpdateSetting('email', {
+                                            ...settings.email,
+                                            salesReports: checked
                                         })
                                     }
                                     disabled={!settings.email.enabled}
@@ -54,9 +162,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.email.inventoryAlerts}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            email: { ...settings.email, inventoryAlerts: checked },
+                                        handleUpdateSetting('email', {
+                                            ...settings.email,
+                                            inventoryAlerts: checked
                                         })
                                     }
                                     disabled={!settings.email.enabled}
@@ -67,9 +175,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.email.systemAlerts}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            email: { ...settings.email, systemAlerts: checked },
+                                        handleUpdateSetting('email', {
+                                            ...settings.email,
+                                            systemAlerts: checked
                                         })
                                     }
                                     disabled={!settings.email.enabled}
@@ -88,9 +196,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.internal.enabled}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            internal: { ...settings.internal, enabled: checked },
+                                        handleUpdateSetting('internal', {
+                                            ...settings.internal,
+                                            enabled: checked
                                         })
                                     }
                                 />
@@ -100,9 +208,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.internal.showBadge}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            internal: { ...settings.internal, showBadge: checked },
+                                        handleUpdateSetting('internal', {
+                                            ...settings.internal,
+                                            showBadge: checked
                                         })
                                     }
                                     disabled={!settings.internal.enabled}
@@ -113,9 +221,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.internal.sound}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            internal: { ...settings.internal, sound: checked },
+                                        handleUpdateSetting('internal', {
+                                            ...settings.internal,
+                                            sound: checked
                                         })
                                     }
                                     disabled={!settings.internal.enabled}
@@ -126,9 +234,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.internal.desktop}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            internal: { ...settings.internal, desktop: checked },
+                                        handleUpdateSetting('internal', {
+                                            ...settings.internal,
+                                            desktop: checked
                                         })
                                     }
                                     disabled={!settings.internal.enabled}
@@ -139,9 +247,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.internal.autoRead}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            internal: { ...settings.internal, autoRead: checked },
+                                        handleUpdateSetting('internal', {
+                                            ...settings.internal,
+                                            autoRead: checked
                                         })
                                     }
                                     disabled={!settings.internal.enabled}
@@ -153,12 +261,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                     type="number"
                                     value={settings.internal.keepDays}
                                     onChange={(e) =>
-                                        onUpdate({
-                                            ...settings,
-                                            internal: {
-                                                ...settings.internal,
-                                                keepDays: parseInt(e.target.value),
-                                            },
+                                        handleUpdateSetting('internal', {
+                                            ...settings.internal,
+                                            keepDays: parseInt(e.target.value),
                                         })
                                     }
                                     disabled={!settings.internal.enabled}
@@ -177,9 +282,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.inventoryAlerts.enabled}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            inventoryAlerts: { ...settings.inventoryAlerts, enabled: checked },
+                                        handleUpdateSetting('inventoryAlerts', {
+                                            ...settings.inventoryAlerts,
+                                            enabled: checked
                                         })
                                     }
                                 />
@@ -190,12 +295,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                     type="number"
                                     value={settings.inventoryAlerts.threshold}
                                     onChange={(e) =>
-                                        onUpdate({
-                                            ...settings,
-                                            inventoryAlerts: {
-                                                ...settings.inventoryAlerts,
-                                                threshold: parseInt(e.target.value),
-                                            },
+                                        handleUpdateSetting('inventoryAlerts', {
+                                            ...settings.inventoryAlerts,
+                                            threshold: parseInt(e.target.value),
                                         })
                                     }
                                     disabled={!settings.inventoryAlerts.enabled}
@@ -214,9 +316,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                 <Switch
                                     checked={settings.salesMilestones.enabled}
                                     onCheckedChange={(checked) =>
-                                        onUpdate({
-                                            ...settings,
-                                            salesMilestones: { ...settings.salesMilestones, enabled: checked },
+                                        handleUpdateSetting('salesMilestones', {
+                                            ...settings.salesMilestones,
+                                            enabled: checked
                                         })
                                     }
                                 />
@@ -228,12 +330,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                         type="number"
                                         value={settings.salesMilestones.dailyGoal}
                                         onChange={(e) =>
-                                            onUpdate({
-                                                ...settings,
-                                                salesMilestones: {
-                                                    ...settings.salesMilestones,
-                                                    dailyGoal: parseInt(e.target.value),
-                                                },
+                                            handleUpdateSetting('salesMilestones', {
+                                                ...settings.salesMilestones,
+                                                dailyGoal: parseInt(e.target.value),
                                             })
                                         }
                                         disabled={!settings.salesMilestones.enabled}
@@ -245,12 +344,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                         type="number"
                                         value={settings.salesMilestones.weeklyGoal}
                                         onChange={(e) =>
-                                            onUpdate({
-                                                ...settings,
-                                                salesMilestones: {
-                                                    ...settings.salesMilestones,
-                                                    weeklyGoal: parseInt(e.target.value),
-                                                },
+                                            handleUpdateSetting('salesMilestones', {
+                                                ...settings.salesMilestones,
+                                                weeklyGoal: parseInt(e.target.value),
                                             })
                                         }
                                         disabled={!settings.salesMilestones.enabled}
@@ -262,12 +358,9 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                                         type="number"
                                         value={settings.salesMilestones.monthlyGoal}
                                         onChange={(e) =>
-                                            onUpdate({
-                                                ...settings,
-                                                salesMilestones: {
-                                                    ...settings.salesMilestones,
-                                                    monthlyGoal: parseInt(e.target.value),
-                                                },
+                                            handleUpdateSetting('salesMilestones', {
+                                                ...settings.salesMilestones,
+                                                monthlyGoal: parseInt(e.target.value),
                                             })
                                         }
                                         disabled={!settings.salesMilestones.enabled}
@@ -277,8 +370,33 @@ export function NotificationSettingsPanel({ settings, onUpdate }: NotificationSe
                         </div>
                     </div>
                 </div>
-                <Button>Save Changes</Button>
             </CardContent>
+            <CardFooter className="flex justify-between">
+                <Button
+                    variant="outline"
+                    onClick={handleResetSettings}
+                    disabled={loading || saving}
+                >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reset to Defaults
+                </Button>
+                <Button
+                    onClick={() => saveSettings(settings)}
+                    disabled={loading || saving}
+                >
+                    {saving ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Changes
+                        </>
+                    )}
+                </Button>
+            </CardFooter>
         </Card>
     );
 }

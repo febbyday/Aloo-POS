@@ -62,7 +62,7 @@ import CustomerActivityLog from '../components/CustomerActivityLog';
 import { useConfirm, useToast } from '@/hooks';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { useCustomerRealTime } from '../hooks/useCustomerRealTime';
-import { deleteCustomer } from '../services/customerService';
+import { customerService } from '../services';
 import { Toolbar } from "@/components/ui/toolbar/toolbar";
 
 const CustomerDetailPage = () => {
@@ -106,7 +106,7 @@ const CustomerDetailPage = () => {
 
     if (confirmed) {
       try {
-        await deleteCustomer(customer.id);
+        await customerService.deleteCustomer(customer.id);
         toast({
           title: "Customer deleted",
           description: "The customer has been successfully deleted."

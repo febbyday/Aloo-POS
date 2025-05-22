@@ -33,7 +33,7 @@ import { ConnectionStatus } from '../components/ConnectionStatus';
 import { SyncSettings } from '../components/SyncSettings';
 import { ConnectionHistory } from '../components/ConnectionHistory';
 import { FieldMapping } from '../components/FieldMapping';
-import { suppliersService } from '../services/suppliersService';
+import suppliersService from '../services/factory-suppliers-service';
 import { 
   ConnectionConfig, 
   ConnectionStatus as ConnStatus,

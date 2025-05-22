@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils/cn';
 import { tableStyles, SharedTablePagination } from '../shared-table-styles'
 
 interface SupplierTableProps {

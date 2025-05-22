@@ -1,14 +1,14 @@
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils/cn';
 
-// Shared table styling constants
+// Shared table styling constants with improved responsiveness
 export const tableStyles = {
   container: "space-y-4",
-  tableWrapper: "", 
-  table: "w-full caption-bottom text-sm",
+  tableWrapper: "overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0",
+  table: "w-full caption-bottom text-sm min-w-[640px]",
   header: "bg-muted/50",
   headerRow: "hover:bg-transparent",
-  headerCell: "h-12 px-4 align-middle cursor-pointer hover:bg-muted/50 [&:has([role=checkbox])]:pr-0 w-[40px]",
-  headerCellContent: "flex items-center gap-2",
+  headerCell: "h-12 px-2 sm:px-4 align-middle cursor-pointer hover:bg-muted/50 [&:has([role=checkbox])]:pr-0 w-[40px]",
+  headerCellContent: "flex items-center gap-1 sm:gap-2",
   headerIcon: "h-4 w-4",
   sortIcon: "h-4 w-4",
   sortIconContainer: "w-4",
@@ -16,14 +16,14 @@ export const tableStyles = {
   body: "",
   row: "border-b border-border transition-colors hover:bg-muted/50 cursor-pointer",
   selectedRow: "bg-muted",
-  cell: "h-12 px-4 align-middle [&:has([role=checkbox])]:pr-0 w-[40px]",
-  cellWithIcon: "flex items-center gap-2",
+  cell: "h-12 px-2 sm:px-4 align-middle [&:has([role=checkbox])]:pr-0 w-[40px] whitespace-nowrap sm:whitespace-normal",
+  cellWithIcon: "flex items-center gap-1 sm:gap-2",
   icon: "h-4 w-4",
-  footer: "flex items-center justify-between py-4",
-  pagination: "flex items-center justify-between",
+  footer: "flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 gap-4",
+  pagination: "flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-2",
   paginationText: "text-sm text-muted-foreground",
-  paginationControls: "flex gap-2",
-  paginationButton: "h-8 px-3 py-1.5",
+  paginationControls: "flex gap-1 sm:gap-2 w-full sm:w-auto justify-center",
+  paginationButton: "h-8 px-2 sm:px-3 py-1.5",
   paginationButtonActive: "bg-primary text-primary-foreground",
   paginationButtonHover: "hover:bg-muted/70",
 }
@@ -68,14 +68,23 @@ export function SharedTablePagination({
           )}
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 0}
+          aria-label="Previous page"
         >
           ←
         </button>
+        {/* Show fewer page buttons on small screens */}
         {Array.from(
-          { length: Math.min(5, totalPages) },
+          { length: Math.min(window.innerWidth < 640 ? 3 : 5, totalPages) },
           (_, i) => {
-            const pageNum = i + Math.max(0, currentPage - 2)
-            if (pageNum >= totalPages) return null
+            // On mobile, show current page and one on each side if possible
+            let pageNum;
+            if (window.innerWidth < 640) {
+              pageNum = i + Math.max(0, currentPage - 1);
+            } else {
+              pageNum = i + Math.max(0, currentPage - 2);
+            }
+
+            if (pageNum >= totalPages) return null;
             return (
               <button
                 key={pageNum}
@@ -84,6 +93,8 @@ export function SharedTablePagination({
                   currentPage === pageNum ? "bg-primary text-primary-foreground" : "hover:bg-muted/70"
                 )}
                 onClick={() => onPageChange(pageNum)}
+                aria-label={`Page ${pageNum + 1}`}
+                aria-current={currentPage === pageNum ? "page" : undefined}
               >
                 {pageNum + 1}
               </button>
@@ -97,6 +108,7 @@ export function SharedTablePagination({
           )}
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages - 1}
+          aria-label="Next page"
         >
           →
         </button>

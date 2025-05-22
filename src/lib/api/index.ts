@@ -1,4 +1,6 @@
 /**
+ * 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
+ *
  * API Module Entry Point
  *
  * This file exports the configured API client and all service instances.
@@ -8,19 +10,19 @@
 // Export configured API client and authentication utilities
 export * from './api-config';
 
-// Import service instances
-import { productService } from './services/product-service';
-import { customerService } from './services/customer-service';
-import { supplierService } from './services/supplier-service';
-import { orderService } from './services/order-service';
+// Import factory-based service instances
+import productService from '../../features/products/services/factory-product-service';
+import customersService from '../../features/customers/services/factory-customers-service';
+import suppliersService from '../../features/suppliers/services/factory-suppliers-service';
+import ordersService from '../../features/orders/services/factory-orders-service';
 import { shopService } from './services/shop-service';
 
 // Re-export services for easier access
 export {
   productService,
-  customerService,
-  supplierService,
-  orderService,
+  customersService as customerService,
+  suppliersService as supplierService,
+  ordersService as orderService,
   shopService,
 };
 
@@ -35,9 +37,9 @@ export type {
  */
 export const serviceRegistry = {
   products: productService,
-  customers: customerService,
-  suppliers: supplierService,
-  orders: orderService,
+  customers: customersService,
+  suppliers: suppliersService,
+  orders: ordersService,
   shops: shopService,
 };
 
@@ -71,17 +73,28 @@ export function initializeApiModule(options: {
   }
 }
 
+// Import debug utilities
+import { initApiDebugging } from './api-debug';
+import { applyApiPerformanceOptimizations } from './performance-optimizations';
+
 // Auto-initialize the module unless disabled
-if (process.env.REACT_APP_DISABLE_AUTO_API_INIT !== 'true') {
+if (import.meta.env.VITE_DISABLE_AUTO_API_INIT !== 'true') {
   initializeApiModule();
+
+  // Initialize API debugging in development mode
+  if (import.meta.env.MODE === 'development') {
+    initApiDebugging();
+  }
 }
 
 // Export additional API utilities
 export * from './utils/api-helpers';
 
 import axios from 'axios';
+import { API_CONSTANTS } from './config';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+// Use the centralized API configuration
+const BASE_URL = API_CONSTANTS.FULL_URL;
 
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -89,8 +102,13 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
   // Enable sending cookies with cross-origin requests
-  withCredentials: true
+  withCredentials: true,
+  // Use the centralized timeout value
+  timeout: API_CONSTANTS.TIMEOUT
 });
+
+// Apply performance optimizations to the API client
+applyApiPerformanceOptimizations(api);
 
 // Request interceptor for API requests
 // We no longer need to manually add auth tokens as they're in HttpOnly cookies

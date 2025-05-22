@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -21,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useTax } from "../context/TaxContext";
 import { useFinance } from "../context/FinanceContext";
 import { Loader2, Calculator } from "lucide-react";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface TaxCalculatorProps {
   title?: string;
@@ -35,12 +34,12 @@ export const TaxCalculator: React.FC<TaxCalculatorProps> = ({
 }) => {
   const { taxRates, getDefaultTaxRate, loading } = useTax();
   const { settings } = useFinance();
-  
+
   const [amount, setAmount] = useState<string>("0");
   const [selectedTaxRateId, setSelectedTaxRateId] = useState<string>("");
   const [taxAmount, setTaxAmount] = useState<number>(0);
   const [totalAmount, setTotalAmount] = useState<number>(0);
-  
+
   // Set default tax rate on load
   useEffect(() => {
     if (!loading && taxRates.length > 0) {
@@ -52,22 +51,15 @@ export const TaxCalculator: React.FC<TaxCalculatorProps> = ({
       }
     }
   }, [loading, taxRates, getDefaultTaxRate]);
-  
-  // Format currency based on settings
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: settings.currency,
-      minimumFractionDigits: 2,
-    }).format(value);
-  };
-  
+
+  // Using the imported formatCurrency utility
+
   // Calculate tax when inputs change
   useEffect(() => {
     if (selectedTaxRateId && amount) {
       const amountValue = parseFloat(amount) || 0;
       const taxRate = taxRates.find(rate => rate.id === selectedTaxRateId);
-      
+
       if (taxRate) {
         const calculatedTax = (amountValue * taxRate.rate) / 100;
         setTaxAmount(calculatedTax);
@@ -75,7 +67,7 @@ export const TaxCalculator: React.FC<TaxCalculatorProps> = ({
       }
     }
   }, [amount, selectedTaxRateId, taxRates]);
-  
+
   // Handle amount change
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -84,12 +76,12 @@ export const TaxCalculator: React.FC<TaxCalculatorProps> = ({
       setAmount(value);
     }
   };
-  
+
   // Handle tax rate change
   const handleTaxRateChange = (value: string) => {
     setSelectedTaxRateId(value);
   };
-  
+
   // Handle reset
   const handleReset = () => {
     setAmount("0");
@@ -98,7 +90,7 @@ export const TaxCalculator: React.FC<TaxCalculatorProps> = ({
       setSelectedTaxRateId(defaultTaxRate.id);
     }
   };
-  
+
   if (loading) {
     return (
       <Card>
@@ -112,7 +104,7 @@ export const TaxCalculator: React.FC<TaxCalculatorProps> = ({
       </Card>
     );
   }
-  
+
   return (
     <Card>
       <CardHeader>
@@ -135,7 +127,7 @@ export const TaxCalculator: React.FC<TaxCalculatorProps> = ({
             placeholder="Enter amount"
           />
         </div>
-        
+
         <div className="space-y-2">
           <label htmlFor="taxRate" className="text-sm font-medium">
             Tax Rate
@@ -153,27 +145,27 @@ export const TaxCalculator: React.FC<TaxCalculatorProps> = ({
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="rounded-lg bg-muted p-4 mt-4">
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm">Subtotal:</span>
-              <span className="font-medium">{formatCurrency(parseFloat(amount) || 0)}</span>
+              <span className="font-medium">{formatCurrency(parseFloat(amount) || 0, { currency: settings.currency })}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">
                 Tax ({taxRates.find(rate => rate.id === selectedTaxRateId)?.rate || 0}%):
               </span>
-              <span className="font-medium">{formatCurrency(taxAmount)}</span>
+              <span className="font-medium">{formatCurrency(taxAmount, { currency: settings.currency })}</span>
             </div>
             <div className="border-t pt-2 mt-2 flex justify-between">
               <span className="font-medium">Total:</span>
-              <span className="font-bold">{formatCurrency(totalAmount)}</span>
+              <span className="font-bold">{formatCurrency(totalAmount, { currency: settings.currency })}</span>
             </div>
           </div>
         </div>
       </CardContent>
-      
+
       {showReset && (
         <CardFooter>
           <Button variant="outline" onClick={handleReset} className="w-full">

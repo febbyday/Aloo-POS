@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToastManager } from "@/components/ui/toast-manager"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils/cn';
 import {
   Building2,
   Mail,

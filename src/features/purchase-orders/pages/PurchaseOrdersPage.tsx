@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Input } from "@/components/ui/input"
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -13,9 +13,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { 
-  Plus, 
-  Search, 
+import {
+  Plus,
+  Search,
   Filter,
   FileDown,
   Upload,
@@ -32,7 +32,7 @@ import {
 import { PurchaseOrderModal } from '../components/PurchaseOrderModal'
 import { PurchaseOrdersToolbar } from '../components/PurchaseOrdersToolbar'
 import { PurchaseOrdersTable } from '../components/PurchaseOrdersTable'
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/lib/toast"
 
 // Types
 interface PurchaseOrder {
@@ -93,7 +93,7 @@ const purchaseOrders: PurchaseOrder[] = [
 ]
 
 export function PurchaseOrdersPage() {
-  const { toast } = useToast()
+  const toast = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [selectedItems, setSelectedItems] = useState<string[]>([])
@@ -115,18 +115,18 @@ export function PurchaseOrdersPage() {
   }
 
   const handleDelete = () => {
-    toast({
-      title: "Purchase Orders Deleted",
-      description: `${selectedItems.length} purchase orders have been deleted.`
-    })
+    toast.success(
+      "Purchase Orders Deleted",
+      `${selectedItems.length} purchase orders have been deleted.`
+    )
     setSelectedItems([])
   }
 
   const handleRefresh = () => {
-    toast({
-      title: "Refreshed",
-      description: "Purchase orders list has been refreshed."
-    })
+    toast.info(
+      "Refreshed",
+      "Purchase orders list has been refreshed."
+    )
   }
 
   const toolbarGroups = [
@@ -179,10 +179,10 @@ export function PurchaseOrdersPage() {
   ]
 
   const filteredOrders = purchaseOrders.filter(order => {
-    const matchesSearch = 
+    const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     const matchesStatus = filterStatus === "all" || order.status === filterStatus
 
     return matchesSearch && matchesStatus
@@ -215,7 +215,7 @@ export function PurchaseOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <PurchaseOrdersToolbar 
+      <PurchaseOrdersToolbar
         groups={toolbarGroups}
         rightContent={
           <div className="flex items-center gap-2">
@@ -307,7 +307,7 @@ export function PurchaseOrdersPage() {
         </div>
 
         <div className="border-0">
-          <PurchaseOrdersTable 
+          <PurchaseOrdersTable
             data={filteredOrders}
             selectedItems={selectedItems}
             onSelectionChange={setSelectedItems}
@@ -326,7 +326,7 @@ export function PurchaseOrdersPage() {
         </div>
       </div>
 
-      <PurchaseOrderModal 
+      <PurchaseOrderModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         initialData={editingOrder}

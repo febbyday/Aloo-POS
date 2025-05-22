@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Printer, RefreshCw, Receipt } from 'lucide-react';
@@ -118,7 +116,7 @@ const getMockSaleDetails = (id: string): SaleData => ({
 
 /**
  * SaleDetailsPage Component
- * 
+ *
  * Displays comprehensive details for a specific sale, including
  * line items, payment information, customer details, and actions
  * like printing receipts or processing returns.
@@ -137,7 +135,7 @@ export function SaleDetailsPage() {
         setLoading(true);
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         if (saleId) {
           // Get mock data for demo
           const data = getMockSaleDetails(saleId);
@@ -192,7 +190,7 @@ export function SaleDetailsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6 w-full">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={handleGoBack}>
@@ -204,7 +202,7 @@ export function SaleDetailsPage() {
             {sale.status.charAt(0).toUpperCase() + sale.status.slice(1).replace('_', ' ')}
           </Badge>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
             <Printer className="mr-2 h-4 w-4" />
@@ -234,7 +232,7 @@ export function SaleDetailsPage() {
                 <TabsTrigger value="payments">Payments</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="details">
                 <ScrollArea className="h-[400px]">
                   <Table>
@@ -283,7 +281,7 @@ export function SaleDetailsPage() {
                   </Table>
                 </ScrollArea>
               </TabsContent>
-              
+
               <TabsContent value="payments">
                 <Table>
                   <TableHeader>
@@ -314,7 +312,7 @@ export function SaleDetailsPage() {
                   </TableFooter>
                 </Table>
               </TabsContent>
-              
+
               <TabsContent value="history">
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
@@ -344,7 +342,7 @@ export function SaleDetailsPage() {
             )}
           </CardFooter>
         </Card>
-        
+
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -365,7 +363,7 @@ export function SaleDetailsPage() {
               )}
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Sale Information</CardTitle>
@@ -389,7 +387,7 @@ export function SaleDetailsPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Actions</CardTitle>

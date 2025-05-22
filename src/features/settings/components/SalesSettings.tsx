@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/components/ui/use-toast"
 import { Label } from "@/components/ui/label"
 import { useLocation } from "react-router-dom"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Link } from "react-router-dom"
 import { 

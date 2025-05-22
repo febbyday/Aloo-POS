@@ -4,8 +4,18 @@ import DashboardPage from "@/features/dashboard/pages/DashboardPage"
 import { ProductsPage } from "@/features/products/pages/ProductsPage"
 import { SalesPage } from "@/features/sales/pages/SalesPage"
 import { InventoryPage } from "@/features/inventory/pages/InventoryPage"
+import { InventoryManagementPage } from "@/features/inventory/pages/InventoryManagementPage"
+import { StockLevelsPage } from "@/features/inventory/pages/StockLevelsPage"
+import { ReceiveStockPage } from "@/features/inventory/pages/ReceiveStockPage"
+import { TransferStockPage } from "@/features/inventory/pages/TransferStockPage"
+import { AdjustmentsPage } from "@/features/inventory/pages/AdjustmentsPage"
+import { HistoryPage } from "@/features/inventory/pages/HistoryPage"
+import { AlertsPage } from "@/features/inventory/pages/AlertsPage"
 import { StaffPage } from "@/features/staff/pages/StaffPage"
-import { RolesPage } from "@/features/staff/pages/RolesPage"
+import { RolesPage } from "@/features/users/pages/RolesPage"
+import { RoleAddPage } from "@/features/users/pages/RoleAddPage"
+import { RoleEditPage } from "@/features/users/pages/RoleEditPage"
+import { PermissionsPage } from "@/features/users/pages/PermissionsPage"
 import { EmploymentTypePage } from "@/features/staff/pages/EmploymentTypePage"
 import { EmploymentStatusPage } from "@/features/staff/pages/EmploymentStatusPage"
 import { SettingsPage } from "@/features/settings/pages/SettingsPage"
@@ -20,17 +30,22 @@ import { GiftCardDetailsPage } from "@/features/sales/pages/GiftCardDetailsPage"
 import { TransactionBrowserPage } from "@/features/sales/pages/TransactionBrowserPage"
 import { ProcessReturnPage } from "@/features/sales/pages/ProcessReturnPage"
 import { ReturnHistoryPage } from "@/features/sales/pages/ReturnHistoryPage"
+import { ReturnDetailsPage } from "@/features/sales/pages/ReturnDetailsPage"
 import { RefundManagementPage } from "@/features/sales/pages/RefundManagementPage"
 import { CustomersPage } from "@/features/customers/pages/CustomersPage"
-import { CustomerDetailPage } from "@/features/customers/pages/CustomerDetailPage"
+import CustomerDetailPage from "@/features/customers/pages/CustomerDetailPage"
 import { CustomerGroupsPage } from "@/features/customers/pages/CustomerGroupsPage"
 import { LoyaltyProgramPage } from "@/features/customers/pages/LoyaltyProgramPage"
 import { CustomerHistoryPage } from "@/features/customers/pages/CustomerHistoryPage"
 import { CustomerAnalyticsPage } from "@/features/customers/pages/CustomerAnalyticsPage"
 import { CustomerReportsPage } from "@/features/customers/pages/CustomerReportsPage"
 import { StaffDetailsPage } from "@/features/staff/pages/StaffDetailsPage"
+import { RoleDetailsPage } from "@/features/users/pages/RoleDetailsPage"
 import { SupplierConnectionPage } from "@/features/suppliers/pages/SupplierConnectionPage"
-import RepairConnectionPage from "@/features/repairs/pages/RepairConnectionPage"
+// Temporarily commenting out the missing import and using a placeholder
+// import RepairConnectionPage from "@/features/repairs/pages/RepairConnectionPage"
+// Using a placeholder component until the actual module is available
+const RepairConnectionPage = () => <div>Repair Connection Page</div>
 
 export const router = createBrowserRouter([
   {
@@ -121,6 +136,10 @@ export const router = createBrowserRouter([
                 element: <ReturnsPage />,
               },
               {
+                path: ":returnId",
+                element: <ReturnDetailsPage />,
+              },
+              {
                 path: "process",
                 element: <ProcessReturnPage />,
               },
@@ -138,7 +157,36 @@ export const router = createBrowserRouter([
       },
       {
         path: "/inventory",
-        element: <InventoryPage />,
+        children: [
+          {
+            index: true,
+            element: <InventoryManagementPage />,
+          },
+          {
+            path: "stock-levels",
+            element: <StockLevelsPage />,
+          },
+          {
+            path: "receive",
+            element: <ReceiveStockPage />,
+          },
+          {
+            path: "transfer",
+            element: <TransferStockPage />,
+          },
+          {
+            path: "adjustments",
+            element: <AdjustmentsPage />,
+          },
+          {
+            path: "history",
+            element: <HistoryPage />,
+          },
+          {
+            path: "alerts",
+            element: <AlertsPage />,
+          },
+        ],
       },
       {
         path: "/staff",
@@ -151,11 +199,26 @@ export const router = createBrowserRouter([
             path: ":staffId",
             element: <StaffDetailsPage />,
           },
-          // Roles route removed due to backend connectivity issues
-          // {
-          //   path: "roles",
-          //   element: <RolesPage />,
-          // },
+          {
+            path: "roles",
+            element: <RolesPage />,
+          },
+          {
+            path: "roles/new",
+            element: <RoleAddPage />,
+          },
+          {
+            path: "roles/:roleId",
+            element: <RoleDetailsPage />,
+          },
+          {
+            path: "roles/:roleId/edit",
+            element: <RoleEditPage />,
+          },
+          {
+            path: "roles/:roleId/permissions",
+            element: <PermissionsPage />,
+          },
           {
             path: "employment-types",
             element: <EmploymentTypePage />,
@@ -163,6 +226,39 @@ export const router = createBrowserRouter([
           {
             path: "employment-status",
             element: <EmploymentStatusPage />,
+          },
+        ],
+      },
+      {
+        path: "/users",
+        children: [
+          {
+            index: true,
+            element: <StaffPage />,
+          },
+          {
+            path: ":staffId",
+            element: <StaffDetailsPage />,
+          },
+          {
+            path: "roles",
+            element: <RolesPage />,
+          },
+          {
+            path: "roles/new",
+            element: <RoleAddPage />,
+          },
+          {
+            path: "roles/:roleId",
+            element: <RoleDetailsPage />,
+          },
+          {
+            path: "roles/:roleId/edit",
+            element: <RoleEditPage />,
+          },
+          {
+            path: "roles/:roleId/permissions",
+            element: <PermissionsPage />,
           },
         ],
       },

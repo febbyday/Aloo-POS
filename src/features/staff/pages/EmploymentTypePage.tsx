@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react"
 import { useEmploymentTypes } from "../hooks/useEmploymentTypes"
 import { AlertCircle } from "lucide-react"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -16,7 +16,7 @@ import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/lib/toast"
 import { EmploymentType } from "../types/employmentType"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { employmentTypeService } from "../services/employmentTypeService"
@@ -28,7 +28,7 @@ const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   color: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Must be a valid hex color"),
-  benefits: z.string().transform(value => 
+  benefits: z.string().transform(value =>
     value.split(',').map(benefit => benefit.trim()).filter(benefit => benefit.length > 0)
   )
 })
@@ -36,8 +36,8 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 export const EmploymentTypePage = () => {
-  const { 
-    data: employmentTypes, 
+  const {
+    data: employmentTypes,
     isLoading,
     isRefetching,
     error,
@@ -46,7 +46,7 @@ export const EmploymentTypePage = () => {
     updateEmploymentType,
     deleteEmploymentType
   } = useEmploymentTypes()
-  
+
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingType, setEditingType] = useState<EmploymentType | null>(null)
@@ -98,29 +98,19 @@ export const EmploymentTypePage = () => {
       if (editingType) {
         // Update existing type
         await updateEmploymentType(editingType.id!, values)
-        toast({
-          title: "Employment type updated",
-          description: `${values.name} has been updated successfully.`,
-        })
+        toast.success("Employment type updated", `${values.name} has been updated successfully.`)
       } else {
         // Create new type
         await createEmploymentType(values)
-        toast({
-          title: "Employment type created",
-          description: `${values.name} has been added successfully.`,
-        })
+        toast.success("Employment type created", `${values.name} has been added successfully.`)
       }
-      
+
       form.reset()
       setOpen(false)
       setEditingType(null)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-      toast({
-        title: "Error",
-        description: `Failed to ${editingType ? 'update' : 'create'} employment type: ${errorMessage}`,
-        variant: "destructive"
-      })
+      toast.error("Error", `Failed to ${editingType ? 'update' : 'create'} employment type: ${errorMessage}`)
     } finally {
       setIsSubmitting(false)
       setUsingMockData(employmentTypeService.isUsingMockData())
@@ -131,19 +121,12 @@ export const EmploymentTypePage = () => {
   const handleDelete = async (type: EmploymentType) => {
     try {
       await deleteEmploymentType(type.id!)
-      toast({
-        title: "Employment type deleted",
-        description: `${type.name} has been removed successfully.`,
-      })
+      toast.success("Employment type deleted", `${type.name} has been removed successfully.`)
       setDeleteDialogOpen(false)
       setTypeToDelete(null)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-      toast({
-        title: "Error",
-        description: `Failed to delete employment type: ${errorMessage}`,
-        variant: "destructive"
-      })
+      toast.error("Error", `Failed to delete employment type: ${errorMessage}`)
     } finally {
       setUsingMockData(employmentTypeService.isUsingMockData())
     }
@@ -153,18 +136,11 @@ export const EmploymentTypePage = () => {
   const handleBulkDelete = async () => {
     try {
       await Promise.all(selectedTypes.map(id => deleteEmploymentType(id)))
-      toast({
-        title: "Employment types deleted",
-        description: `${selectedTypes.length} employment type(s) have been removed successfully.`,
-      })
+      toast.success("Employment types deleted", `${selectedTypes.length} employment type(s) have been removed successfully.`)
       setSelectedTypes([])
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-      toast({
-        title: "Error",
-        description: `Failed to delete employment types: ${errorMessage}`,
-        variant: "destructive"
-      })
+      toast.error("Error", `Failed to delete employment types: ${errorMessage}`)
     } finally {
       setUsingMockData(employmentTypeService.isUsingMockData())
     }
@@ -182,7 +158,7 @@ export const EmploymentTypePage = () => {
   }
 
   // Filter employment types based on search query
-  const filteredTypes = employmentTypes?.filter(type => 
+  const filteredTypes = employmentTypes?.filter(type =>
     type.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     type.description.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -206,8 +182,8 @@ export const EmploymentTypePage = () => {
           <AlertCircle className="h-4 w-4 text-amber-600" />
           <AlertTitle className="text-amber-800">Using Mock Data</AlertTitle>
           <AlertDescription className="text-amber-700">
-            The backend API for employment types is currently unavailable. 
-            Using mock data instead. Changes will persist in memory during this session but 
+            The backend API for employment types is currently unavailable.
+            Using mock data instead. Changes will persist in memory during this session but
             will not be saved to the database.
           </AlertDescription>
         </Alert>
@@ -263,7 +239,7 @@ export const EmploymentTypePage = () => {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="description"
@@ -271,16 +247,16 @@ export const EmploymentTypePage = () => {
                           <FormItem>
                             <FormLabel>Description</FormLabel>
                             <FormControl>
-                              <Textarea 
-                                placeholder="Standard 40-hour work week with full benefits package" 
-                                {...field} 
+                              <Textarea
+                                placeholder="Standard 40-hour work week with full benefits package"
+                                {...field}
                               />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="color"
@@ -294,7 +270,7 @@ export const EmploymentTypePage = () => {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="benefits"
@@ -302,23 +278,23 @@ export const EmploymentTypePage = () => {
                           <FormItem>
                     <FormLabel>Benefits (comma-separated)</FormLabel>
                             <FormControl>
-                      <Input 
-                                placeholder="Health Insurance, Paid Time Off, 401(k)" 
-                                {...field} 
+                      <Input
+                                placeholder="Health Insurance, Paid Time Off, 401(k)"
+                                {...field}
                               />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      
+
                       <DialogFooter>
-                        <Button 
-                          type="submit" 
+                        <Button
+                          type="submit"
                           disabled={isSubmitting}
                         >
-                          {isSubmitting 
-                            ? (editingType ? "Updating..." : "Creating...") 
+                          {isSubmitting
+                            ? (editingType ? "Updating..." : "Creating...")
                             : (editingType ? "Update" : "Create")}
                         </Button>
                       </DialogFooter>
@@ -343,7 +319,7 @@ export const EmploymentTypePage = () => {
               <AlertDescription>
                 This action cannot be undone. This will delete the{' '}
                 {typeToDelete?.name} employment type
-                {usingMockData ? ' from memory.' : ' from the database.'} 
+                {usingMockData ? ' from memory.' : ' from the database.'}
               </AlertDescription>
             </Alert>
           </div>
@@ -351,8 +327,8 @@ export const EmploymentTypePage = () => {
             <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => typeToDelete && handleDelete(typeToDelete)}
             >
               Delete

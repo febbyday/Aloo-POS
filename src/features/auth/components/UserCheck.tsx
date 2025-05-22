@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +7,8 @@ import { authService } from '../services/authService';
 import { User } from '../types/auth.types';
 import { Loader2, UserPlus, RefreshCw, AlertCircle } from 'lucide-react';
 
-// API endpoints
-const API_VERSION = '/api/v1';
-const USERS_ENDPOINT = `${API_VERSION}/users`;
+// API endpoints - using relative path without /api/v1 prefix (added by API client)
+const USERS_ENDPOINT = '/users';
 
 /**
  * User Check Component
@@ -102,7 +99,7 @@ export function UserCheck() {
   return (
     <Card className="w-full max-w-3xl mx-auto">
       <CardHeader>
-        <CardTitle>User Management</CardTitle>
+        <CardTitle>Users</CardTitle>
         <CardDescription>Check existing users and create an admin user if needed</CardDescription>
       </CardHeader>
       

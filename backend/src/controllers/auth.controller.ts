@@ -1,14 +1,14 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { Request, Response } from 'express';
 import { prisma } from '../prisma';
 import { generateTokens, verifyToken, addToBlacklist, isBlacklisted, setCookies, clearCookies, getTokenFromCookies } from '../utils/tokenUtil';
-import { comparePasswords, hashPassword } from '../utils/password.util';
+import { comparePasswords, hashPassword, comparePins } from '../utils/password.util';
 import { v4 as uuidv4 } from 'uuid';
 import { RefreshTokenService } from '../services/refreshTokenService';
 import { SessionManager } from '../services/sessionManager';
 import { AuditLogger, AuthEvent, EventCategory, Severity } from '../services/auditLogger';
 import { AuthenticationError, AuthErrorCode, ValidationError, ValidationErrorCode, handleError } from '../utils/errorTypes';
+import { validatePinComplexity, isPinLocked, recordFailedPinAttempt, resetPinAttempts } from '../utils/pinSecurityUtils';
+import { logger } from '../utils/logger';
 
 // In-memory rate limiting
 const loginAttempts = new Map<string, { count: number; resetTime: number }>();
@@ -22,7 +22,7 @@ export class AuthController {
   static async register(req: Request, res: Response) {
     try {
       const { username, password, email, name } = req.body;
-      
+
       // Validate input
       if (!username || !password || !email) {
         throw new ValidationError(
@@ -30,12 +30,12 @@ export class AuthController {
           ValidationErrorCode.MISSING_REQUIRED_FIELD
         );
       }
-      
+
       // Check if username already exists
       const existingUser = await prisma.user.findUnique({
         where: { username }
       });
-      
+
       if (existingUser) {
         throw new ValidationError(
           'Username already exists',
@@ -44,10 +44,14 @@ export class AuthController {
           { field: 'username' }
         );
       }
-      
+
       // Hash password
       const hashedPassword = await hashPassword(password);
-      
+
+      // Prepare user data - handle name vs firstName/lastName
+      const [firstName, ...lastNameParts] = (name || username).split(' ');
+      const lastName = lastNameParts.join(' ');
+
       // Create user
       const user = await prisma.user.create({
         data: {
@@ -55,27 +59,28 @@ export class AuthController {
           username,
           password: hashedPassword,
           email,
-          name: name || username,
-          role: 'USER', // Default role
-          active: true
+          firstName: firstName, // Use firstName
+          lastName: lastName || '', // Use lastName
+          role: 'USER', // Default role - Ensure UserRole type exists or adjust
+          isActive: true // Use isActive
         }
       });
-      
+
       // Generate tokens
       const { token, refreshToken, expiresIn } = await generateTokens(user);
-      
+
       // Generate refresh token
       const dbRefreshToken = await RefreshTokenService.generateRefreshToken(user.id);
-      
+
       // Create session
       const session = await SessionManager.createSession(user.id, {
         ipAddress: req.ip,
         userAgent: req.headers['user-agent']
       });
-      
-      // Set cookies
-      setCookies(res, token, dbRefreshToken, session.id);
-      
+
+      // Set cookies with token expiry
+      setCookies(res, token, dbRefreshToken, session.id, expiresIn);
+
       // Log the event
       AuditLogger.getInstance().logAuthEvent(
         AuthEvent.REGISTER,
@@ -83,7 +88,7 @@ export class AuthController {
         user.id,
         { username, email, sessionId: session.id }
       );
-      
+
       return res.status(201).json({
         success: true,
         message: 'User registered successfully',
@@ -92,7 +97,8 @@ export class AuthController {
             id: user.id,
             username: user.username,
             email: user.email,
-            name: user.name,
+            firstName: user.firstName, // Use firstName
+            lastName: user.lastName, // Use lastName
             role: user.role
           },
           expiresIn
@@ -105,10 +111,11 @@ export class AuthController {
           AuthEvent.REGISTER,
           'FAILURE',
           undefined,
-          { username: req.body.username, error: error.message }
+          // Safely access error message
+          { username: req.body.username, error: error instanceof Error ? error.message : String(error) }
         );
       }
-      
+
       const { status, response } = handleError(error);
       return res.status(status).json(response);
     }
@@ -121,7 +128,7 @@ export class AuthController {
     try {
       const { username, password } = req.body;
       const ipAddress = req.ip;
-      
+
       // Validate input
       if (!username || !password) {
         throw new ValidationError(
@@ -129,16 +136,16 @@ export class AuthController {
           ValidationErrorCode.MISSING_REQUIRED_FIELD
         );
       }
-      
+
       // Check rate limiting
       const userAttemptKey = `${username}_${ipAddress}`;
       const userAttempts = loginAttempts.get(userAttemptKey);
-      
+
       if (userAttempts && userAttempts.count >= MAX_LOGIN_ATTEMPTS) {
         // Check if lockout period has passed
         if (Date.now() < userAttempts.resetTime) {
           const minutesLeft = Math.ceil((userAttempts.resetTime - Date.now()) / 60000);
-          
+
           // Log the event
           AuditLogger.getInstance().logAuthEvent(
             AuthEvent.RATE_LIMIT_EXCEEDED,
@@ -146,27 +153,27 @@ export class AuthController {
             undefined,
             { username, ip: ipAddress }
           );
-          
+
           throw new AuthenticationError(
             `Too many login attempts. Please try again in ${minutesLeft} minutes.`,
             AuthErrorCode.RATE_LIMIT_EXCEEDED,
             429
           );
         }
-        
+
         // Reset attempts if lockout period has passed
         loginAttempts.delete(userAttemptKey);
       }
-      
+
       // Find user
       const user = await prisma.user.findUnique({
         where: { username }
       });
-      
+
       if (!user) {
         // Increment failed attempts
         incrementLoginAttempts(userAttemptKey);
-        
+
         // Log the event
         AuditLogger.getInstance().logAuthEvent(
           AuthEvent.LOGIN_FAILURE,
@@ -174,15 +181,15 @@ export class AuthController {
           undefined,
           { username, reason: 'USER_NOT_FOUND', ip: ipAddress }
         );
-        
+
         throw new AuthenticationError(
           'Invalid credentials',
           AuthErrorCode.INVALID_CREDENTIALS
         );
       }
-      
+
       // Check if user is active
-      if (!user.active) {
+      if (!user.isActive) { // Use isActive
         // Log the event
         AuditLogger.getInstance().logAuthEvent(
           AuthEvent.LOGIN_FAILURE,
@@ -190,21 +197,21 @@ export class AuthController {
           user.id,
           { username, reason: 'ACCOUNT_DISABLED', ip: ipAddress }
         );
-        
+
         throw new AuthenticationError(
           'Account is disabled. Please contact support.',
           AuthErrorCode.ACCOUNT_LOCKED,
           403
         );
       }
-      
+
       // Verify password
       const isPasswordValid = await comparePasswords(password, user.password);
-      
+
       if (!isPasswordValid) {
         // Increment failed attempts
         incrementLoginAttempts(userAttemptKey);
-        
+
         // Log the event
         AuditLogger.getInstance().logAuthEvent(
           AuthEvent.LOGIN_FAILURE,
@@ -212,31 +219,31 @@ export class AuthController {
           user.id,
           { username, reason: 'INVALID_PASSWORD', ip: ipAddress }
         );
-        
+
         throw new AuthenticationError(
           'Invalid credentials',
           AuthErrorCode.INVALID_CREDENTIALS
         );
       }
-      
+
       // Reset login attempts on successful login
       loginAttempts.delete(userAttemptKey);
-      
+
       // Generate tokens
       const { token, refreshToken, expiresIn } = await generateTokens(user);
-      
+
       // Generate database refresh token
       const dbRefreshToken = await RefreshTokenService.generateRefreshToken(user.id);
-      
+
       // Create session
       const session = await SessionManager.createSession(user.id, {
         ipAddress: req.ip,
         userAgent: req.headers['user-agent']
       });
-      
-      // Set cookies
-      setCookies(res, token, dbRefreshToken, session.id);
-      
+
+      // Set cookies with token expiry
+      setCookies(res, token, dbRefreshToken, session.id, expiresIn);
+
       // Log the event
       AuditLogger.getInstance().logAuthEvent(
         AuthEvent.LOGIN_SUCCESS,
@@ -244,16 +251,20 @@ export class AuthController {
         user.id,
         { username, sessionId: session.id, ip: ipAddress }
       );
-      
+
       return res.status(200).json({
         success: true,
         message: 'Login successful',
         data: {
+          token, // Include token in response for compatibility
+          accessToken: token, // Include accessToken as alias for token
+          refreshToken: dbRefreshToken, // Include refreshToken for compatibility
           user: {
             id: user.id,
             username: user.username,
             email: user.email,
-            name: user.name,
+            firstName: user.firstName, // Use firstName
+            lastName: user.lastName, // Use lastName
             role: user.role
           },
           expiresIn
@@ -266,6 +277,229 @@ export class AuthController {
   }
 
   /**
+   * Login user with PIN and return tokens
+   */
+  static async loginWithPin(req: Request, res: Response) {
+    try {
+      const { userId, pin } = req.body;
+      const ipAddress = req.ip;
+
+      // Validate input
+      if (!userId || !pin) {
+        throw new ValidationError(
+          'Please provide userId and pin',
+          ValidationErrorCode.MISSING_REQUIRED_FIELD
+        );
+      }
+
+      // Find user
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
+      if (!user) {
+        // Log the event (generic, as we don't know if the user ID was valid)
+        AuditLogger.getInstance().logAuthEvent(
+          AuthEvent.PIN_LOGIN_FAILURE, // Use correct enum
+          'FAILURE',
+          undefined,
+          { userId, reason: 'USER_NOT_FOUND', ip: ipAddress }
+        );
+        throw new AuthenticationError(
+          'Invalid user or PIN',
+          AuthErrorCode.INVALID_CREDENTIALS
+        );
+      }
+
+      // Check if PIN login is enabled
+      if (!user.isPinEnabled || !user.pinHash) {
+        AuditLogger.getInstance().logAuthEvent(
+          AuthEvent.PIN_LOGIN_FAILURE, // Use correct enum
+          'FAILURE',
+          user.id,
+          { username: user.username, reason: 'PIN_NOT_ENABLED', ip: ipAddress }
+        );
+        throw new AuthenticationError(
+          'PIN login is not enabled for this account.',
+          AuthErrorCode.PIN_NOT_ENABLED, // Use correct enum
+          403
+        );
+      }
+
+      // Check PIN lockout using the enhanced PIN security utility
+      const lockStatus = isPinLocked(userId);
+      if (lockStatus.isLocked) {
+        const minutesLeft = Math.ceil((lockStatus.remainingMs || 0) / 60000);
+
+        logger.warn('PIN login attempted while PIN is locked', {
+          userId,
+          username: user.username,
+          remainingMinutes: minutesLeft,
+          attempts: lockStatus.attempts,
+          ip: ipAddress
+        });
+
+        AuditLogger.getInstance().logAuthEvent(
+          AuthEvent.PIN_LOGIN_FAILURE,
+          'FAILURE',
+          user.id,
+          { username: user.username, reason: 'PIN_LOCKED', ip: ipAddress }
+        );
+
+        throw new AuthenticationError(
+          `PIN login locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`,
+          AuthErrorCode.PIN_LOCKED,
+          429
+        );
+      }
+
+      // Verify PIN
+      const isPinValid = await comparePins(pin, user.pinHash);
+
+      if (!isPinValid) {
+        // Record failed attempt using the enhanced PIN security utility
+        const attemptResult = recordFailedPinAttempt(userId);
+
+        logger.warn('Failed PIN login attempt', {
+          userId,
+          username: user.username,
+          attempts: attemptResult.attempts,
+          isLocked: attemptResult.isLocked,
+          ip: ipAddress
+        });
+
+        // Update user with failed attempts in the database for persistence
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            failedPinAttempts: attemptResult.attempts,
+            pinLockedUntil: attemptResult.lockedUntil
+          }
+        });
+
+        AuditLogger.getInstance().logAuthEvent(
+          AuthEvent.PIN_LOGIN_FAILURE,
+          'FAILURE',
+          user.id,
+          {
+            username: user.username,
+            reason: 'INVALID_PIN',
+            ip: ipAddress,
+            attempts: attemptResult.attempts
+          }
+        );
+
+        if (attemptResult.isLocked) {
+          const remainingMinutes = Math.ceil(
+            ((attemptResult.lockedUntil?.getTime() || 0) - Date.now()) / 60000
+          );
+
+          throw new AuthenticationError(
+            `Invalid PIN. Account locked for ${remainingMinutes} minutes due to too many failed attempts.`,
+            AuthErrorCode.PIN_LOCKED,
+            429
+          );
+        } else {
+          throw new AuthenticationError(
+            'Invalid user or PIN',
+            AuthErrorCode.INVALID_CREDENTIALS
+          );
+        }
+      }
+
+      // Reset failed attempts on successful login
+      resetPinAttempts(userId);
+
+      // Also update the database record
+      if (user.failedPinAttempts > 0 || user.pinLockedUntil) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { failedPinAttempts: 0, pinLockedUntil: null }
+        });
+      }
+
+      logger.info('Successful PIN login', {
+        userId,
+        username: user.username,
+        ip: ipAddress
+      });
+
+      // Check if user is active
+      if (!user.isActive) { // Use isActive
+        AuditLogger.getInstance().logAuthEvent(
+          AuthEvent.PIN_LOGIN_FAILURE, // Use correct enum
+          'FAILURE',
+          user.id,
+          { username: user.username, reason: 'ACCOUNT_DISABLED', ip: ipAddress }
+        );
+        throw new AuthenticationError(
+          'Account is disabled. Please contact support.',
+          AuthErrorCode.ACCOUNT_LOCKED,
+          403
+        );
+      }
+
+      // Generate tokens
+      const { token, refreshToken, expiresIn } = await generateTokens(user);
+
+      // Generate refresh token in DB
+      const dbRefreshToken = await RefreshTokenService.generateRefreshToken(user.id);
+
+      // Create session
+      const session = await SessionManager.createSession(user.id, {
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+        // Removed: loginMethod: 'pin'
+      });
+
+      // Set cookies with token expiry
+      setCookies(res, token, dbRefreshToken, session.id, expiresIn);
+
+      // Log successful PIN login
+      AuditLogger.getInstance().logAuthEvent(
+        AuthEvent.PIN_LOGIN_SUCCESS, // Use correct enum
+        'SUCCESS',
+        user.id,
+        { username: user.username, sessionId: session.id, ip: ipAddress }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'PIN Login successful',
+        data: {
+          token, // Include token in response for compatibility
+          accessToken: token, // Include accessToken as alias for token
+          refreshToken: dbRefreshToken, // Include refreshToken for compatibility
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            firstName: user.firstName, // Use firstName
+            lastName: user.lastName, // Use lastName
+            role: user.role
+          },
+          expiresIn
+        }
+      });
+
+    } catch (error) {
+      const { status, response } = handleError(error);
+      // Log using appropriate method
+      AuditLogger.getInstance().logAuthEvent(
+          AuthEvent.PIN_LOGIN_FAILURE,
+          'FAILURE',
+          req.body.userId,
+          {
+            reason: 'PIN_LOGIN_EXCEPTION',
+            error: error instanceof Error ? error.message : String(error),
+            ip: req.ip
+          }
+      );
+      return res.status(status).json(response);
+    }
+  }
+
+  /**
    * Refresh access token using refresh token
    */
   static async refreshToken(req: Request, res: Response) {
@@ -273,24 +507,24 @@ export class AuthController {
       // Get refresh token from cookies
       const refreshToken = req.cookies.refresh_token;
       const sessionId = req.cookies.session_id;
-      
+
       if (!refreshToken) {
         throw new AuthenticationError(
           'Refresh token is required',
           AuthErrorCode.TOKEN_MISSING
         );
       }
-      
+
       // Validate the refresh token
       const userId = await RefreshTokenService.validateRefreshToken(refreshToken);
-      
+
       if (!userId) {
         throw new AuthenticationError(
           'Invalid or expired refresh token',
           AuthErrorCode.REFRESH_TOKEN_INVALID
         );
       }
-      
+
       // Validate session if available
       if (sessionId) {
         const isSessionValid = await SessionManager.validateSession(sessionId);
@@ -301,32 +535,32 @@ export class AuthController {
           );
         }
       }
-      
+
       // Get user
       const user = await prisma.user.findUnique({
         where: { id: userId }
       });
-      
+
       if (!user) {
         throw new AuthenticationError(
           'User not found',
           AuthErrorCode.USER_NOT_FOUND
         );
       }
-      
+
       // Generate new token
       const { token, expiresIn } = await generateTokens(user);
-      
+
       // Rotate refresh token (token rotation for security)
       const newRefreshToken = await RefreshTokenService.rotateRefreshToken(refreshToken);
-      
+
       if (!newRefreshToken) {
         throw new AuthenticationError(
           'Failed to rotate refresh token',
           AuthErrorCode.REFRESH_TOKEN_INVALID
         );
       }
-      
+
       // Create a new session or update existing one
       let newSessionId = sessionId;
       if (!sessionId) {
@@ -338,10 +572,10 @@ export class AuthController {
       } else {
         await SessionManager.updateSessionActivity(sessionId);
       }
-      
-      // Set cookies with new tokens
-      setCookies(res, token, newRefreshToken, newSessionId);
-      
+
+      // Set cookies with new tokens and expiry
+      setCookies(res, token, newRefreshToken, newSessionId, expiresIn);
+
       // Log the event
       AuditLogger.getInstance().logAuthEvent(
         AuthEvent.TOKEN_REFRESH,
@@ -349,7 +583,7 @@ export class AuthController {
         user.id,
         { sessionId: newSessionId }
       );
-      
+
       return res.status(200).json({
         success: true,
         message: 'Token refreshed successfully',
@@ -360,7 +594,7 @@ export class AuthController {
     } catch (error) {
       // Clear cookies if refresh failed
       clearCookies(res);
-      
+
       const { status, response } = handleError(error);
       return res.status(status).json(response);
     }
@@ -374,7 +608,7 @@ export class AuthController {
       const token = getTokenFromCookies(req);
       const refreshToken = req.cookies.refresh_token;
       const sessionId = req.cookies.session_id;
-      
+
       // Get user ID from token if available
       let userId = '';
       if (token) {
@@ -385,25 +619,25 @@ export class AuthController {
           // Ignore token verification errors during logout
         }
       }
-      
+
       // Revoke refresh token if available
       if (refreshToken) {
         await RefreshTokenService.revokeRefreshToken(refreshToken);
       }
-      
+
       // Terminate session if available
       if (sessionId) {
         await SessionManager.terminateSession(sessionId);
       }
-      
+
       // Blacklist token if available
       if (token) {
         addToBlacklist(token);
       }
-      
+
       // Clear cookies
       clearCookies(res);
-      
+
       // Log the event
       if (userId) {
         AuditLogger.getInstance().logAuthEvent(
@@ -413,7 +647,7 @@ export class AuthController {
           { sessionId }
         );
       }
-      
+
       return res.status(200).json({
         success: true,
         message: 'Logged out successfully'
@@ -421,7 +655,7 @@ export class AuthController {
     } catch (error) {
       // Clear cookies even if there's an error
       clearCookies(res);
-      
+
       const { status, response } = handleError(error);
       return res.status(status).json(response);
     }
@@ -434,14 +668,14 @@ export class AuthController {
     try {
       const token = getTokenFromCookies(req);
       const sessionId = req.cookies.session_id;
-      
+
       if (!token) {
         throw new AuthenticationError(
           'Token is required',
           AuthErrorCode.TOKEN_MISSING
         );
       }
-      
+
       // Check if token is blacklisted
       if (isBlacklisted(token)) {
         throw new AuthenticationError(
@@ -449,10 +683,10 @@ export class AuthController {
           AuthErrorCode.TOKEN_BLACKLISTED
         );
       }
-      
+
       // Verify the token
       const decoded = verifyToken(token);
-      
+
       // Validate session if available
       if (sessionId) {
         const isSessionValid = await SessionManager.validateSession(sessionId);
@@ -463,19 +697,19 @@ export class AuthController {
           );
         }
       }
-      
+
       // Get user
       const user = await prisma.user.findUnique({
         where: { id: decoded.id }
       });
-      
+
       if (!user) {
         throw new AuthenticationError(
           'User not found',
           AuthErrorCode.USER_NOT_FOUND
         );
       }
-      
+
       // Log the event
       AuditLogger.getInstance().logAuthEvent(
         AuthEvent.TOKEN_VALIDATION,
@@ -483,7 +717,7 @@ export class AuthController {
         user.id,
         { sessionId }
       );
-      
+
       return res.status(200).json({
         success: true,
         message: 'Token is valid',
@@ -492,7 +726,8 @@ export class AuthController {
             id: user.id,
             username: user.username,
             email: user.email,
-            name: user.name,
+            firstName: user.firstName, // Use firstName
+            lastName: user.lastName, // Use lastName
             role: user.role
           }
         }
@@ -507,7 +742,7 @@ export class AuthController {
           { error: error.message, code: error.code }
         );
       }
-      
+
       const { status, response } = handleError(error);
       return res.status(status).json(response);
     }
@@ -541,20 +776,20 @@ export class AuthController {
   static async getUserSessions(req: Request, res: Response) {
     try {
       const token = getTokenFromCookies(req);
-      
+
       if (!token) {
         throw new AuthenticationError(
           'Authentication token is required',
           AuthErrorCode.TOKEN_MISSING
         );
       }
-      
+
       // Verify the token
       const decoded = verifyToken(token);
-      
+
       // Get sessions
       const sessions = await SessionManager.getUserActiveSessions(decoded.id);
-      
+
       // Map sessions to a user-friendly format
       const sessionData = sessions.map(session => ({
         id: session.id,
@@ -565,7 +800,7 @@ export class AuthController {
         userAgent: session.userAgent,
         current: session.id === req.cookies.session_id
       }));
-      
+
       return res.status(200).json({
         success: true,
         message: 'User sessions retrieved successfully',
@@ -587,29 +822,29 @@ export class AuthController {
       const { sessionId } = req.params;
       const token = getTokenFromCookies(req);
       const currentSessionId = req.cookies.session_id;
-      
+
       if (!token) {
         throw new AuthenticationError(
           'Authentication token is required',
           AuthErrorCode.TOKEN_MISSING
         );
       }
-      
+
       // Verify the token
       const decoded = verifyToken(token);
-      
+
       // Get the session
       const session = await prisma.session.findUnique({
         where: { id: sessionId }
       });
-      
+
       if (!session) {
         throw new ValidationError(
           'Session not found',
           ValidationErrorCode.INVALID_INPUT
         );
       }
-      
+
       // Check if the session belongs to the current user
       if (session.userId !== decoded.id) {
         throw new AuthenticationError(
@@ -618,15 +853,15 @@ export class AuthController {
           403
         );
       }
-      
+
       // Terminate the session
       await SessionManager.terminateSession(sessionId);
-      
+
       // If terminating current session, clear cookies
       if (sessionId === currentSessionId) {
         clearCookies(res);
       }
-      
+
       // Log the event
       AuditLogger.getInstance().logAuthEvent(
         AuthEvent.SESSION_TERMINATED,
@@ -634,7 +869,7 @@ export class AuthController {
         decoded.id,
         { sessionId }
       );
-      
+
       return res.status(200).json({
         success: true,
         message: 'Session terminated successfully',
@@ -655,27 +890,27 @@ export class AuthController {
     try {
       const token = getTokenFromCookies(req);
       const currentSessionId = req.cookies.session_id;
-      
+
       if (!token) {
         throw new AuthenticationError(
           'Authentication token is required',
           AuthErrorCode.TOKEN_MISSING
         );
       }
-      
+
       // Verify the token
       const decoded = verifyToken(token);
-      
+
       // Terminate all sessions except current
       const terminatedCount = await SessionManager.terminateUserSessions(
         decoded.id,
         currentSessionId
       );
-      
+
       // Revoke all refresh tokens except current
       await RefreshTokenService.revokeAllUserTokens(decoded.id);
       // Note: This is a simplification - ideally we would keep the current refresh token
-      
+
       // Log the event
       AuditLogger.getInstance().logAuthEvent(
         AuthEvent.LOGOUT,
@@ -683,7 +918,7 @@ export class AuthController {
         decoded.id,
         { allSessions: true, exceptCurrent: true, terminatedCount }
       );
-      
+
       return res.status(200).json({
         success: true,
         message: 'All other sessions terminated successfully',
@@ -704,7 +939,7 @@ export class AuthController {
 function incrementLoginAttempts(key: string): void {
   const now = Date.now();
   const attempts = loginAttempts.get(key);
-  
+
   if (!attempts) {
     loginAttempts.set(key, {
       count: 1,
@@ -712,9 +947,9 @@ function incrementLoginAttempts(key: string): void {
     });
     return;
   }
-  
+
   const newCount = attempts.count + 1;
-  
+
   // If max attempts reached, set lockout time
   if (newCount >= MAX_LOGIN_ATTEMPTS) {
     loginAttempts.set(key, {

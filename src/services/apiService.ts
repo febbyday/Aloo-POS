@@ -1,4 +1,4 @@
-import { toast } from "@/components/ui/use-toast";
+import { ToastService } from "@/lib/toast";
 
 interface ApiError extends Error {
   status?: number;
@@ -147,10 +147,9 @@ export const apiService = {
     // Don't show toast for 401 errors as they're handled by redirection
     if (error.status === 401) return;
 
-    toast({
-      title: `Error ${error.status || ""}`,
-      description: error.detail || "An unexpected error occurred",
-      variant: "destructive",
-    });
+    ToastService.error(
+      `Error ${error.status || ""}`, 
+      error.detail || "An unexpected error occurred"
+    );
   }
 }; 

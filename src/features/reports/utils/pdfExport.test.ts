@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { exportTableReport, exportSummaryReport, exportChartReport, downloadPDF } from './pdfExport';
 import jsPDF from 'jspdf';

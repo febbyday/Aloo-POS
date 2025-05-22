@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { format, addDays, addWeeks, addMonths, addYears, parseISO, isAfter } from 'date-fns';
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
 import type {
@@ -8,7 +6,7 @@ import type {
   ReportExecutionResult,
   ReportExecutionStatus
 } from '../types/scheduledReport.types';
-import { generateId } from '@/lib/utils';
+import { generateId } from '@/lib/utils/id-utils';
 
 /**
  * Calculates the next run time for a scheduled report

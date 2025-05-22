@@ -1,25 +1,22 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { HardwareSettings } from '../types/settings.types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Edit, Printer, RotateCw, Scan, Monitor } from 'lucide-react';
+import { Plus, Trash2, Edit, Printer, RotateCw, Scan, Monitor, Save, Loader2, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Slider } from "@/components/ui/slider";
-
-interface HardwareSettingsProps {
-    settings: HardwareSettings;
-    onUpdate: (settings: HardwareSettings) => void;
-}
+import { useToast } from "@/components/ui/use-toast";
+import { SettingsService } from '../services/hardware.service';
+import { HardwareSettings } from '../schemas/hardware-settings.schema';
 
 const printerSchema = z.object({
     id: z.string().optional(),
@@ -31,9 +28,34 @@ const printerSchema = z.object({
 
 type PrinterFormValues = z.infer<typeof printerSchema>;
 
-export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsProps) {
+export function HardwareSettingsPanel() {
+    const { toast } = useToast();
+    const [settings, setSettings] = useState<HardwareSettings | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [isAddingPrinter, setIsAddingPrinter] = useState(false);
     const [editingPrinter, setEditingPrinter] = useState<string | null>(null);
+
+    // Load settings on component mount
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const data = await SettingsService.getSettings();
+                setSettings(data);
+            } catch (error) {
+                console.error("Error loading hardware settings:", error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load hardware settings",
+                    variant: "destructive",
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadSettings();
+    }, [toast]);
 
     const form = useForm<PrinterFormValues>({
         resolver: zodResolver(printerSchema),
@@ -46,6 +68,8 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
     });
 
     const handleAddPrinter = (values: PrinterFormValues) => {
+        if (!settings) return;
+
         const newPrinter = {
             ...values,
             id: editingPrinter || `printer-${Date.now()}`
@@ -53,7 +77,7 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
 
         let updatedPrinters;
         if (editingPrinter) {
-            updatedPrinters = settings.printers.map(printer => 
+            updatedPrinters = settings.printers.map(printer =>
                 printer.id === editingPrinter ? newPrinter : printer
             );
         } else {
@@ -67,25 +91,32 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
             }));
         }
 
-        onUpdate({
+        const updatedSettings = {
             ...settings,
             printers: updatedPrinters
-        });
+        };
 
+        saveSettings(updatedSettings);
         setIsAddingPrinter(false);
         setEditingPrinter(null);
         form.reset();
     };
 
     const handleDeletePrinter = (id: string) => {
+        if (!settings) return;
+
         const updatedPrinters = settings.printers.filter(printer => printer.id !== id);
-        onUpdate({
+        const updatedSettings = {
             ...settings,
             printers: updatedPrinters
-        });
+        };
+
+        saveSettings(updatedSettings);
     };
 
     const handleEditPrinter = (id: string) => {
+        if (!settings) return;
+
         const printer = settings.printers.find(printer => printer.id === id);
         if (printer) {
             form.reset(printer);
@@ -93,6 +124,90 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
             setIsAddingPrinter(true);
         }
     };
+
+    const saveSettings = async (updatedSettings: HardwareSettings) => {
+        setSaving(true);
+        try {
+            await SettingsService.saveSettings(updatedSettings);
+            setSettings(updatedSettings);
+            toast({
+                title: "Settings saved",
+                description: "Hardware settings have been updated successfully",
+            });
+        } catch (error) {
+            console.error("Error saving hardware settings:", error);
+            toast({
+                title: "Error",
+                description: "Failed to save hardware settings",
+                variant: "destructive",
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUpdateSetting = <K extends keyof HardwareSettings>(
+        section: K,
+        value: HardwareSettings[K]
+    ) => {
+        if (!settings) return;
+
+        const updatedSettings = {
+            ...settings,
+            [section]: value
+        };
+
+        saveSettings(updatedSettings);
+    };
+
+    const handleResetSettings = async () => {
+        try {
+            const defaultSettings = await SettingsService.resetSettings();
+            setSettings(defaultSettings);
+            toast({
+                title: "Settings reset",
+                description: "Hardware settings have been reset to defaults",
+            });
+        } catch (error) {
+            console.error("Error resetting hardware settings:", error);
+            toast({
+                title: "Error",
+                description: "Failed to reset hardware settings",
+                variant: "destructive",
+            });
+        }
+    };
+
+    if (loading) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Printer & Hardware Settings</CardTitle>
+                    <CardDescription>Configure your POS hardware devices and peripherals</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (!settings) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Printer & Hardware Settings</CardTitle>
+                    <CardDescription>Configure your POS hardware devices and peripherals</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-center text-muted-foreground">Failed to load settings. Please try again.</p>
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                    <Button onClick={() => window.location.reload()}>Reload</Button>
+                </CardFooter>
+            </Card>
+        );
+    }
 
     return (
         <Card>
@@ -111,7 +226,7 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                     <div className="flex items-center justify-between">
                         <Dialog open={isAddingPrinter} onOpenChange={setIsAddingPrinter}>
                             <DialogTrigger asChild>
-                                <Button 
+                                <Button
                                     size="sm"
                                     onClick={() => {
                                         setEditingPrinter(null);
@@ -291,12 +406,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                             id="cash-drawer-enabled"
                             checked={settings.cashDrawer.enabled}
                             onCheckedChange={(checked) =>
-                                onUpdate({
-                                    ...settings,
-                                    cashDrawer: {
-                                        ...settings.cashDrawer,
-                                        enabled: checked,
-                                    },
+                                handleUpdateSetting('cashDrawer', {
+                                    ...settings.cashDrawer,
+                                    enabled: checked,
                                 })
                             }
                         />
@@ -309,12 +421,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                                 <Select
                                     value={settings.cashDrawer.openTrigger}
                                     onValueChange={(value: any) =>
-                                        onUpdate({
-                                            ...settings,
-                                            cashDrawer: {
-                                                ...settings.cashDrawer,
-                                                openTrigger: value,
-                                            },
+                                        handleUpdateSetting('cashDrawer', {
+                                            ...settings.cashDrawer,
+                                            openTrigger: value,
                                         })
                                     }
                                 >
@@ -334,12 +443,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                                 <Select
                                     value={settings.cashDrawer.printer}
                                     onValueChange={(value: any) =>
-                                        onUpdate({
-                                            ...settings,
-                                            cashDrawer: {
-                                                ...settings.cashDrawer,
-                                                printer: value,
-                                            },
+                                        handleUpdateSetting('cashDrawer', {
+                                            ...settings.cashDrawer,
+                                            printer: value,
                                         })
                                     }
                                 >
@@ -376,12 +482,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                             id="scanner-enabled"
                             checked={settings.scanner.enabled}
                             onCheckedChange={(checked) =>
-                                onUpdate({
-                                    ...settings,
-                                    scanner: {
-                                        ...settings.scanner,
-                                        enabled: checked,
-                                    },
+                                handleUpdateSetting('scanner', {
+                                    ...settings.scanner,
+                                    enabled: checked,
                                 })
                             }
                         />
@@ -394,12 +497,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                                 <Select
                                     value={settings.scanner.type}
                                     onValueChange={(value: any) =>
-                                        onUpdate({
-                                            ...settings,
-                                            scanner: {
-                                                ...settings.scanner,
-                                                type: value,
-                                            },
+                                        handleUpdateSetting('scanner', {
+                                            ...settings.scanner,
+                                            type: value,
                                         })
                                     }
                                 >
@@ -420,12 +520,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                                     id="scanner-prefix"
                                     value={settings.scanner.prefix}
                                     onChange={(e) =>
-                                        onUpdate({
-                                            ...settings,
-                                            scanner: {
-                                                ...settings.scanner,
-                                                prefix: e.target.value,
-                                            },
+                                        handleUpdateSetting('scanner', {
+                                            ...settings.scanner,
+                                            prefix: e.target.value,
                                         })
                                     }
                                     placeholder="Optional prefix"
@@ -438,12 +535,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                                     id="scanner-suffix"
                                     value={settings.scanner.suffix}
                                     onChange={(e) =>
-                                        onUpdate({
-                                            ...settings,
-                                            scanner: {
-                                                ...settings.scanner,
-                                                suffix: e.target.value,
-                                            },
+                                        handleUpdateSetting('scanner', {
+                                            ...settings.scanner,
+                                            suffix: e.target.value,
                                         })
                                     }
                                     placeholder="Optional suffix"
@@ -468,12 +562,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                             id="customer-display"
                             checked={settings.display.customerDisplay}
                             onCheckedChange={(checked) =>
-                                onUpdate({
-                                    ...settings,
-                                    display: {
-                                        ...settings.display,
-                                        customerDisplay: checked,
-                                    },
+                                handleUpdateSetting('display', {
+                                    ...settings.display,
+                                    customerDisplay: checked,
                                 })
                             }
                         />
@@ -493,12 +584,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                                     step={5}
                                     value={[settings.display.brightness]}
                                     onValueChange={(value) =>
-                                        onUpdate({
-                                            ...settings,
-                                            display: {
-                                                ...settings.display,
-                                                brightness: value[0],
-                                            },
+                                        handleUpdateSetting('display', {
+                                            ...settings.display,
+                                            brightness: value[0],
                                         })
                                     }
                                 />
@@ -509,12 +597,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                                 <Select
                                     value={settings.display.orientation}
                                     onValueChange={(value: any) =>
-                                        onUpdate({
-                                            ...settings,
-                                            display: {
-                                                ...settings.display,
-                                                orientation: value,
-                                            },
+                                        handleUpdateSetting('display', {
+                                            ...settings.display,
+                                            orientation: value,
                                         })
                                     }
                                 >
@@ -535,12 +620,9 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                                     type="number"
                                     value={settings.display.timeout}
                                     onChange={(e) =>
-                                        onUpdate({
-                                            ...settings,
-                                            display: {
-                                                ...settings.display,
-                                                timeout: parseInt(e.target.value),
-                                            },
+                                        handleUpdateSetting('display', {
+                                            ...settings.display,
+                                            timeout: parseInt(e.target.value),
                                         })
                                     }
                                 />
@@ -549,8 +631,33 @@ export function HardwareSettingsPanel({ settings, onUpdate }: HardwareSettingsPr
                     )}
                 </div>
 
-                <Button>Save Changes</Button>
             </CardContent>
+            <CardFooter className="flex justify-between">
+                <Button
+                    variant="outline"
+                    onClick={handleResetSettings}
+                    disabled={loading || saving}
+                >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reset to Defaults
+                </Button>
+                <Button
+                    onClick={() => saveSettings(settings)}
+                    disabled={loading || saving}
+                >
+                    {saving ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Changes
+                        </>
+                    )}
+                </Button>
+            </CardFooter>
         </Card>
     );
 }

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Save, ArrowLeft, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { useToastManager } from "@/components/ui/toast-manager";
 import { OperationButton } from "@/components/ui/action-feedback";
 import { CustomerForm } from '../components/CustomerForm';
@@ -26,7 +26,7 @@ export function CustomerEditPage() {
   const { getCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const { toast } = useToast();
   const showToast = useToastManager();
-  
+
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -50,7 +50,7 @@ export function CustomerEditPage() {
 
   const handleSave = async (updatedCustomer: Customer) => {
     if (!customerId) return;
-    
+
     try {
       await updateCustomer(customerId, updatedCustomer);
       showToast.success('Success', 'Customer updated successfully');
@@ -63,7 +63,7 @@ export function CustomerEditPage() {
 
   const handleDelete = async () => {
     if (!customerId) return;
-    
+
     try {
       await deleteCustomer(customerId);
       showToast.success('Success', 'Customer deleted successfully');

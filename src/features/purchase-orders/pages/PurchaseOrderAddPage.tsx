@@ -3,16 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Save, ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useToast } from '@/components/ui/use-toast';
-import { useToastManager } from "@/components/ui/toast-manager";
+import { useToast } from '@/lib/toast';
 import { OperationButton } from "@/components/ui/action-feedback";
 import { PurchaseOrderModal } from '../components/PurchaseOrderModal';
 import { usePurchaseOrderHistory } from '../context/PurchaseOrderHistoryContext';
 
 export function PurchaseOrderAddPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const showToast = useToastManager();
+  const toast = useToast();
   const { trackAction } = usePurchaseOrderHistory();
   const [modalOpen, setModalOpen] = useState(true);
 
@@ -24,11 +22,11 @@ export function PurchaseOrderAddPage() {
         `Created purchase order ${data.orderNumber}`
       );
 
-      showToast.success('Success', 'Purchase order created successfully');
+      toast.success('Success', 'Purchase order created successfully');
       navigate('/purchase-orders');
     } catch (error) {
       console.error('Error creating purchase order:', error);
-      showToast.error('Error', 'Failed to create purchase order');
+      toast.error('Error', 'Failed to create purchase order');
     }
   };
 

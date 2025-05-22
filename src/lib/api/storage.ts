@@ -1,4 +1,4 @@
-import { deepClone } from '@/lib/utils';
+import { deepClone } from '@/lib/utils/object-utils';
 
 // Storage types
 export type StorageType = 'local' | 'session' | 'memory';

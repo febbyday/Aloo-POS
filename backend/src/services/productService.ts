@@ -102,10 +102,10 @@ export class ProductService {
 
     // Include related data
     const include: Prisma.ProductInclude = {
-      category: {
+      Category: {
         select: { name: true },
       },
-      supplier: {
+      Supplier: {
         select: { name: true },
       },
     };
@@ -135,10 +135,10 @@ export class ProductService {
    */
   async getProductById(id: string): Promise<Product | null> {
     return this.repository.findById(id, {
-      category: {
+      Category: {
         select: { name: true },
       },
-      supplier: {
+      Supplier: {
         select: { name: true },
       },
       locations: {
@@ -156,10 +156,10 @@ export class ProductService {
    */
   async getProductBySku(sku: string): Promise<Product | null> {
     return this.repository.findBySku(sku, {
-      category: {
+      Category: {
         select: { name: true },
       },
-      supplier: {
+      Supplier: {
         select: { name: true },
       },
     });
@@ -170,10 +170,10 @@ export class ProductService {
    */
   async getProductByBarcode(barcode: string): Promise<Product | null> {
     return this.repository.findByBarcode(barcode, {
-      category: {
+      Category: {
         select: { name: true },
       },
-      supplier: {
+      Supplier: {
         select: { name: true },
       },
     });
@@ -214,7 +214,7 @@ export class ProductService {
       skip,
       take: limit,
       include: {
-        supplier: {
+        Supplier: {
           select: { name: true },
         },
       },
@@ -239,7 +239,7 @@ export class ProductService {
       skip,
       take: limit,
       include: {
-        category: {
+        Category: {
           select: { name: true },
         },
       },
@@ -275,7 +275,7 @@ export class ProductService {
         ],
       },
       include: {
-        category: {
+        Category: {
           select: { name: true },
         },
       },

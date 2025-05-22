@@ -8,10 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
  * MultipleDataOperationsExample
- * 
+ *
  * This component demonstrates how to handle multiple data dependencies
  * using the useDataOperation hook. It shows how to:
- * 
+ *
  * 1. Load multiple data sources
  * 2. Handle independent loading and error states
  * 3. Coordinate multiple data operations
@@ -38,55 +38,64 @@ interface SalesData {
   averageOrderValue: number;
 }
 
-// Mock API service
-const mockApiService = {
+// Real API service
+const apiService = {
   getUsers: async (): Promise<User[]> => {
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    if (Math.random() < 0.2) throw new Error('Failed to fetch users data');
-    return [
-      { id: 1, name: 'John Doe', email: 'john@example.com' },
-      { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
-      { id: 3, name: 'Bob Johnson', email: 'bob@example.com' },
-    ];
+    try {
+      const response = await fetch('/api/users');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch users: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw new Error('Failed to fetch users data');
+    }
   },
-  
+
   getProducts: async (): Promise<Product[]> => {
-    await new Promise(resolve => setTimeout(resolve, 900));
-    if (Math.random() < 0.2) throw new Error('Failed to fetch product data');
-    return [
-      { id: 101, name: 'Laptop', price: 999.99, stock: 45 },
-      { id: 102, name: 'Smartphone', price: 599.99, stock: 120 },
-      { id: 103, name: 'Headphones', price: 99.99, stock: 210 },
-    ];
+    try {
+      const response = await fetch('/api/products');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch products: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      throw new Error('Failed to fetch product data');
+    }
   },
-  
+
   getSalesData: async (): Promise<SalesData> => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    if (Math.random() < 0.2) throw new Error('Failed to fetch sales data');
-    return {
-      totalSales: 156,
-      totalRevenue: 28950.75,
-      averageOrderValue: 185.58
-    };
+    try {
+      const response = await fetch('/api/sales/summary');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sales data: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching sales data:', error);
+      throw new Error('Failed to fetch sales data');
+    }
   }
 };
 
 export function MultipleDataOperationsExample() {
   // Set up each data operation independently
   const usersOperation = useDataOperation({
-    operation: mockApiService.getUsers,
+    operation: apiService.getUsers,
     errorTitle: 'Users Error',
     showSuccessToast: false,
   });
 
   const productsOperation = useDataOperation({
-    operation: mockApiService.getProducts,
+    operation: apiService.getProducts,
     errorTitle: 'Products Error',
     showSuccessToast: false,
   });
 
   const salesOperation = useDataOperation({
-    operation: mockApiService.getSalesData,
+    operation: apiService.getSalesData,
     errorTitle: 'Sales Data Error',
     showSuccessToast: false,
   });
@@ -118,9 +127,9 @@ export function MultipleDataOperationsExample() {
               Multiple data operations example
             </CardDescription>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={loadAllData}
             disabled={isLoading}
           >
@@ -129,41 +138,41 @@ export function MultipleDataOperationsExample() {
           </Button>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         <Tabs defaultValue="users">
           <TabsList className="grid grid-cols-3 mb-6">
             <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" /> 
+              <Users className="h-4 w-4" />
               Users
               {usersOperation.loading && <RefreshCw className="h-3 w-3 ml-1 animate-spin" />}
             </TabsTrigger>
             <TabsTrigger value="products" className="flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4" /> 
+              <ShoppingBag className="h-4 w-4" />
               Products
               {productsOperation.loading && <RefreshCw className="h-3 w-3 ml-1 animate-spin" />}
             </TabsTrigger>
             <TabsTrigger value="sales" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" /> 
+              <DollarSign className="h-4 w-4" />
               Sales
               {salesOperation.loading && <RefreshCw className="h-3 w-3 ml-1 animate-spin" />}
             </TabsTrigger>
           </TabsList>
-          
+
           {/* Users Tab */}
           <TabsContent value="users">
-            <DataState 
-              loading={usersOperation.loading} 
+            <DataState
+              loading={usersOperation.loading}
               error={usersOperation.error}
               text="Loading users data..."
               errorComponent={
                 <div className="p-4 border border-red-200 rounded bg-red-50">
                   <h3 className="text-red-800 font-medium">Error Loading Users</h3>
                   <p className="text-red-600 text-sm mt-1">{usersOperation.error?.message}</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2" 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
                     onClick={() => usersOperation.execute()}
                   >
                     <RefreshCw className="h-3 w-3 mr-2" /> Retry
@@ -174,8 +183,8 @@ export function MultipleDataOperationsExample() {
               {usersOperation.data ? (
                 <div className="space-y-3">
                   {usersOperation.data.map(user => (
-                    <div 
-                      key={user.id} 
+                    <div
+                      key={user.id}
                       className="p-3 border rounded shadow-sm"
                     >
                       <h3 className="font-medium">{user.name}</h3>
@@ -195,21 +204,21 @@ export function MultipleDataOperationsExample() {
               )}
             </DataState>
           </TabsContent>
-          
+
           {/* Products Tab */}
           <TabsContent value="products">
-            <DataState 
-              loading={productsOperation.loading} 
+            <DataState
+              loading={productsOperation.loading}
               error={productsOperation.error}
               text="Loading products data..."
               errorComponent={
                 <div className="p-4 border border-red-200 rounded bg-red-50">
                   <h3 className="text-red-800 font-medium">Error Loading Products</h3>
                   <p className="text-red-600 text-sm mt-1">{productsOperation.error?.message}</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2" 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
                     onClick={() => productsOperation.execute()}
                   >
                     <RefreshCw className="h-3 w-3 mr-2" /> Retry
@@ -248,21 +257,21 @@ export function MultipleDataOperationsExample() {
               )}
             </DataState>
           </TabsContent>
-          
+
           {/* Sales Tab */}
           <TabsContent value="sales">
-            <DataState 
-              loading={salesOperation.loading} 
+            <DataState
+              loading={salesOperation.loading}
               error={salesOperation.error}
               text="Loading sales data..."
               errorComponent={
                 <div className="p-4 border border-red-200 rounded bg-red-50">
                   <h3 className="text-red-800 font-medium">Error Loading Sales Data</h3>
                   <p className="text-red-600 text-sm mt-1">{salesOperation.error?.message}</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2" 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
                     onClick={() => salesOperation.execute()}
                   >
                     <RefreshCw className="h-3 w-3 mr-2" /> Retry
@@ -295,7 +304,7 @@ export function MultipleDataOperationsExample() {
             </DataState>
           </TabsContent>
         </Tabs>
-        
+
         {/* Overall status footer */}
         {hasAnyError && (
           <div className="mt-6 p-3 border border-amber-200 rounded bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800">
@@ -307,4 +316,4 @@ export function MultipleDataOperationsExample() {
       </CardContent>
     </Card>
   );
-} 
+}

@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 // Navigation items configuration
+// These items should match the routes defined in src/app/App.tsx
 const navItems = [
   {
     title: 'Dashboard',
@@ -52,6 +53,11 @@ const navItems = [
   {
     title: 'Roles',
     href: '/roles',
+    icon: Shield,
+  },
+  {
+    title: 'Permissions',
+    href: '/permissions',
     icon: Shield,
   },
   {
@@ -136,7 +142,11 @@ const Navigation = () => {
                     isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground",
                     collapsed ? "justify-center" : ""
                   )}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() => {
+                    setMobileOpen(false);
+                    console.log(`Navigating to: ${item.href}`);
+                  }}
+                  end={item.href === '/'}
                 >
                   <item.icon className={cn(
                     "flex-shrink-0",

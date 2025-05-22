@@ -34,7 +34,7 @@ import {
   Calendar,
   FileText
 } from "lucide-react";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { ErrorBoundary } from '@/components/unified-error-boundary';
 
 const ProfitLossPageContent: React.FC = () => {
   const { totalRevenue, revenueByCategory, loading: revenueLoading } = useRevenue();
@@ -662,4 +662,4 @@ export const ProfitLossPage: React.FC = () => {
       <ProfitLossPageContent />
     </ErrorBoundary>
   );
-}; 
+};

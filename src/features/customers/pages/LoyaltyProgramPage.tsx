@@ -63,7 +63,7 @@ import {
   ChevronRight,
   CreditCard
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { useCustomers } from '../hooks/useCustomers';
 import { useLoyaltyProgram } from '../hooks/useLoyaltyProgram';
 import {
@@ -84,6 +84,7 @@ import {
 } from '@/components/ui/alert';
 import { ErrorBoundary } from '@/components/unified-error-boundary';
 import { Separator } from '@/components/ui/separator';
+import { Link } from 'react-router-dom';
 
 function ErrorFallback(error: Error, reset: () => void) {
   return (
@@ -344,6 +345,19 @@ export function LoyaltyProgramPage() {
       }}
     >
       <div className="space-y-6">
+        {/* Breadcrumb navigation */}
+        <div className="flex items-center text-sm text-muted-foreground">
+          <Link to="/customers" className="hover:text-foreground transition-colors">
+            Customers
+          </Link>
+          <ChevronRight className="h-4 w-4 mx-1" />
+          <span className="font-medium text-foreground">Loyalty Program</span>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <h2 className="text-3xl font-bold tracking-tight">Loyalty Program</h2>
+        </div>
+
         {/* Dashboard stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="bg-zinc-800 border-zinc-700">

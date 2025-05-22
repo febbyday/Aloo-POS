@@ -1,5 +1,5 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
 import { Moon, Sun, Laptop } from "lucide-react"
+import { forwardRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -16,45 +16,63 @@ interface ThemeToggleProps {
   showTooltip?: boolean
 }
 
-export function ThemeToggle({ 
-  variant = "ghost", 
-  size = "icon",
-  showTooltip = true
-}: ThemeToggleProps) {
-  const { theme, setTheme, resolvedTheme } = useTheme()
-
-  const toggleButton = (
-    <Button variant={variant} size={size} className="relative">
-      {/* Sun icon - visible in light mode */}
+// Create a separate button component with forwardRef to use in the theme toggle
+const ThemeButton = forwardRef<HTMLButtonElement, {
+  variant?: ThemeToggleProps['variant'],
+  size?: ThemeToggleProps['size'],
+  className?: string,
+  onClick?: () => void
+}>(({ variant = "ghost", size = "icon", className = "", onClick }, ref) => {
+  return (
+    <Button
+      ref={ref}
+      variant={variant}
+      size={size}
+      className={`relative ${className}`}
+      onClick={onClick}
+    >
       <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      
-      {/* Moon icon - visible in dark mode */}
       <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-      
       <span className="sr-only">Toggle theme</span>
     </Button>
   )
+})
+
+ThemeButton.displayName = "ThemeButton"
+
+// No longer needed - removed TooltipWrapper component
+
+export function ThemeToggle({
+  variant = "ghost",
+  size = "icon",
+  showTooltip = true
+}: ThemeToggleProps) {
+  const { theme, setTheme } = useTheme()
+
+  // Create the button element first
+  const buttonElement = <ThemeButton variant={variant} size={size} />;
+
+  // Wrap with tooltip if needed
+  const triggerElement = showTooltip ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {buttonElement}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>Change theme</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : buttonElement;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {showTooltip ? (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {toggleButton}
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>Change theme</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : (
-          toggleButton
-        )}
+        {triggerElement}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem 
+        <DropdownMenuItem
           onClick={() => setTheme("light")}
           className="flex items-center gap-2 cursor-pointer"
         >
@@ -62,7 +80,7 @@ export function ThemeToggle({
           <span>Light</span>
           {theme === "light" && <span className="ml-auto text-xs">✓</span>}
         </DropdownMenuItem>
-        <DropdownMenuItem 
+        <DropdownMenuItem
           onClick={() => setTheme("dark")}
           className="flex items-center gap-2 cursor-pointer"
         >
@@ -70,7 +88,7 @@ export function ThemeToggle({
           <span>Dark</span>
           {theme === "dark" && <span className="ml-auto text-xs">✓</span>}
         </DropdownMenuItem>
-        <DropdownMenuItem 
+        <DropdownMenuItem
           onClick={() => setTheme("system")}
           className="flex items-center gap-2 cursor-pointer"
         >
@@ -82,3 +100,5 @@ export function ThemeToggle({
     </DropdownMenu>
   )
 }
+
+ThemeToggle.displayName = "ThemeToggle"

@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -33,7 +31,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 // Form schema
 const reconciliationFormSchema = z.object({
@@ -83,14 +82,7 @@ export const ReconciliationForm: React.FC<ReconciliationFormProps> = ({
   const expectedCash = form.watch("expectedCash") || 0;
   const difference = cashInRegister - expectedCash;
 
-  // Format currency based on settings
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: settings.currency,
-      minimumFractionDigits: 2,
-    }).format(value);
-  };
+  // Use the imported formatCurrency utility
 
   // Handle form submission
   const handleSubmit = (values: ReconciliationFormValues) => {
@@ -217,7 +209,7 @@ export const ReconciliationForm: React.FC<ReconciliationFormProps> = ({
                       : "text-red-500"
                   )}
                 >
-                  {formatCurrency(difference)}
+                  {formatCurrency(difference, { currency: settings.currency })}
                 </span>
               </div>
               <div className="text-xs text-muted-foreground mt-1">

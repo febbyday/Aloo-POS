@@ -3,17 +3,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
-import { 
-  Calendar, 
-  Layers, 
-  Users, 
-  Tag, 
-  Package, 
+import { useToast } from '@/lib/toast';
+import {
+  Calendar,
+  Layers,
+  Users,
+  Tag,
+  Package,
   ArrowLeft,
   RefreshCw
 } from 'lucide-react';
-import { 
+import {
   ScheduledPriceManager,
   PriceTierManager,
   CustomerGroupsTable,
@@ -81,7 +81,7 @@ export function EnhancedPricingPage() {
   useEffect(() => {
     const loadProduct = async () => {
       if (!productId) return;
-      
+
       try {
         setLoading(true);
         const productData = await getProduct(productId);
@@ -108,7 +108,7 @@ export function EnhancedPricingPage() {
       ...price,
       status: new Date() >= price.startDate && new Date() <= price.endDate ? 'active' : 'scheduled'
     };
-    
+
     setScheduledPrices([...scheduledPrices, newPrice]);
     return Promise.resolve();
   };
@@ -118,14 +118,14 @@ export function EnhancedPricingPage() {
     const updatedPrices = scheduledPrices.map(price => {
       if (price.id === id) {
         const updatedPrice = { ...price, ...updates };
-        updatedPrice.status = new Date() >= updatedPrice.startDate && new Date() <= updatedPrice.endDate 
-          ? 'active' 
+        updatedPrice.status = new Date() >= updatedPrice.startDate && new Date() <= updatedPrice.endDate
+          ? 'active'
           : 'scheduled';
         return updatedPrice;
       }
       return price;
     });
-    
+
     setScheduledPrices(updatedPrices);
     return Promise.resolve();
   };
@@ -142,7 +142,7 @@ export function EnhancedPricingPage() {
       id: `pt-${Date.now()}`,
       ...tier
     };
-    
+
     setPriceTiers([...priceTiers, newTier]);
     return Promise.resolve();
   };
@@ -155,7 +155,7 @@ export function EnhancedPricingPage() {
       }
       return tier;
     });
-    
+
     setPriceTiers(updatedTiers);
     return Promise.resolve();
   };
@@ -306,7 +306,7 @@ export function EnhancedPricingPage() {
                 <span className="hidden sm:inline">History</span>
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="scheduled" className="mt-6">
               <ScheduledPriceManager
                 productId={productId || ''}
@@ -318,7 +318,7 @@ export function EnhancedPricingPage() {
                 onDeleteScheduledPrice={handleDeleteScheduledPrice}
               />
             </TabsContent>
-            
+
             <TabsContent value="quantity" className="mt-6">
               <PriceTierManager
                 productId={productId || ''}
@@ -332,7 +332,7 @@ export function EnhancedPricingPage() {
                 onDeletePriceTier={handleDeletePriceTier}
               />
             </TabsContent>
-            
+
             <TabsContent value="customer" className="mt-6">
               <CustomerGroupsTable
                 productId={productId || ''}
@@ -340,7 +340,7 @@ export function EnhancedPricingPage() {
                 basePrice={product.retailPrice || 0}
               />
             </TabsContent>
-            
+
             <TabsContent value="history" className="mt-6">
               <PriceHistoryTable
                 productId={productId || ''}

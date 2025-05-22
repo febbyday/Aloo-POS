@@ -1,12 +1,9 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useProductHistory } from './ProductHistoryContext';
-import { useToast } from '@/components/ui/use-toast';
-import { useToastManager } from '@/components/ui/toast-manager';
+import { useToast } from '@/lib/toast';
 import { Check } from 'lucide-react';
 
 // Create the validation schema

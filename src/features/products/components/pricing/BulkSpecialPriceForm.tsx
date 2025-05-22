@@ -42,7 +42,7 @@ import { ProductCombobox } from "./ProductCombobox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import { useCategories } from '../../context/CategoryContext'
 
 const bulkSpecialPriceSchema = z.object({

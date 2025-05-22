@@ -1,14 +1,91 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { TaxRate, TaxRateSchema, TaxCategory, TaxReport } from "../types/finance.types";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/lib/toast";
 import { useFinance } from "./FinanceContext";
 import { v4 as uuidv4 } from "uuid";
-import mockDataService from "../services/MockDataService";
+import { apiClient } from "@/lib/api/api-client";
+import { useApiTransition } from "@/hooks/useApiTransition";
+import { withApiTransition } from "@/lib/api/api-transition-utils";
 
-// Default tax rates now come from MockDataService
-// const defaultTaxRates: TaxRate[] = [ ... ];
+// Fallback mock data for when API calls fail
+const fallbackTaxRates: TaxRate[] = [
+  {
+    id: "1",
+    name: "Standard Rate",
+    rate: 20,
+    code: "STD",
+    description: "Standard tax rate for most goods and services",
+    isDefault: true,
+    category: "standard",
+    appliesTo: ["goods", "services"],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: "2",
+    name: "Reduced Rate",
+    rate: 5,
+    code: "RED",
+    description: "Reduced tax rate for certain goods and services",
+    isDefault: false,
+    category: "reduced",
+    appliesTo: ["food", "books", "children_clothes"],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: "3",
+    name: "Zero Rate",
+    rate: 0,
+    code: "ZERO",
+    description: "Zero tax rate for exempt goods and services",
+    isDefault: false,
+    category: "zero",
+    appliesTo: ["exports", "charity", "health"],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
+
+// Fallback tax categories
+const fallbackTaxCategories: TaxCategory[] = [
+  { id: "1", name: "Standard", code: "STD", description: "Standard rate category" },
+  { id: "2", name: "Reduced", code: "RED", description: "Reduced rate category" },
+  { id: "3", name: "Zero", code: "ZERO", description: "Zero rate category" },
+  { id: "4", name: "Exempt", code: "EX", description: "Tax exempt category" }
+];
+
+// Fallback tax reports
+const fallbackTaxReports: TaxReport[] = [
+  {
+    id: "1",
+    name: "Q1 Sales Tax Report",
+    startDate: "2025-01-01",
+    endDate: "2025-03-31",
+    totalTaxCollected: 12500.75,
+    status: "completed",
+    categories: {
+      "standard": 9500.50,
+      "reduced": 3000.25,
+      "zero": 0
+    },
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "2",
+    name: "Q2 Sales Tax Report",
+    startDate: "2025-04-01",
+    endDate: "2025-06-30",
+    totalTaxCollected: 15750.25,
+    status: "in-progress",
+    categories: {
+      "standard": 12250.75,
+      "reduced": 3499.50,
+      "zero": 0
+    },
+    createdAt: new Date().toISOString()
+  }
+];
 
 interface TaxContextType {
   taxRates: TaxRate[];
@@ -31,36 +108,79 @@ export const TaxProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Use MockDataService for consistent mock data
-  const taxCategories: TaxCategory[] = mockDataService.generateTaxCategories();
-  const taxReports: TaxReport[] = mockDataService.generateTaxReports();
-  
+
+  // Use API transition hook for tax categories
+  const {
+    data: taxCategories,
+    isLoading: categoriesLoading,
+    error: categoriesError
+  } = useApiTransition<TaxCategory[]>({
+    apiCall: () => apiClient.get('finance/tax-categories'),
+    fallbackData: fallbackTaxCategories,
+    dependencies: []
+  });
+
+  // Use API transition hook for tax reports
+  const {
+    data: taxReports,
+    isLoading: reportsLoading,
+    error: reportsError
+  } = useApiTransition<TaxReport[]>({
+    apiCall: () => apiClient.get('finance/tax-reports'),
+    fallbackData: fallbackTaxReports,
+    dependencies: []
+  });
+
   // Load tax rates
   useEffect(() => {
     const loadTaxRates = async () => {
       try {
         setLoading(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 600));
-        
-        // In a real app, this would be an API call
-        // For now, use the MockDataService
-        const savedTaxRates = localStorage.getItem("taxRates");
-        if (savedTaxRates) {
-          const parsedTaxRates = JSON.parse(savedTaxRates);
-          setTaxRates(parsedTaxRates);
+
+        // Try to get tax rates from API with transition fallback
+        const response = await withApiTransition(
+          () => apiClient.get('finance/tax-rates'),
+          fallbackTaxRates,
+          { endpoint: 'finance/tax-rates' }
+        );
+
+        if (response.success) {
+          setTaxRates(response.data);
         } else {
-          const defaultTaxRates = mockDataService.generateTaxRates();
-          setTaxRates(defaultTaxRates);
-          localStorage.setItem("taxRates", JSON.stringify(defaultTaxRates));
+          // If API call failed but we're using mock data
+          if (response.isMock) {
+            // Try to get from localStorage first
+            const savedTaxRates = localStorage.getItem("taxRates");
+            if (savedTaxRates) {
+              const parsedTaxRates = JSON.parse(savedTaxRates);
+              setTaxRates(parsedTaxRates);
+            } else {
+              // Otherwise use our fallback data
+              setTaxRates(fallbackTaxRates);
+              localStorage.setItem("taxRates", JSON.stringify(fallbackTaxRates));
+            }
+          } else {
+            throw new Error(response.error || "Failed to load tax rates");
+          }
         }
-        
+
         setError(null);
       } catch (err) {
         console.error("Failed to load tax rates:", err);
-        setError("Failed to load tax rates");
-        setTaxRates(mockDataService.generateTaxRates());
+        setError(err instanceof Error ? err.message : "Failed to load tax rates");
+
+        // Use localStorage as fallback if available
+        const savedTaxRates = localStorage.getItem("taxRates");
+        if (savedTaxRates) {
+          try {
+            const parsedTaxRates = JSON.parse(savedTaxRates);
+            setTaxRates(parsedTaxRates);
+          } catch {
+            setTaxRates(fallbackTaxRates);
+          }
+        } else {
+          setTaxRates(fallbackTaxRates);
+        }
       } finally {
         setLoading(false);
       }
@@ -77,163 +197,182 @@ export const TaxProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Add new tax rate
-  const addTaxRate = (taxRate: Omit<TaxRate, "id">) => {
+  const addTaxRate = async (taxRate: Omit<TaxRate, "id">) => {
     try {
       const newTaxRate = {
         ...taxRate,
         id: uuidv4(),
       };
-      
+
       // Validate with Zod
       const validatedTaxRate = TaxRateSchema.parse(newTaxRate);
-      
+
       // If this is set as default, update other tax rates
       if (validatedTaxRate.isDefault) {
-        setTaxRates(prev => 
+        setTaxRates(prev =>
           prev.map(rate => ({
             ...rate,
             isDefault: false,
           }))
         );
       }
-      
+
+      // Try to save to API with transition fallback
+      const response = await withApiTransition(
+        () => apiClient.post('finance/tax-rates', validatedTaxRate),
+        validatedTaxRate,
+        { endpoint: 'finance/tax-rates/create' }
+      );
+
+      // Update local state
       setTaxRates(prev => [...prev, validatedTaxRate]);
+
+      // Also save to localStorage as backup
       localStorage.setItem("taxRates", JSON.stringify([...taxRates, validatedTaxRate]));
-      
-      toast({
-        title: "Tax rate added",
-        description: "New tax rate has been added successfully.",
-        variant: "default",
-      });
+
+      toast.success("Tax Rate Added", `${validatedTaxRate.name} has been added successfully.`);
     } catch (err) {
       console.error("Failed to add tax rate:", err);
-      toast({
-        title: "Error",
-        description: "Failed to add tax rate. Please check your input.",
-        variant: "destructive",
-      });
+
+      toast.error("Error Adding Tax Rate", err instanceof Error ? err.message : "An unknown error occurred");
     }
   };
 
   // Update existing tax rate
-  const updateTaxRate = (id: string, taxRateUpdate: Partial<TaxRate>) => {
+  const updateTaxRate = async (id: string, updatedFields: Partial<TaxRate>) => {
     try {
-      let updatedRates: TaxRate[] = [];
-      
-      // If this is being set as default, update other tax rates
-      if (taxRateUpdate.isDefault) {
-        updatedRates = taxRates.map(rate => ({
-          ...rate,
-          isDefault: rate.id === id,
-        }));
-      } else {
-        updatedRates = [...taxRates];
+      // Find the tax rate to update
+      const existingRate = taxRates.find(rate => rate.id === id);
+
+      if (!existingRate) {
+        throw new Error("Tax rate not found");
       }
-      
-      // Now update the specific tax rate
-      updatedRates = updatedRates.map(rate => {
-        if (rate.id === id) {
-          const updated = { ...rate, ...taxRateUpdate };
-          // Validate with Zod
-          return TaxRateSchema.parse(updated);
-        }
-        return rate;
-      });
-      
-      setTaxRates(updatedRates);
-      localStorage.setItem("taxRates", JSON.stringify(updatedRates));
-      
-      toast({
-        title: "Tax rate updated",
-        description: "Tax rate has been updated successfully.",
-        variant: "default",
-      });
+
+      // Combine existing data with updates
+      const updatedTaxRate = {
+        ...existingRate,
+        ...updatedFields,
+        updatedAt: new Date().toISOString()
+      };
+
+      // Validate with Zod
+      const validatedTaxRate = TaxRateSchema.parse(updatedTaxRate);
+
+      // If this is being set as default, update other tax rates
+      if (updatedFields.isDefault === true) {
+        setTaxRates(prev =>
+          prev.map(rate => ({
+            ...rate,
+            isDefault: rate.id === id,
+          }))
+        );
+      }
+
+      // Try to update via API with transition fallback
+      const response = await withApiTransition(
+        () => apiClient.put(`finance/tax-rates/${id}`, validatedTaxRate),
+        validatedTaxRate,
+        { endpoint: `finance/tax-rates/${id}` }
+      );
+
+      // Update local state
+      setTaxRates(prev =>
+        prev.map(rate => rate.id === id ? validatedTaxRate : rate)
+      );
+
+      // Also update localStorage as backup
+      localStorage.setItem(
+        "taxRates",
+        JSON.stringify(taxRates.map(rate => rate.id === id ? validatedTaxRate : rate))
+      );
+
+      toast.success("Tax Rate Updated", `${validatedTaxRate.name} has been updated successfully.`);
     } catch (err) {
       console.error("Failed to update tax rate:", err);
-      toast({
-        title: "Error",
-        description: "Failed to update tax rate. Please check your input.",
-        variant: "destructive",
-      });
+
+      toast.error("Error Updating Tax Rate", err instanceof Error ? err.message : "An unknown error occurred");
     }
   };
 
-  // Delete tax rate
-  const deleteTaxRate = (id: string) => {
+  // Delete a tax rate
+  const deleteTaxRate = async (id: string) => {
     try {
-      // Check if this is the default tax rate
-      const isDefault = taxRates.find(rate => rate.id === id)?.isDefault;
-      
-      if (isDefault) {
-        toast({
-          title: "Cannot delete default tax rate",
-          description: "Please set another tax rate as default before deleting this one.",
-          variant: "destructive",
-        });
-        return;
+      // Check if this is the default rate
+      const rateToDelete = taxRates.find(rate => rate.id === id);
+
+      if (!rateToDelete) {
+        throw new Error("Tax rate not found");
       }
-      
-      const updatedRates = taxRates.filter(rate => rate.id !== id);
-      setTaxRates(updatedRates);
-      localStorage.setItem("taxRates", JSON.stringify(updatedRates));
-      
-      toast({
-        title: "Tax rate deleted",
-        description: "Tax rate has been deleted successfully.",
-        variant: "default",
-      });
+
+      if (rateToDelete.isDefault) {
+        throw new Error("Cannot delete the default tax rate. Set another rate as default first.");
+      }
+
+      // Try to delete via API with transition fallback
+      const response = await withApiTransition(
+        () => apiClient.delete(`finance/tax-rates/${id}`),
+        undefined,
+        { endpoint: `finance/tax-rates/${id}` }
+      );
+
+      // Update local state
+      setTaxRates(prev => prev.filter(rate => rate.id !== id));
+
+      // Also update localStorage as backup
+      localStorage.setItem(
+        "taxRates",
+        JSON.stringify(taxRates.filter(rate => rate.id !== id))
+      );
+
+      toast.success("Tax Rate Deleted", `${rateToDelete.name} has been deleted successfully.`);
     } catch (err) {
       console.error("Failed to delete tax rate:", err);
-      toast({
-        title: "Error",
-        description: "Failed to delete tax rate. Please try again.",
-        variant: "destructive",
-      });
+
+      toast.error("Error Deleting Tax Rate", err instanceof Error ? err.message : "An unknown error occurred");
     }
   };
 
-  // Get default tax rate
-  const getDefaultTaxRate = (): TaxRate | undefined => {
+  // Get the default tax rate
+  const getDefaultTaxRate = () => {
     return taxRates.find(rate => rate.isDefault);
   };
 
-  // Calculate tax for a given amount
-  const calculateTax = (amount: number, taxRateId?: string): number => {
-    if (!settings.taxEnabled) {
-      return 0;
-    }
-    
-    let taxRate: TaxRate | undefined;
-    
+  // Calculate tax for a given amount and tax rate ID
+  const calculateTax = (amount: number, taxRateId?: string) => {
+    // If a specific tax rate ID is provided, use that
     if (taxRateId) {
-      taxRate = taxRates.find(rate => rate.id === taxRateId);
-    } else {
-      taxRate = getDefaultTaxRate();
+      const taxRate = taxRates.find(rate => rate.id === taxRateId);
+      if (taxRate) {
+        return (amount * taxRate.rate) / 100;
+      }
     }
-    
-    if (!taxRate) {
-      return 0;
+
+    // Otherwise use the default tax rate
+    const defaultRate = getDefaultTaxRate();
+    if (defaultRate) {
+      return (amount * defaultRate.rate) / 100;
     }
-    
-    return (amount * taxRate.rate) / 100;
+
+    // If no default found, return 0
+    return 0;
+  };
+
+  const value: TaxContextType = {
+    taxRates,
+    addTaxRate,
+    updateTaxRate,
+    deleteTaxRate,
+    getDefaultTaxRate,
+    calculateTax,
+    loading: loading || categoriesLoading || reportsLoading,
+    error: error || categoriesError?.message || reportsError?.message || null,
+    collectedTaxes,
+    taxCategories: taxCategories || fallbackTaxCategories,
+    taxReports: taxReports || fallbackTaxReports,
   };
 
   return (
-    <TaxContext.Provider
-      value={{
-        taxRates,
-        addTaxRate,
-        updateTaxRate,
-        deleteTaxRate,
-        getDefaultTaxRate,
-        calculateTax,
-        loading,
-        error,
-        collectedTaxes,
-        taxCategories,
-        taxReports,
-      }}
-    >
+    <TaxContext.Provider value={value}>
       {children}
     </TaxContext.Provider>
   );
@@ -246,3 +385,5 @@ export const useTax = (): TaxContextType => {
   }
   return context;
 };
+
+export default TaxContext;

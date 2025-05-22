@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 
 export const StaffPage = () => {
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);

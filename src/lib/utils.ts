@@ -1,119 +1,138 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import {
+  formatCurrency as formatCurrencyNew,
+  formatDate as formatDateNew,
+  formatNumber as formatNumberNew,
+  formatPercentage as formatPercentageNew,
+  truncateText,
+  formatFileSize as formatFileSizeNew,
+  formatPhoneNumber as formatPhoneNumberNew,
+  formatRelativeTime as formatRelativeTimeNew
+} from './utils/formatters';
+import { cn as cnNew } from './utils/cn';
+import { 
+  deepClone as deepCloneNew,
+  isEmpty as isEmptyNew,
+  pick as pickNew,
+  omit as omitNew
+} from './utils/object-utils';
+import {
+  generateId as generateIdNew,
+  isValidUuid,
+  generateUuidV4
+} from './utils/id-utils';
 
+/**
+ * @deprecated Use cn from '@/lib/utils/cn' instead
+ */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  console.warn('Warning: cn from @/lib/utils is deprecated. Use cn from @/lib/utils/cn instead.');
+  return cnNew(...inputs);
 }
 
-export function formatCurrency(amount: number, currency: string = "USD", locale: string = "en-US") {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: currency,
-  }).format(amount)
+/**
+ * @deprecated Use formatCurrency from '@/lib/utils/formatters' instead
+ */
+export function formatCurrency(...args: Parameters<typeof formatCurrencyNew>): ReturnType<typeof formatCurrencyNew> {
+  console.warn('Warning: formatCurrency from @/lib/utils is deprecated. Use formatCurrency from @/lib/utils/formatters instead.');
+  return formatCurrencyNew(...args);
 }
 
-// Date formatting utilities
-export function formatDate(date: Date | string, format: string = "medium", locale: string = "en-US") {
-  const dateObj = typeof date === "string" ? new Date(date) : date;
-  
-  const options: Intl.DateTimeFormatOptions = {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  };
-  
+/**
+ * @deprecated Use formatDate from '@/lib/utils/formatters' instead
+ */
+export function formatDate(date: Date | string | null | undefined, format: string = "medium", locale: string = "en-US") {
+  console.warn('Warning: formatDate from @/lib/utils is deprecated. Use formatDate from @/lib/utils/formatters instead.');
+
+  // Map old format strings to new format options
+  let formatOption: 'short' | 'medium' | 'long' | 'full' = 'medium';
+  let includeTime = false;
+
   switch (format) {
     case "short":
-      options.month = "short";
-      break;
-    case "numeric":
-      options.month = "numeric";
+      formatOption = 'short';
       break;
     case "long":
-      options.month = "long";
-      options.weekday = "long";
+      formatOption = 'long';
       break;
     case "time":
-      return new Intl.DateTimeFormat(locale, {
-        hour: "numeric",
-        minute: "numeric",
-      }).format(dateObj);
+      formatOption = 'short';
+      includeTime = true;
+      break;
     case "datetime":
-      return new Intl.DateTimeFormat(locale, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-      }).format(dateObj);
-    case "iso":
-      return dateObj.toISOString();
+      formatOption = 'medium';
+      includeTime = true;
+      break;
     case "relative":
-      return formatRelativeTime(dateObj);
+      return formatRelativeTimeNew(date);
+    case "iso":
+      if (date) {
+        const dateObj = typeof date === "string" ? new Date(date) : date;
+        return dateObj.toISOString();
+      }
+      return '-';
   }
-  
-  return new Intl.DateTimeFormat(locale, options).format(dateObj);
+
+  return formatDateNew(date, { format: formatOption, includeTime, locale });
 }
 
-export function formatRelativeTime(date: Date | string) {
-  const dateObj = typeof date === "string" ? new Date(date) : date;
-  const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
-  
-  if (diffInSeconds < 60) {
-    return "just now";
-  }
-  
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} minute${diffInMinutes > 1 ? "s" : ""} ago`;
-  }
-  
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) {
-    return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`;
-  }
-  
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) {
-    return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
-  }
-  
-  const diffInWeeks = Math.floor(diffInDays / 7);
-  if (diffInWeeks < 4) {
-    return `${diffInWeeks} week${diffInWeeks > 1 ? "s" : ""} ago`;
-  }
-  
-  const diffInMonths = Math.floor(diffInDays / 30);
-  if (diffInMonths < 12) {
-    return `${diffInMonths} month${diffInMonths > 1 ? "s" : ""} ago`;
-  }
-  
-  const diffInYears = Math.floor(diffInDays / 365);
-  return `${diffInYears} year${diffInYears > 1 ? "s" : ""} ago`;
+/**
+ * @deprecated Use formatRelativeTime from '@/lib/utils/formatters' instead
+ */
+export function formatRelativeTime(date: Date | string | null | undefined): string {
+  console.warn('Warning: formatRelativeTime from @/lib/utils is deprecated. Use formatRelativeTime from @/lib/utils/formatters instead.');
+  return formatRelativeTimeNew(date);
 }
 
-// Number formatting utilities
+/**
+ * @deprecated Use formatNumber from '@/lib/utils/formatters' instead
+ */
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions, locale: string = "en-US") {
-  return new Intl.NumberFormat(locale, options).format(value);
+  console.warn('Warning: formatNumber from @/lib/utils is deprecated. Use formatNumber from @/lib/utils/formatters instead.');
+
+  // Convert old options format to new options format
+  const decimals = options?.minimumFractionDigits;
+
+  return formatNumberNew(value, { decimals, locale });
 }
 
+/**
+ * @deprecated Use formatPercentage from '@/lib/utils/formatters' instead
+ */
 export function formatPercentage(value: number, decimals: number = 2, locale: string = "en-US") {
-  return new Intl.NumberFormat(locale, {
-    style: "percent",
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value / 100);
+  console.warn('Warning: formatPercentage from @/lib/utils is deprecated. Use formatPercentage from @/lib/utils/formatters instead.');
+
+  // The old implementation divided by 100, but the new one expects a decimal
+  // So we need to handle this difference
+  return formatPercentageNew(value / 100, { decimals, locale });
+}
+
+/**
+ * @deprecated Use truncateText from '@/lib/utils/formatters' instead
+ */
+export function truncate(str: string, length: number, ending: string = "...") {
+  console.warn('Warning: truncate from @/lib/utils is deprecated. Use truncateText from @/lib/utils/formatters instead.');
+  return truncateText(str, length, ending);
+}
+
+/**
+ * @deprecated Use formatFileSize from '@/lib/utils/formatters' instead
+ */
+export function formatFileSize(bytes: number, decimals: number = 2): string {
+  console.warn('Warning: formatFileSize from @/lib/utils is deprecated. Use formatFileSize from @/lib/utils/formatters instead.');
+  return formatFileSizeNew(bytes, { decimals });
+}
+
+/**
+ * @deprecated Use formatPhoneNumber from '@/lib/utils/formatters' instead
+ */
+export function formatPhoneNumber(phoneNumber: string, format: string = "(###) ###-####"): string {
+  console.warn('Warning: formatPhoneNumber from @/lib/utils is deprecated. Use formatPhoneNumber from @/lib/utils/formatters instead.');
+  return formatPhoneNumberNew(phoneNumber);
 }
 
 // String utilities
-export function truncate(str: string, length: number, ending: string = "...") {
-  if (str.length > length) {
-    return str.substring(0, length - ending.length) + ending;
-  }
-  return str;
-}
-
 export function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
@@ -149,7 +168,7 @@ export function sortBy<T>(array: T[], key: keyof T, direction: "asc" | "desc" = 
   return [...array].sort((a, b) => {
     const valueA = a[key];
     const valueB = b[key];
-    
+
     if (valueA < valueB) {
       return direction === "asc" ? -1 : 1;
     }
@@ -161,34 +180,54 @@ export function sortBy<T>(array: T[], key: keyof T, direction: "asc" | "desc" = 
 }
 
 // Object utilities
+/**
+ * @deprecated Use omit from '@/lib/utils/object-utils' instead
+ */
 export function omit<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
-  const result = { ...obj };
-  keys.forEach(key => delete result[key]);
-  return result;
+  console.warn('Warning: omit from @/lib/utils is deprecated. Use omit from @/lib/utils/object-utils instead.');
+  return omitNew(obj, keys);
 }
 
+/**
+ * @deprecated Use pick from '@/lib/utils/object-utils' instead
+ */
 export function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
-  return keys.reduce((result, key) => {
-    if (key in obj) {
-      result[key] = obj[key];
-    }
-    return result;
-  }, {} as Pick<T, K>);
+  console.warn('Warning: pick from @/lib/utils is deprecated. Use pick from @/lib/utils/object-utils instead.');
+  return pickNew(obj, keys);
+}
+
+/**
+ * @deprecated Use deepClone from '@/lib/utils/object-utils' instead
+ */
+export function deepClone<T>(obj: T): T {
+  console.warn('Warning: deepClone from @/lib/utils is deprecated. Use deepClone from @/lib/utils/object-utils instead.');
+  return deepCloneNew(obj);
+}
+
+/**
+ * @deprecated Use isEmpty from '@/lib/utils/object-utils' instead
+ */
+export function isEmpty(obj: object): boolean {
+  console.warn('Warning: isEmpty from @/lib/utils is deprecated. Use isEmpty from @/lib/utils/object-utils instead.');
+  return isEmptyNew(obj);
 }
 
 // Debounce utility
+/**
+ * @deprecated Use debounce from '@/lib/utils/timing' instead
+ */
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  
+
   return function(...args: Parameters<T>) {
     const later = () => {
       timeout = null;
       func(...args);
     };
-    
+
     if (timeout !== null) {
       clearTimeout(timeout);
     }
@@ -197,12 +236,15 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle utility
+/**
+ * @deprecated Use throttle from '@/lib/utils/timing' instead
+ */
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
   let inThrottle = false;
-  
+
   return function(...args: Parameters<T>) {
     if (!inThrottle) {
       func(...args);
@@ -215,29 +257,12 @@ export function throttle<T extends (...args: any[]) => any>(
 }
 
 // Generate a unique ID
+/**
+ * @deprecated Use generateId from '@/lib/utils/id-utils' instead
+ */
 export function generateId(prefix: string = ""): string {
-  return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).substr(2, 5)}`;
-}
-
-// Deep clone an object
-export function deepClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
-}
-
-// Check if an object is empty
-export function isEmpty(obj: object): boolean {
-  return Object.keys(obj).length === 0;
-}
-
-// Format file size
-export function formatFileSize(bytes: number, decimals: number = 2): string {
-  if (bytes === 0) return "0 Bytes";
-  
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
+  console.warn('Warning: generateId from @/lib/utils is deprecated. Use generateId from @/lib/utils/id-utils instead.');
+  return generateIdNew(prefix);
 }
 
 // Get file extension
@@ -248,12 +273,4 @@ export function getFileExtension(filename: string): string {
 // Check if a value is a valid date
 export function isValidDate(date: any): boolean {
   return date instanceof Date && !isNaN(date.getTime());
-}
-
-// Format phone number
-export function formatPhoneNumber(phoneNumber: string, format: string = "(###) ###-####"): string {
-  let cleaned = phoneNumber.replace(/\D/g, "");
-  let i = 0;
-  
-  return format.replace(/#/g, () => cleaned[i++] || "");
 }

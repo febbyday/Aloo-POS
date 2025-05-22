@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react"
 import { useEmploymentStatuses } from "../hooks/useEmploymentStatuses"
 import { AlertCircle } from "lucide-react"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -16,7 +16,7 @@ import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/lib/toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { EmploymentStatusToolbar } from "../components/toolbars/EmploymentStatusToolbar"
 import { EmploymentStatusCard } from "../components/EmploymentStatusCard"
@@ -36,8 +36,8 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 export function EmploymentStatusPage() {
-  const { 
-    statuses, 
+  const {
+    statuses,
     isLoading,
     isRefetching,
     isError,
@@ -49,7 +49,7 @@ export function EmploymentStatusPage() {
     deleteStatus,
     backendStatus
   } = useEmploymentStatuses()
-  
+
   const [open, setOpen] = useState(false)
   const [editingStatus, setEditingStatus] = useState<EmploymentStatus | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -93,48 +93,31 @@ export function EmploymentStatusPage() {
     try {
       if (editingStatus) {
         await updateStatus(editingStatus.id!, values)
-        toast({
-          title: "Success",
-          description: "Employment status updated successfully"
-        })
+        toast.success("Success", "Employment status updated successfully")
       } else {
         await addStatus(values)
-        toast({
-          title: "Success",
-          description: "Employment status created successfully"
-        })
+        toast.success("Success", "Employment status created successfully")
       }
       setOpen(false)
       setEditingStatus(null)
       form.reset()
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive"
-      })
+      toast.error("Error", error instanceof Error ? error.message : "An error occurred")
     }
   }
 
   const handleDelete = async (status: EmploymentStatus) => {
     try {
       await deleteStatus(status.id!)
-      toast({
-        title: "Success",
-        description: "Employment status deleted successfully"
-      })
+      toast.success("Success", "Employment status deleted successfully")
       setDeleteDialogOpen(false)
       setStatusToDelete(null)
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive"
-      })
+      toast.error("Error", error instanceof Error ? error.message : "An error occurred")
     }
   }
 
-  const filteredStatuses = statuses?.filter(status => 
+  const filteredStatuses = statuses?.filter(status =>
     status.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     status.description.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -155,12 +138,12 @@ export function EmploymentStatusPage() {
           <AlertCircle className="h-4 w-4 text-amber-600" />
           <AlertTitle className="text-amber-800">Using Mock Data</AlertTitle>
           <AlertDescription className="text-amber-700">
-            The system is currently using mock data for employment statuses. 
-            Changes will persist in memory during this session but 
+            The system is currently using mock data for employment statuses.
+            Changes will persist in memory during this session but
             will not be saved to a database.
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="mt-2 bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-900"
               onClick={() => loadStatuses()}
             >
@@ -299,7 +282,7 @@ export function EmploymentStatusPage() {
                 name="benefits"
                 render={({ field }) => {
                   const [inputValue, setInputValue] = useState("");
-                  
+
                   const addBenefit = () => {
                     const value = inputValue.trim();
                     if (value && !field.value.includes(value)) {
@@ -307,26 +290,26 @@ export function EmploymentStatusPage() {
                       setInputValue("");
                     }
                   };
-                  
+
                   const removeBenefit = (index: number) => {
                     const newBenefits = [...field.value];
                     newBenefits.splice(index, 1);
                     field.onChange(newBenefits);
                   };
-                  
+
                   return (
                     <FormItem>
                       <FormLabel>Benefits</FormLabel>
                       <FormDescription>
                         Add benefits associated with this employment status
                       </FormDescription>
-                      
+
                       <div className="space-y-4">
                         {/* Display existing benefits as tags */}
                         <div className="flex flex-wrap gap-2">
                           {field.value.map((benefit, index) => (
-                            <Badge 
-                              key={index} 
+                            <Badge
+                              key={index}
                               variant="secondary"
                               className="px-2 py-1 flex items-center gap-1"
                             >
@@ -346,7 +329,7 @@ export function EmploymentStatusPage() {
                             <span className="text-sm text-muted-foreground">No benefits added yet</span>
                           )}
                         </div>
-                        
+
                         {/* Input to add new benefits */}
                         <div className="flex gap-2">
                           <FormControl>
@@ -399,8 +382,8 @@ export function EmploymentStatusPage() {
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => statusToDelete && handleDelete(statusToDelete)}
             >
               Delete
@@ -410,4 +393,4 @@ export function EmploymentStatusPage() {
       </Dialog>
     </div>
   )
-} 
+}

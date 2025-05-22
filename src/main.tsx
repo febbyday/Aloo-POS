@@ -1,11 +1,15 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { ThemeProvider } from './components/theme-provider'
 import { HelmetProvider } from 'react-helmet-async'
+
+// Import performance monitoring
+import { performanceMonitor } from './lib/performance/performance-monitor'
+
+// Start measuring application initialization time
+performanceMonitor.markStart('app:initialization');
 
 // Import API verification
 import './lib/api/api-verification'
@@ -16,6 +20,16 @@ import { setupDefaultRoles } from './features/staff/utils/setupRoles'
 
 // Import admin account initialization
 import { initAdminAccount } from './lib/api/init-admin-account'
+
+// Import monitoring system
+import { initMonitoring } from './lib/monitoring/init'
+
+// Import legacy API detection in development mode
+if (import.meta.env.MODE === 'development') {
+  import('./scripts/detect-legacy-api').catch(err => {
+    console.warn('Failed to load legacy API detection script:', err);
+  });
+}
 
 // Create a global error handler specifically for vendor.js errors
 const handleVendorJsErrors = () => {
@@ -103,19 +117,41 @@ const handleVendorJsErrors = () => {
 };
 
 // Initialize error handling
+performanceMonitor.markStart('app:errorHandling');
 handleVendorJsErrors();
+performanceMonitor.markEnd('app:errorHandling');
+
+// Initialize monitoring system
+performanceMonitor.markStart('app:monitoring');
+initMonitoring({
+  enableLogging: true,
+  enableErrorTracking: true,
+  reportAllErrors: process.env.NODE_ENV !== 'production',
+  errorRateThreshold: 10,
+  captureUnhandledRejections: true,
+  captureUnhandledExceptions: true
+});
+performanceMonitor.markEnd('app:monitoring');
 
 // Initialize admin account
+performanceMonitor.markStart('app:adminAccount');
 initAdminAccount();
+performanceMonitor.markEnd('app:adminAccount');
 
 // Create a custom event listener for authentication success
 document.addEventListener('auth:login:success', () => {
   // Run role setup after successful authentication
   console.log('Authentication successful, setting up roles...');
+  performanceMonitor.markStart('app:roleSetup');
   setupDefaultRoles().catch(err => {
     console.warn('Error setting up roles after authentication:', err);
+  }).finally(() => {
+    performanceMonitor.markEnd('app:roleSetup');
   });
 });
+
+// Mark the start of React rendering
+performanceMonitor.markStart('app:rendering');
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -126,3 +162,19 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </HelmetProvider>
   </React.StrictMode>,
 )
+
+// Log all performance measurements after a delay to ensure they're captured
+setTimeout(() => {
+  performanceMonitor.markEnd('app:rendering');
+  performanceMonitor.markEnd('app:initialization');
+  performanceMonitor.logAllMeasurements();
+
+  // Run performance analysis in development mode
+  if (import.meta.env.MODE === 'development') {
+    import('./scripts/analyze-performance').then(({ analyzePerformance }) => {
+      analyzePerformance();
+    }).catch(err => {
+      console.warn('Failed to load performance analysis script:', err);
+    });
+  }
+}, 2000);

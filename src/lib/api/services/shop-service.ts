@@ -6,23 +6,54 @@
  * - Shop inventory management
  * - Staff assignments
  * - Shop analytics and reporting
+ *
+ * UPDATED: Now uses the enhanced API client and endpoint registry for standardized API access
  */
 
 import { BaseService, QueryParams } from './base-service';
 import { Shop, ShopInventoryItem, StaffAssignment } from '@/features/shops/types';
-import { apiClient } from '../api-client';
-import { handleApiError } from '../api-client';
+import { enhancedApiClient } from '../enhanced-api-client';
+import { SHOP_ENDPOINTS } from '../endpoint-registry';
+import { ApiError, ApiErrorType, createErrorHandler } from '../error-handler';
 import { SHOP_STATUS } from '../../../../shared/schemas/shopSchema';
 
-// API endpoints
-const ENDPOINTS = {
-  SHOPS: '/api/v1/shops',
-  SHOP_BY_ID: (id: string) => `/api/v1/shops/${id}`,
-  SHOP_INVENTORY: (id: string) => `/api/v1/shops/${id}/inventory`,
-  SHOP_STAFF: (id: string) => `/api/v1/shops/${id}/staff`,
-  SHOP_REPORTS: (id: string) => `/api/v1/shops/${id}/reports`,
-  SHOP_ACTIVITY: (id: string) => `/api/v1/shops/${id}/activity`,
+// Create a module-specific error handler
+const shopErrorHandler = createErrorHandler('shops');
+
+// Define retry configuration for shop endpoints
+const SHOP_RETRY_CONFIG = {
+  maxRetries: 2,
+  initialDelay: 500,
+  maxDelay: 5000,
+  backoffFactor: 2,
+  shouldRetry: (error: ApiError) => {
+    // Only retry network or server errors, not validation or auth errors
+    return [ApiErrorType.NETWORK, ApiErrorType.SERVER, ApiErrorType.TIMEOUT].includes(error.type);
+  }
 };
+
+/**
+ * Safe API call with fallback
+ *
+ * @param apiCall Function that makes the API call
+ * @param fallbackFn Function to call if the API call fails
+ * @param errorMessage Error message to display
+ * @returns The API response or fallback data
+ */
+async function safeApiCallWithFallback<T>(
+  apiCall: () => Promise<T>,
+  fallbackFn: () => T,
+  errorMessage: string
+): Promise<T> {
+  const [result, error] = await shopErrorHandler.safeCall(apiCall, errorMessage);
+
+  if (error) {
+    console.warn(`Falling back to local data: ${errorMessage}`);
+    return fallbackFn();
+  }
+
+  return result as T;
+}
 
 /**
  * ShopService class for managing shop operations
@@ -30,7 +61,7 @@ const ENDPOINTS = {
 export class ShopService extends BaseService<Shop> {
   constructor() {
     super({
-      endpoint: ENDPOINTS.SHOPS,
+      endpoint: '/api/v1/shops',
       entityName: 'shops',
       usePersistence: true,
     });
@@ -43,35 +74,52 @@ export class ShopService extends BaseService<Shop> {
    * @param includeStaff Whether to include staff assignments
    */
   async getShopById(
-    id: string, 
-    includeInventory: boolean = false, 
+    id: string,
+    includeInventory: boolean = false,
     includeStaff: boolean = false
   ): Promise<Shop> {
-    try {
-      const response = await apiClient.get(ENDPOINTS.SHOP_BY_ID(id));
-      
-      if (!response.success || !response.data) {
-        throw new Error('Failed to fetch shop details');
-      }
-      
-      const shop = response.data;
-      
-      // Fetch related data if requested
-      if (includeInventory) {
-        const inventoryResponse = await this.getShopInventory(id);
-        shop.inventory = inventoryResponse;
-      }
-      
-      if (includeStaff) {
-        const staffResponse = await this.getShopStaff(id);
-        shop.staffAssignments = staffResponse;
-      }
-      
-      return shop;
-    } catch (error) {
-      console.error(`Error fetching shop with ID ${id}:`, error);
-      throw handleApiError(error);
-    }
+    return safeApiCallWithFallback(
+      async () => {
+        const shop = await shopErrorHandler.withRetry(
+          () => enhancedApiClient.get<Shop>(
+            'shops/DETAIL',
+            { id },
+            {
+              params: {
+                include: [
+                  ...(includeInventory ? ['inventory'] : []),
+                  ...(includeStaff ? ['staff'] : [])
+                ].join(',')
+              },
+              cache: 'default'
+            }
+          ),
+          SHOP_RETRY_CONFIG
+        );
+
+        // If the API doesn't support the include parameter, fetch related data manually
+        if (includeInventory && !shop.inventory) {
+          const inventoryResponse = await this.getShopInventory(id);
+          shop.inventory = inventoryResponse;
+        }
+
+        if (includeStaff && !shop.staffAssignments) {
+          const staffResponse = await this.getShopStaff(id);
+          shop.staffAssignments = staffResponse;
+        }
+
+        return shop;
+      },
+      () => ({
+        id,
+        name: 'Unknown Shop',
+        address: {},
+        status: SHOP_STATUS.INACTIVE,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      } as Shop),
+      `Error fetching shop with ID ${id}`
+    );
   }
 
   /**
@@ -80,22 +128,26 @@ export class ShopService extends BaseService<Shop> {
    * @param params Query parameters for filtering and pagination
    */
   async getShopInventory(
-    shopId: string, 
+    shopId: string,
     params?: QueryParams
   ): Promise<ShopInventoryItem[]> {
-    try {
-      const queryString = this.buildQueryString(params);
-      const response = await apiClient.get(`${ENDPOINTS.SHOP_INVENTORY(shopId)}${queryString}`);
-      
-      if (!response.success || !response.data) {
-        throw new Error('Failed to fetch shop inventory');
-      }
-      
-      return response.data.data || [];
-    } catch (error) {
-      console.error(`Error fetching inventory for shop ${shopId}:`, error);
-      throw handleApiError(error);
-    }
+    return safeApiCallWithFallback(
+      async () => {
+        return await shopErrorHandler.withRetry(
+          () => enhancedApiClient.get<ShopInventoryItem[]>(
+            'shops/INVENTORY',
+            { id: shopId },
+            {
+              params,
+              cache: 'default'
+            }
+          ),
+          SHOP_RETRY_CONFIG
+        );
+      },
+      () => [],
+      `Error fetching inventory for shop ${shopId}`
+    );
   }
 
   /**
@@ -104,22 +156,26 @@ export class ShopService extends BaseService<Shop> {
    * @param params Query parameters for filtering and pagination
    */
   async getShopStaff(
-    shopId: string, 
+    shopId: string,
     params?: QueryParams
   ): Promise<StaffAssignment[]> {
-    try {
-      const queryString = this.buildQueryString(params);
-      const response = await apiClient.get(`${ENDPOINTS.SHOP_STAFF(shopId)}${queryString}`);
-      
-      if (!response.success || !response.data) {
-        throw new Error('Failed to fetch shop staff');
-      }
-      
-      return response.data.data || [];
-    } catch (error) {
-      console.error(`Error fetching staff for shop ${shopId}:`, error);
-      throw handleApiError(error);
-    }
+    return safeApiCallWithFallback(
+      async () => {
+        return await shopErrorHandler.withRetry(
+          () => enhancedApiClient.get<StaffAssignment[]>(
+            'shops/STAFF',
+            { id: shopId },
+            {
+              params,
+              cache: 'default'
+            }
+          ),
+          SHOP_RETRY_CONFIG
+        );
+      },
+      () => [],
+      `Error fetching staff for shop ${shopId}`
+    );
   }
 
   /**
@@ -128,20 +184,20 @@ export class ShopService extends BaseService<Shop> {
    * @param status New shop status
    */
   async updateShopStatus(shopId: string, status: SHOP_STATUS): Promise<Shop> {
-    try {
-      const response = await apiClient.patch(ENDPOINTS.SHOP_BY_ID(shopId), {
-        status
-      });
-      
-      if (!response.success || !response.data) {
-        throw new Error('Failed to update shop status');
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating status for shop ${shopId}:`, error);
-      throw handleApiError(error);
+    const [result, error] = await shopErrorHandler.safeCall(
+      () => enhancedApiClient.patch<Shop>(
+        'shops/DETAIL',
+        { status },
+        { id: shopId }
+      ),
+      `Error updating status for shop ${shopId}`
+    );
+
+    if (error) {
+      throw error;
     }
+
+    return result as Shop;
   }
 
   /**
@@ -150,24 +206,26 @@ export class ShopService extends BaseService<Shop> {
    * @param inventoryItem Inventory item to add
    */
   async addInventoryItem(
-    shopId: string, 
+    shopId: string,
     inventoryItem: Omit<ShopInventoryItem, 'id' | 'shopId'>
   ): Promise<ShopInventoryItem> {
-    try {
-      const response = await apiClient.post(ENDPOINTS.SHOP_INVENTORY(shopId), {
-        ...inventoryItem,
-        shopId
-      });
-      
-      if (!response.success || !response.data) {
-        throw new Error('Failed to add inventory item');
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error(`Error adding inventory item to shop ${shopId}:`, error);
-      throw handleApiError(error);
+    const [result, error] = await shopErrorHandler.safeCall(
+      () => enhancedApiClient.post<ShopInventoryItem>(
+        'shops/INVENTORY',
+        {
+          ...inventoryItem,
+          shopId
+        },
+        { id: shopId }
+      ),
+      `Error adding inventory item to shop ${shopId}`
+    );
+
+    if (error) {
+      throw error;
     }
+
+    return result as ShopInventoryItem;
   }
 
   /**
@@ -181,21 +239,20 @@ export class ShopService extends BaseService<Shop> {
     itemId: string,
     updates: Partial<ShopInventoryItem>
   ): Promise<ShopInventoryItem> {
-    try {
-      const response = await apiClient.patch(
-        `${ENDPOINTS.SHOP_INVENTORY(shopId)}/${itemId}`, 
-        updates
-      );
-      
-      if (!response.success || !response.data) {
-        throw new Error('Failed to update inventory item');
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating inventory item ${itemId} in shop ${shopId}:`, error);
-      throw handleApiError(error);
+    const [result, error] = await shopErrorHandler.safeCall(
+      () => enhancedApiClient.patch<ShopInventoryItem>(
+        'shops/INVENTORY_ITEM',
+        updates,
+        { id: shopId, itemId }
+      ),
+      `Error updating inventory item ${itemId} in shop ${shopId}`
+    );
+
+    if (error) {
+      throw error;
     }
+
+    return result as ShopInventoryItem;
   }
 
   /**
@@ -207,24 +264,23 @@ export class ShopService extends BaseService<Shop> {
     shopId: string,
     staffAssignment: Omit<StaffAssignment, 'id' | 'shopId'>
   ): Promise<StaffAssignment> {
-    try {
-      const response = await apiClient.post(
-        ENDPOINTS.SHOP_STAFF(shopId),
+    const [result, error] = await shopErrorHandler.safeCall(
+      () => enhancedApiClient.post<StaffAssignment>(
+        'shops/ASSIGN_STAFF',
         {
           ...staffAssignment,
           shopId
-        }
-      );
-      
-      if (!response.success || !response.data) {
-        throw new Error('Failed to assign staff to shop');
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error(`Error assigning staff to shop ${shopId}:`, error);
-      throw handleApiError(error);
+        },
+        { id: shopId }
+      ),
+      `Error assigning staff to shop ${shopId}`
+    );
+
+    if (error) {
+      throw error;
     }
+
+    return result as StaffAssignment;
   }
 
   /**
@@ -233,17 +289,16 @@ export class ShopService extends BaseService<Shop> {
    * @param assignmentId Staff assignment ID
    */
   async removeStaffAssignment(shopId: string, assignmentId: string): Promise<void> {
-    try {
-      const response = await apiClient.delete(
-        `${ENDPOINTS.SHOP_STAFF(shopId)}/${assignmentId}`
-      );
-      
-      if (!response.success) {
-        throw new Error('Failed to remove staff assignment');
-      }
-    } catch (error) {
-      console.error(`Error removing staff assignment ${assignmentId} from shop ${shopId}:`, error);
-      throw handleApiError(error);
+    const [_, error] = await shopErrorHandler.safeCall(
+      () => enhancedApiClient.delete(
+        'shops/STAFF_ASSIGNMENT',
+        { id: shopId, assignmentId }
+      ),
+      `Error removing staff assignment ${assignmentId} from shop ${shopId}`
+    );
+
+    if (error) {
+      throw error;
     }
   }
 
@@ -253,51 +308,34 @@ export class ShopService extends BaseService<Shop> {
    * @param period Report period ('day', 'week', 'month', 'year')
    */
   async getShopReports(
-    shopId: string, 
+    shopId: string,
     period: 'day' | 'week' | 'month' | 'year' = 'month'
   ): Promise<any> {
-    try {
-      const response = await apiClient.get(`${ENDPOINTS.SHOP_REPORTS(shopId)}?period=${period}`);
-      
-      if (!response.success || !response.data) {
-        throw new Error('Failed to fetch shop reports');
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching reports for shop ${shopId}:`, error);
-      throw handleApiError(error);
-    }
+    return safeApiCallWithFallback(
+      async () => {
+        return await shopErrorHandler.withRetry(
+          () => enhancedApiClient.get(
+            'shops/REPORTS',
+            { id: shopId },
+            {
+              params: { period },
+              cache: 'default'
+            }
+          ),
+          SHOP_RETRY_CONFIG
+        );
+      },
+      () => ({
+        sales: [],
+        inventory: [],
+        customers: [],
+        period
+      }),
+      `Error fetching reports for shop ${shopId}`
+    );
   }
 
-  /**
-   * Build query string from parameters
-   * @param params Query parameters
-   * @returns Formatted query string
-   */
-  private buildQueryString(params?: QueryParams): string {
-    if (!params) return '';
-    
-    const queryParams = new URLSearchParams();
-    
-    if (params.page) queryParams.append('page', params.page.toString());
-    if (params.pageSize) queryParams.append('limit', params.pageSize.toString());
-    if (params.search) queryParams.append('search', params.search);
-    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
-    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
-    
-    // Add any additional filters
-    if (params.filters) {
-      Object.entries(params.filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, value.toString());
-        }
-      });
-    }
-    
-    const queryString = queryParams.toString();
-    return queryString ? `?${queryString}` : '';
-  }
+
 }
 
 // Export singleton instance

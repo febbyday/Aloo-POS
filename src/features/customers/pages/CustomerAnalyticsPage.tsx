@@ -1,11 +1,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Download, Calendar } from 'lucide-react'
+import { Download, Calendar, ChevronRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export function CustomerAnalyticsPage() {
   return (
     <div className="space-y-4">
+      {/* Breadcrumb navigation */}
+      <div className="flex items-center text-sm text-muted-foreground">
+        <Link to="/customers" className="hover:text-foreground transition-colors">
+          Customers
+        </Link>
+        <ChevronRight className="h-4 w-4 mx-1" />
+        <span className="font-medium text-foreground">Analytics</span>
+      </div>
+      
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold tracking-tight">Customer Analytics</h2>
         <div className="flex gap-2">

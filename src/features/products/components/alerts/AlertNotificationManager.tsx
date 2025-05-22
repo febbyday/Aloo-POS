@@ -8,18 +8,18 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Bell, 
-  Mail, 
-  MessageSquare, 
-  Smartphone, 
-  Clock, 
+import {
+  Bell,
+  Mail,
+  MessageSquare,
+  Smartphone,
+  Clock,
   Save,
   AlertTriangle,
   AlertCircle,
   Info
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 
 interface NotificationChannel {
   id: string;
@@ -79,7 +79,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
   const handleChannelToggle = (channelId: string, enabled: boolean) => {
     setCurrentSettings(prev => ({
       ...prev,
-      channels: prev.channels.map(channel => 
+      channels: prev.channels.map(channel =>
         channel.id === channelId ? { ...channel, enabled } : channel
       )
     }));
@@ -117,14 +117,14 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
     setCurrentSettings(prev => {
       const channelKey = `${alertType}AlertChannels` as 'criticalAlertChannels' | 'warningAlertChannels';
       const channels = [...prev[channelKey]];
-      
+
       if (enabled && !channels.includes(channelId)) {
         channels.push(channelId);
       } else if (!enabled && channels.includes(channelId)) {
         const index = channels.indexOf(channelId);
         channels.splice(index, 1);
       }
-      
+
       return {
         ...prev,
         [channelKey]: channels
@@ -226,7 +226,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
             <TabsTrigger value="alerts">Alert Settings</TabsTrigger>
             <TabsTrigger value="digest">Digest Settings</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="channels" className="space-y-6 pt-4">
             <div className="flex items-center space-x-2">
               <Switch
@@ -253,8 +253,8 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleTestNotification(channel.id)}
                           disabled={!channel.enabled}
@@ -267,7 +267,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                         />
                       </div>
                     </div>
-                    
+
                     {channel.enabled && (
                       <div className="mt-4 space-y-2">
                         {channel.type === 'email' && (
@@ -281,7 +281,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                                 const recipients = e.target.value.split(',').map(r => r.trim()).filter(Boolean);
                                 setCurrentSettings(prev => ({
                                   ...prev,
-                                  channels: prev.channels.map(c => 
+                                  channels: prev.channels.map(c =>
                                     c.id === channel.id ? { ...c, recipients } : c
                                   )
                                 }));
@@ -289,7 +289,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                             />
                           </div>
                         )}
-                        
+
                         {(channel.type === 'slack' || channel.type === 'teams') && (
                           <div>
                             <Label htmlFor={`webhook-${channel.id}`}>Webhook URL</Label>
@@ -300,7 +300,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                               onChange={(e) => {
                                 setCurrentSettings(prev => ({
                                   ...prev,
-                                  channels: prev.channels.map(c => 
+                                  channels: prev.channels.map(c =>
                                     c.id === channel.id ? { ...c, webhookUrl: e.target.value } : c
                                   )
                                 }));
@@ -315,7 +315,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
               ))}
             </div>
           </TabsContent>
-          
+
           <TabsContent value="alerts" className="space-y-6 pt-4">
             <div className="space-y-4">
               {/* Critical Alerts */}
@@ -339,12 +339,12 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                             <Checkbox
                               id={`critical-${channel.id}`}
                               checked={currentSettings.criticalAlertChannels.includes(channel.id)}
-                              onCheckedChange={(checked) => 
+                              onCheckedChange={(checked) =>
                                 handleAlertChannelToggle('critical', channel.id, !!checked)
                               }
                               disabled={!channel.enabled}
                             />
-                            <Label 
+                            <Label
                               htmlFor={`critical-${channel.id}`}
                               className={!channel.enabled ? 'text-muted-foreground' : ''}
                             >
@@ -354,7 +354,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                         ))}
                       </div>
                     </div>
-                    
+
                     <div>
                       <Label>Notification Template</Label>
                       <div className="flex items-center space-x-2 mt-2">
@@ -373,8 +373,8 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleViewTemplate(currentSettings.templates.critical)}
                         >
@@ -385,7 +385,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                   </div>
                 </CardContent>
               </Card>
-              
+
               {/* Warning Alerts */}
               <Card>
                 <CardHeader className="pb-2">
@@ -407,12 +407,12 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                             <Checkbox
                               id={`warning-${channel.id}`}
                               checked={currentSettings.warningAlertChannels.includes(channel.id)}
-                              onCheckedChange={(checked) => 
+                              onCheckedChange={(checked) =>
                                 handleAlertChannelToggle('warning', channel.id, !!checked)
                               }
                               disabled={!channel.enabled}
                             />
-                            <Label 
+                            <Label
                               htmlFor={`warning-${channel.id}`}
                               className={!channel.enabled ? 'text-muted-foreground' : ''}
                             >
@@ -422,7 +422,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                         ))}
                       </div>
                     </div>
-                    
+
                     <div>
                       <Label>Notification Template</Label>
                       <div className="flex items-center space-x-2 mt-2">
@@ -441,8 +441,8 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleViewTemplate(currentSettings.templates.warning)}
                         >
@@ -455,7 +455,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
               </Card>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="digest" className="space-y-6 pt-4">
             <div className="flex items-center space-x-2">
               <Switch
@@ -465,7 +465,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
               />
               <Label htmlFor="enable-digest">Enable scheduled alert digests</Label>
             </div>
-            
+
             {currentSettings.digestEnabled && (
               <div className="space-y-4">
                 <div>
@@ -484,7 +484,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {currentSettings.digestFrequency === 'weekly' && (
                   <div>
                     <Label>Day of Week</Label>
@@ -507,7 +507,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                     </Select>
                   </div>
                 )}
-                
+
                 {currentSettings.digestFrequency === 'monthly' && (
                   <div>
                     <Label>Day of Month</Label>
@@ -528,7 +528,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                     </Select>
                   </div>
                 )}
-                
+
                 <div>
                   <Label>Time of Day</Label>
                   <Input
@@ -538,7 +538,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                     className="mt-2"
                   />
                 </div>
-                
+
                 <div>
                   <Label>Digest Template</Label>
                   <div className="flex items-center space-x-2 mt-2">
@@ -557,8 +557,8 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => handleViewTemplate(currentSettings.templates.digest)}
                     >
@@ -566,7 +566,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                     </Button>
                   </div>
                 </div>
-                
+
                 <div>
                   <Label>Notification Channels</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
@@ -580,7 +580,7 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
                           }
                           disabled={true}
                         />
-                        <Label 
+                        <Label
                           htmlFor={`digest-${channel.id}`}
                           className={!channel.enabled ? 'text-muted-foreground' : ''}
                         >
@@ -603,8 +603,8 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
           <div className="mt-6 p-4 border rounded-md">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium">Template Preview</h4>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={() => setSelectedTemplate(null)}
               >
@@ -640,8 +640,8 @@ export const AlertNotificationManager: React.FC<AlertNotificationManagerProps> =
         )}
       </CardContent>
       <CardFooter className="flex justify-end border-t pt-4">
-        <Button 
-          onClick={handleSaveSettings} 
+        <Button
+          onClick={handleSaveSettings}
           disabled={isSaving}
         >
           <Save className="h-4 w-4 mr-2" />

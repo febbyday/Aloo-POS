@@ -1,15 +1,15 @@
 import { useState } from 'react'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -20,7 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Edit, MoreHorizontal, Trash2, FileText, Printer, Eye } from 'lucide-react'
 import { ExpenseDialog } from './ExpenseDialog'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 
 interface Expense {
   id: string
@@ -114,7 +114,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                     </TableCell>
                     <TableCell>{expense.paymentMethod}</TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant={expense.status === 'Paid' ? 'default' : 'outline'}
                         className={expense.status === 'Paid' ? 'bg-green-500 hover:bg-green-600' : ''}
                       >
@@ -123,9 +123,9 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                     </TableCell>
                     <TableCell className="text-center">
                       {expense.attachments > 0 ? (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleViewReceipt(expense)}
                           className="h-6 w-6"
                         >
@@ -160,7 +160,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => handleDeleteExpense(expense)}
                             className="text-destructive focus:text-destructive"
                           >
@@ -178,9 +178,9 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
         </CardContent>
       </Card>
 
-      <ExpenseDialog 
-        open={isDialogOpen} 
-        onOpenChange={setIsDialogOpen} 
+      <ExpenseDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
         expense={currentExpense}
         onSave={() => {
           setIsDialogOpen(false)
@@ -188,7 +188,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
             title: "Expense Updated",
             description: "The expense has been successfully updated.",
           })
-        }} 
+        }}
       />
     </>
   )

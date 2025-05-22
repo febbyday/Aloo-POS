@@ -65,11 +65,11 @@ export class CategoryService {
 
     // Include related data
     const include: Prisma.CategoryInclude = {
-      parent: true,
-      children: true,
+      Category: true,
+      other_Category: true,
       _count: {
         select: {
-          products: true,
+          Product: true,
         },
       },
     };
@@ -99,9 +99,9 @@ export class CategoryService {
    */
   async getCategoryById(id: string): Promise<Category | null> {
     return this.repository.findById(id, {
-      parent: true,
-      children: true,
-      products: {
+      Category: true,
+      other_Category: true,
+      Product: {
         take: 10, // Limit to 10 products
         orderBy: {
           createdAt: 'desc',
@@ -109,7 +109,7 @@ export class CategoryService {
       },
       _count: {
         select: {
-          products: true,
+          Product: true,
         },
       },
     });
@@ -151,8 +151,8 @@ export class CategoryService {
       include: {
         _count: {
           select: {
-            products: true,
-            children: true,
+            Product: true,
+            other_Category: true,
           },
         },
       },
@@ -170,9 +170,9 @@ export class CategoryService {
     // Get all root categories (parentId is null)
     const rootCategories = await this.repository.findByParentId(null, {
       include: {
-        children: {
+        other_Category: {
           include: {
-            children: true,
+            other_Category: true,
           },
         },
       },

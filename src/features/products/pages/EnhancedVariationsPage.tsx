@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import {
   RefreshCw,
   ArrowLeft,

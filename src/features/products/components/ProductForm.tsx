@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { useState, useEffect } from 'react';
 import { useProductForm } from '../context/ProductFormContext';
 import { UnifiedProduct, ProductType, ProductStatus, StockStatus, ProductAttribute, ProductVariation } from '../types/unified-product.types';

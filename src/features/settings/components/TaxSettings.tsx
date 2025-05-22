@@ -1,24 +1,21 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TaxSettings } from '../types/settings.types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Edit, Percent, CheckCircle2, Tag, BadgePercent, DollarSign, Star, CheckSquare, X } from 'lucide-react';
+import { Plus, Trash2, Edit, Percent, CheckCircle2, Tag, BadgePercent, DollarSign, Star, CheckSquare, X, Save, RotateCcw, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-interface TaxSettingsProps {
-    settings: TaxSettings;
-    onUpdate: (settings: TaxSettings) => void;
-}
+import { useToast } from "@/components/ui/use-toast";
+import { SettingsService } from '../services/tax.service';
+import { TaxSettings } from '../schemas/tax-settings.schema';
 
 const taxRateSchema = z.object({
     id: z.string().optional(),
@@ -29,9 +26,34 @@ const taxRateSchema = z.object({
 
 type TaxRateFormValues = z.infer<typeof taxRateSchema>;
 
-export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
+export function TaxSettingsPanel() {
+    const { toast } = useToast();
+    const [settings, setSettings] = useState<TaxSettings | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [isAddingTaxRate, setIsAddingTaxRate] = useState(false);
     const [editingTaxRate, setEditingTaxRate] = useState<string | null>(null);
+
+    // Load settings on component mount
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const data = await SettingsService.getSettings();
+                setSettings(data);
+            } catch (error) {
+                console.error("Error loading tax settings:", error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load tax settings",
+                    variant: "destructive",
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadSettings();
+    }, [toast]);
 
     const form = useForm<TaxRateFormValues>({
         resolver: zodResolver(taxRateSchema),
@@ -42,7 +64,30 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
         }
     });
 
+    const saveSettings = async (updatedSettings: TaxSettings) => {
+        setSaving(true);
+        try {
+            await SettingsService.saveSettings(updatedSettings);
+            setSettings(updatedSettings);
+            toast({
+                title: "Settings saved",
+                description: "Tax settings have been updated successfully",
+            });
+        } catch (error) {
+            console.error("Error saving tax settings:", error);
+            toast({
+                title: "Error",
+                description: "Failed to save tax settings",
+                variant: "destructive",
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleAddTaxRate = (values: TaxRateFormValues) => {
+        if (!settings) return;
+
         const newTaxRate = {
             ...values,
             id: editingTaxRate || `tax-${Date.now()}`
@@ -50,7 +95,7 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
 
         let updatedRates;
         if (editingTaxRate) {
-            updatedRates = settings.rates.map(rate => 
+            updatedRates = settings.rates.map(rate =>
                 rate.id === editingTaxRate ? newTaxRate : rate
             );
         } else {
@@ -65,25 +110,32 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
             }));
         }
 
-        onUpdate({
+        const updatedSettings = {
             ...settings,
             rates: updatedRates
-        });
+        };
 
+        saveSettings(updatedSettings);
         setIsAddingTaxRate(false);
         setEditingTaxRate(null);
         form.reset();
     };
 
     const handleDeleteTaxRate = (id: string) => {
+        if (!settings) return;
+
         const updatedRates = settings.rates.filter(rate => rate.id !== id);
-        onUpdate({
+        const updatedSettings = {
             ...settings,
             rates: updatedRates
-        });
+        };
+
+        saveSettings(updatedSettings);
     };
 
     const handleEditTaxRate = (id: string) => {
+        if (!settings) return;
+
         const taxRate = settings.rates.find(rate => rate.id === id);
         if (taxRate) {
             form.reset(taxRate);
@@ -92,11 +144,74 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
         }
     };
 
+    const handleUpdateSetting = <K extends keyof TaxSettings>(
+        section: K,
+        value: TaxSettings[K]
+    ) => {
+        if (!settings) return;
+
+        const updatedSettings = {
+            ...settings,
+            [section]: value
+        };
+
+        setSettings(updatedSettings);
+    };
+
+    const handleResetSettings = async () => {
+        try {
+            const defaultSettings = await SettingsService.resetSettings();
+            setSettings(defaultSettings);
+            toast({
+                title: "Settings reset",
+                description: "Tax settings have been reset to defaults",
+            });
+        } catch (error) {
+            console.error("Error resetting tax settings:", error);
+            toast({
+                title: "Error",
+                description: "Failed to reset tax settings",
+                variant: "destructive",
+            });
+        }
+    };
+
     const handleDialogClose = () => {
         setIsAddingTaxRate(false);
         setEditingTaxRate(null);
         form.reset();
     };
+
+    if (loading) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Tax & Currency Settings</CardTitle>
+                    <CardDescription>Configure tax rates and currency options for your business</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (!settings) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Tax & Currency Settings</CardTitle>
+                    <CardDescription>Configure tax rates and currency options for your business</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-center text-muted-foreground">Failed to load settings. Please try again.</p>
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                    <Button onClick={() => window.location.reload()}>Reload</Button>
+                </CardFooter>
+            </Card>
+        );
+    }
 
     return (
         <Card>
@@ -111,8 +226,8 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
                         <h3 className="text-lg font-medium">Tax Rates</h3>
                         <Dialog open={isAddingTaxRate} onOpenChange={setIsAddingTaxRate}>
                             <DialogTrigger asChild>
-                                <Button 
-                                    size="sm" 
+                                <Button
+                                    size="sm"
                                     onClick={() => {
                                         setEditingTaxRate(null);
                                         form.reset({
@@ -155,10 +270,10 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
                                                 <FormItem>
                                                     <FormLabel>Rate (%)</FormLabel>
                                                     <FormControl>
-                                                        <Input 
-                                                            type="number" 
-                                                            step="0.01" 
-                                                            {...field} 
+                                                        <Input
+                                                            type="number"
+                                                            step="0.01"
+                                                            {...field}
                                                             onChange={e => field.onChange(parseFloat(e.target.value))}
                                                         />
                                                     </FormControl>
@@ -289,7 +404,7 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
                 {/* Currency Settings */}
                 <div className="space-y-4">
                     <h3 className="text-lg font-medium">Currency Settings</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="currency-code">Currency Code</Label>
@@ -308,7 +423,7 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
                                 placeholder="USD"
                             />
                         </div>
-                        
+
                         <div className="space-y-2">
                             <Label htmlFor="currency-symbol">Currency Symbol</Label>
                             <Input
@@ -327,7 +442,7 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
                             />
                         </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="symbol-position">Symbol Position</Label>
@@ -352,7 +467,7 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
                                 </SelectContent>
                             </Select>
                         </div>
-                        
+
                         <div className="space-y-2">
                             <Label htmlFor="decimal-places">Decimal Places</Label>
                             <Select
@@ -391,17 +506,14 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
                             id="multi-currency"
                             checked={settings.multipleCurrencies.enabled}
                             onCheckedChange={(checked) =>
-                                onUpdate({
-                                    ...settings,
-                                    multipleCurrencies: {
-                                        ...settings.multipleCurrencies,
-                                        enabled: checked,
-                                    },
+                                handleUpdateSetting('multipleCurrencies', {
+                                    ...settings.multipleCurrencies,
+                                    enabled: checked,
                                 })
                             }
                         />
                     </div>
-                    
+
                     {settings.multipleCurrencies.enabled && (
                         <div className="p-4 border rounded-md bg-muted/50">
                             <p className="text-sm text-muted-foreground mb-2">
@@ -413,9 +525,34 @@ export function TaxSettingsPanel({ settings, onUpdate }: TaxSettingsProps) {
                         </div>
                     )}
                 </div>
-                
-                <Button>Save Changes</Button>
+
             </CardContent>
+            <CardFooter className="flex justify-between">
+                <Button
+                    variant="outline"
+                    onClick={handleResetSettings}
+                    disabled={loading || saving}
+                >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reset to Defaults
+                </Button>
+                <Button
+                    onClick={() => saveSettings(settings)}
+                    disabled={loading || saving}
+                >
+                    {saving ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Changes
+                        </>
+                    )}
+                </Button>
+            </CardFooter>
         </Card>
     );
 }

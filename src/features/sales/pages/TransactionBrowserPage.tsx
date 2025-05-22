@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { 
+import {
   Search,
   Download,
   Filter,
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -22,14 +22,14 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { TransactionsTable } from '../components/TransactionsTable'
 import { TransactionDetailsDialog } from '../components/TransactionDetailsDialog'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { format } from 'date-fns'
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 
 export interface TransactionItem {
   id: string
@@ -143,8 +143,8 @@ export function TransactionBrowserPage() {
     <div className="space-y-4">
       {/* Header Actions */}
       <div className="bg-zinc-900 px-4 py-2 flex items-center gap-2 -mx-4 -mt-4">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
           className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-white/10"
           onClick={handleRefresh}
@@ -152,8 +152,8 @@ export function TransactionBrowserPage() {
           <RefreshCw className="h-4 w-4" />
         </Button>
 
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
           className="h-8 text-zinc-400 hover:text-white hover:bg-white/10"
           onClick={handleExport}
@@ -222,9 +222,9 @@ export function TransactionBrowserPage() {
                       from: filters.startDate ? new Date(filters.startDate) : undefined,
                       to: filters.endDate ? new Date(filters.endDate) : undefined,
                     }}
-                    onSelect={(range) => 
-                      setFilters(prev => ({ 
-                        ...prev, 
+                    onSelect={(range) =>
+                      setFilters(prev => ({
+                        ...prev,
                         startDate: range ? range.from?.toISOString().split('T')[0] : null,
                         endDate: range ? range.to?.toISOString().split('T')[0] : null
                       }))
@@ -239,7 +239,7 @@ export function TransactionBrowserPage() {
 
           <Select
             value={filters.status}
-            onValueChange={(value: Transaction['status']) => 
+            onValueChange={(value: Transaction['status']) =>
               setFilters(prev => ({ ...prev, status: value }))
             }
           >
@@ -255,7 +255,7 @@ export function TransactionBrowserPage() {
 
           <Select
             value={filters.paymentMethod}
-            onValueChange={(value: Transaction['paymentMethod']) => 
+            onValueChange={(value: Transaction['paymentMethod']) =>
               setFilters(prev => ({ ...prev, paymentMethod: value }))
             }
           >
@@ -275,9 +275,9 @@ export function TransactionBrowserPage() {
             type="number"
             placeholder="Min Amount"
             value={filters.minAmount}
-            onChange={(e) => setFilters(prev => ({ 
-              ...prev, 
-              minAmount: e.target.value ? Number(e.target.value) : undefined 
+            onChange={(e) => setFilters(prev => ({
+              ...prev,
+              minAmount: e.target.value ? Number(e.target.value) : undefined
             }))}
           />
 
@@ -285,15 +285,15 @@ export function TransactionBrowserPage() {
             type="number"
             placeholder="Max Amount"
             value={filters.maxAmount}
-            onChange={(e) => setFilters(prev => ({ 
-              ...prev, 
-              maxAmount: e.target.value ? Number(e.target.value) : undefined 
+            onChange={(e) => setFilters(prev => ({
+              ...prev,
+              maxAmount: e.target.value ? Number(e.target.value) : undefined
             }))}
           />
 
           <Select
             value={filters.location}
-            onValueChange={(value) => 
+            onValueChange={(value) =>
               setFilters(prev => ({ ...prev, location: value }))
             }
           >
@@ -307,7 +307,7 @@ export function TransactionBrowserPage() {
             </SelectContent>
           </Select>
 
-          <Button 
+          <Button
             variant="outline"
             onClick={() => setFilters({
               search: '',
@@ -326,7 +326,7 @@ export function TransactionBrowserPage() {
       </div>
 
       {/* Transactions Table */}
-      <TransactionsTable 
+      <TransactionsTable
         data={mockTransactions}
         filters={filters}
         onViewDetails={(transaction) => {

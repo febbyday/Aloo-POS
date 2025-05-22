@@ -1,20 +1,18 @@
 /**
  * Staff Document Service
  * Handles document operations for staff members with file upload capabilities
+ * Uses the enhanced API client and endpoint registry for improved error handling and consistency.
  */
 
-import { getApiEndpoint } from '@/lib/api/config';
-import { apiClient } from '@/lib/api/api-client';
-import { 
+import { enhancedApiClient } from '@/lib/api/enhanced-api-client';
+import { getApiUrl } from '@/lib/api/enhanced-config';
+import {
   StaffDocument,
   CreateDocument,
   UpdateDocument,
   MAX_FILE_SIZE,
   ALLOWED_FILE_TYPES
 } from '../types/document';
-
-// API URL for staff document data
-const API_BASE_URL = getApiEndpoint('staff-documents');
 
 // Mock data for documents
 const mockDocuments: StaffDocument[] = [
@@ -99,11 +97,10 @@ export const documentService = {
     }
 
     try {
-      const response = await apiClient.get<StaffDocument[]>(`${API_BASE_URL}?staffId=${staffId}`);
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch documents');
-      }
-      return response.data;
+      const response = await enhancedApiClient.get('staff-documents/LIST', undefined, {
+        params: { staffId }
+      });
+      return response;
     } catch (error) {
       console.error('Error fetching documents:', error);
       useMockData = true;
@@ -126,11 +123,8 @@ export const documentService = {
     }
 
     try {
-      const response = await apiClient.get<StaffDocument>(`${API_BASE_URL}/${documentId}`);
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch document');
-      }
-      return response.data;
+      const response = await enhancedApiClient.get('staff-documents/DETAIL', { id: documentId });
+      return response;
     } catch (error) {
       console.error('Error fetching document:', error);
       useMockData = true;
@@ -187,7 +181,8 @@ export const documentService = {
       if (data.expiresAt) formData.append('expiresAt', data.expiresAt.toISOString());
       if (data.notes) formData.append('notes', data.notes);
 
-      const response = await fetch(`${API_BASE_URL}/upload`, {
+      const uploadUrl = getApiUrl('staff-documents', 'UPLOAD');
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
       });
@@ -244,11 +239,8 @@ export const documentService = {
     }
 
     try {
-      const response = await apiClient.patch<StaffDocument>(`${API_BASE_URL}/${documentId}`, data);
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to update document');
-      }
-      return response.data;
+      const response = await enhancedApiClient.patch('staff-documents/UPDATE', data, { id: documentId });
+      return response;
     } catch (error) {
       console.error('Error updating document:', error);
       throw error;
@@ -272,10 +264,7 @@ export const documentService = {
     }
 
     try {
-      const response = await apiClient.delete<void>(`${API_BASE_URL}/${documentId}`);
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to delete document');
-      }
+      await enhancedApiClient.delete('staff-documents/DELETE', { id: documentId });
     } catch (error) {
       console.error('Error deleting document:', error);
       throw error;
@@ -295,7 +284,8 @@ export const documentService = {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/${documentId}/download`, {
+      const downloadUrl = getApiUrl('staff-documents', 'DOWNLOAD', { id: documentId });
+      const response = await fetch(downloadUrl, {
         method: 'GET',
       });
 
@@ -309,4 +299,4 @@ export const documentService = {
       throw error;
     }
   },
-}; 
+};

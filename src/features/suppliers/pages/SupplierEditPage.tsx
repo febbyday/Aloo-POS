@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Save, ArrowLeft, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { useToastManager } from "@/components/ui/toast-manager";
 import { OperationButton } from "@/components/ui/action-feedback";
 import { SupplierModal } from '../components/SupplierModal';
@@ -26,7 +26,7 @@ export function SupplierEditPage() {
   const { toast } = useToast();
   const showToast = useToastManager();
   const { trackAction } = useSupplierHistory();
-  
+
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(true);
@@ -55,12 +55,12 @@ export function SupplierEditPage() {
 
   const handleSubmit = (data: SupplierFormValues) => {
     if (!supplierId || !supplier) return;
-    
+
     try {
       // Track this action for history
       trackAction(
-        { 
-          type: 'update_supplier', 
+        {
+          type: 'update_supplier',
           id: supplierId,
           before: supplier,
           after: data as any
@@ -78,12 +78,12 @@ export function SupplierEditPage() {
 
   const handleDelete = () => {
     if (!supplierId || !supplier) return;
-    
+
     try {
       // Track this action for history
       trackAction(
-        { 
-          type: 'delete_supplier', 
+        {
+          type: 'delete_supplier',
           supplier: supplier
         },
         `Deleted supplier ${supplier.name}`

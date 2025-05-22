@@ -1,4 +1,6 @@
-import { getApiEndpoint } from '@/lib/api/config';
+import { enhancedApiClient } from '@/lib/api/enhanced-api-client';
+import { SHOP_ENDPOINTS } from '@/lib/api/endpoint-registry';
+import { ApiErrorType, createErrorHandler } from '@/lib/api/error-handler';
 import {
   Shop,
   SHOP_STATUS,
@@ -8,173 +10,147 @@ import {
   InventoryLocation
 } from '../types';
 
-// Shop service
+// Create error handler for this module
+const errorHandler = createErrorHandler('shopService');
+
+/**
+ * @deprecated CRITICAL: Use the factory-based shopService instead
+ * This service has been migrated to use the enhanced API client but will be removed in a future release.
+ * Import from 'src/features/shops/services' instead of directly from this file.
+ * Example: import { shopService } from '@/features/shops/services';
+ */
 export const shopService = {
   // Fetch all shops
   async fetchAll(): Promise<Shop[]> {
     try {
-      const response = await fetch(getApiEndpoint('shops'));
-      if (!response.ok) {
-        throw new Error(`Failed to fetch shops: ${response.status} ${response.statusText}`);
-      }
-      return await response.json();
+      console.warn('DEPRECATED: Using legacy shopService.fetchAll(). Please use the factory-based shopService instead.');
+      return await enhancedApiClient.get<Shop[]>('shops/LIST', undefined, {
+        retry: true,
+        cache: 'default'
+      });
     } catch (error) {
       console.error('Error fetching shops:', error);
-      throw error;
+      return errorHandler.handleError(error, 'fetchAll', []);
     }
   },
 
   // Fetch shop by ID
   async fetchById(id: string): Promise<Shop> {
     try {
-      const response = await fetch(`${getApiEndpoint('shops')}/${id}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch shop: ${response.status} ${response.statusText}`);
-      }
-      return await response.json();
+      console.warn('DEPRECATED: Using legacy shopService.fetchById(). Please use the factory-based shopService instead.');
+      return await enhancedApiClient.get<Shop>('shops/DETAIL', { id }, {
+        retry: true,
+        cache: 'default'
+      });
     } catch (error) {
       console.error(`Error fetching shop ${id}:`, error);
-      throw error;
+      return errorHandler.handleError(error, 'fetchById');
     }
   },
 
   // Create a new shop
   async createShop(shopData: Partial<Shop>): Promise<Shop> {
     try {
-      const response = await fetch(getApiEndpoint('shops'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(shopData),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to create shop: ${response.status} ${response.statusText}`);
-      }
-      
-      return await response.json();
+      console.warn('DEPRECATED: Using legacy shopService.createShop(). Please use the factory-based shopService instead.');
+      return await enhancedApiClient.post<Shop>('shops/CREATE', shopData);
     } catch (error) {
       console.error('Error creating shop:', error);
-      throw error;
+      return errorHandler.handleError(error, 'createShop');
     }
   },
 
   // Update an existing shop
   async updateShop(id: string, shopData: Partial<Shop>): Promise<Shop> {
     try {
-      const response = await fetch(`${getApiEndpoint('shops')}/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(shopData),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to update shop: ${response.status} ${response.statusText}`);
-      }
-      
-      return await response.json();
+      console.warn('DEPRECATED: Using legacy shopService.updateShop(). Please use the factory-based shopService instead.');
+      return await enhancedApiClient.put<Shop>('shops/UPDATE', shopData, { id });
     } catch (error) {
       console.error(`Error updating shop ${id}:`, error);
-      throw error;
+      return errorHandler.handleError(error, 'updateShop');
     }
   },
 
   // Delete a shop
   async deleteShop(id: string): Promise<boolean> {
     try {
-      const response = await fetch(`${getApiEndpoint('shops')}/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to delete shop: ${response.status} ${response.statusText}`);
-      }
-      
+      console.warn('DEPRECATED: Using legacy shopService.deleteShop(). Please use the factory-based shopService instead.');
+      await enhancedApiClient.delete('shops/DELETE', { id });
       return true;
     } catch (error) {
       console.error(`Error deleting shop ${id}:`, error);
-      throw error;
+      // Special case for 404 errors - consider it already deleted
+      if (error.type === ApiErrorType.NOT_FOUND) {
+        return true;
+      }
+      return errorHandler.handleError(error, 'deleteShop');
     }
   },
 
   // Fetch shop inventory
   async fetchInventory(shopId: string): Promise<ShopInventoryItem[]> {
     try {
-      const response = await fetch(`${getApiEndpoint('shops')}/${shopId}/inventory`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch inventory: ${response.status} ${response.statusText}`);
-      }
-      return await response.json();
+      console.warn('DEPRECATED: Using legacy shopService.fetchInventory(). Please use the factory-based shopService instead.');
+      return await enhancedApiClient.get<ShopInventoryItem[]>('shops/INVENTORY', { id: shopId }, {
+        retry: true,
+        cache: 'default'
+      });
     } catch (error) {
       console.error(`Error fetching inventory for shop ${shopId}:`, error);
-      throw error;
+      return errorHandler.handleError(error, 'fetchInventory', []);
     }
   },
 
   // Fetch staff assignments for a shop
   async fetchStaffAssignments(shopId: string): Promise<StaffAssignment[]> {
     try {
-      const response = await fetch(`${getApiEndpoint('shops')}/${shopId}/staff`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch staff assignments: ${response.status} ${response.statusText}`);
-      }
-      return await response.json();
+      console.warn('DEPRECATED: Using legacy shopService.fetchStaffAssignments(). Please use the factory-based shopService instead.');
+      return await enhancedApiClient.get<StaffAssignment[]>('shops/STAFF', { id: shopId }, {
+        retry: true,
+        cache: 'default'
+      });
     } catch (error) {
       console.error(`Error fetching staff assignments for shop ${shopId}:`, error);
-      throw error;
+      return errorHandler.handleError(error, 'fetchStaffAssignments', []);
     }
   },
 
   // Fetch inventory locations for a shop
   async fetchInventoryLocations(shopId: string): Promise<InventoryLocation[]> {
     try {
-      const response = await fetch(`${getApiEndpoint('shops')}/${shopId}/locations`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch inventory locations: ${response.status} ${response.statusText}`);
-      }
-      return await response.json();
+      console.warn('DEPRECATED: Using legacy shopService.fetchInventoryLocations(). Please use the factory-based shopService instead.');
+      return await enhancedApiClient.get<InventoryLocation[]>('shops/INVENTORY', { id: shopId }, {
+        retry: true,
+        cache: 'default'
+      });
     } catch (error) {
       console.error(`Error fetching inventory locations for shop ${shopId}:`, error);
-      throw error;
+      return errorHandler.handleError(error, 'fetchInventoryLocations', []);
     }
   },
 
   // Create inventory transfer between shops
   async createTransfer(transferData: Partial<ShopTransfer>): Promise<ShopTransfer> {
     try {
-      const response = await fetch(`${getApiEndpoint('shops')}/transfers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(transferData),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to create transfer: ${response.status} ${response.statusText}`);
-      }
-      
-      return await response.json();
+      console.warn('DEPRECATED: Using legacy shopService.createTransfer(). Please use the factory-based shopService instead.');
+      return await enhancedApiClient.post<ShopTransfer>('shops/CREATE', transferData);
     } catch (error) {
       console.error('Error creating transfer:', error);
-      throw error;
+      return errorHandler.handleError(error, 'createTransfer');
     }
   },
 
   // Fetch transfers for a shop
   async fetchTransfers(shopId: string): Promise<ShopTransfer[]> {
     try {
-      const response = await fetch(`${getApiEndpoint('shops')}/${shopId}/transfers`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch transfers: ${response.status} ${response.statusText}`);
-      }
-      return await response.json();
+      console.warn('DEPRECATED: Using legacy shopService.fetchTransfers(). Please use the factory-based shopService instead.');
+      return await enhancedApiClient.get<ShopTransfer[]>('shops/LIST', undefined, {
+        params: { shopId },
+        retry: true,
+        cache: 'default'
+      });
     } catch (error) {
       console.error(`Error fetching transfers for shop ${shopId}:`, error);
-      throw error;
+      return errorHandler.handleError(error, 'fetchTransfers', []);
     }
   }
-}; 
+};

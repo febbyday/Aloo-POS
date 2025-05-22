@@ -3,19 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
-import { 
-  AlertTriangle, 
-  Settings, 
-  Bell, 
-  BarChart3, 
+import { useToast } from '@/lib/toast';
+import {
+  AlertTriangle,
+  Settings,
+  Bell,
+  BarChart3,
   RefreshCw,
   FileDown,
   Printer
 } from 'lucide-react';
-import { 
-  LowStockDashboard, 
-  AlertNotificationCenter, 
+import {
+  LowStockDashboard,
+  AlertNotificationCenter,
   StockAlert,
   AlertNotificationManager,
   StockTrendAnalyzer
@@ -148,15 +148,15 @@ export function EnhancedLowStockAlertsPage() {
   }>({});
 
   // Use the stock alerts hook
-  const { 
-    alerts, 
-    loading, 
+  const {
+    alerts,
+    loading,
     error,
     totalCount,
     criticalCount,
     warningCount,
     fetchAlerts,
-    createRestockOrder 
+    createRestockOrder
   } = useStockAlerts();
 
   // Convert alerts to the StockAlert format
@@ -209,7 +209,7 @@ export function EnhancedLowStockAlertsPage() {
       status: filters.status as 'critical' | 'warning' | undefined,
       category: filters.category
     });
-    
+
     toast({
       title: "Data Refreshed",
       description: "The stock alerts have been refreshed.",
@@ -343,7 +343,7 @@ export function EnhancedLowStockAlertsPage() {
               Stock Trends
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="dashboard" className="mt-6">
             <LowStockDashboard
               alerts={formattedAlerts}
@@ -365,7 +365,7 @@ export function EnhancedLowStockAlertsPage() {
               locations={mockLocations}
             />
           </TabsContent>
-          
+
           <TabsContent value="notifications" className="mt-6">
             <div className="flex justify-center">
               <AlertNotificationCenter
@@ -379,14 +379,14 @@ export function EnhancedLowStockAlertsPage() {
               />
             </div>
           </TabsContent>
-          
+
           <TabsContent value="trends" className="mt-6">
             <StockTrendAnalyzer
               product={mockProductStockTrend}
               onExport={handleExport}
               onTimeRangeChange={handleTimeRangeChange}
               onViewStockHistory={handleViewStockHistory}
-              onCreatePurchaseOrder={(productId, quantity) => 
+              onCreatePurchaseOrder={(productId, quantity) =>
                 handleCreatePurchaseOrder([productId]).then(() => true)
               }
             />

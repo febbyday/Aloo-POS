@@ -41,7 +41,7 @@ import {
   ChevronsUpDown
 } from 'lucide-react'
 import { MarketStockTransfer } from './MarketStockTransfer'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress'
 import { Market, MarketFilter } from '../pages/MarketsPage'
 import { MarketsToolbar } from './MarketsToolbar'

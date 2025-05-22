@@ -1,49 +1,49 @@
 /**
  * API Configuration
- * 
+ *
  * This file contains configuration settings for the API client.
  * It provides different configurations for development and production environments.
+ *
+ * IMPORTANT: This file imports from api-constants.ts, which is the single source of truth
+ * for API configuration. All API-related code should import from api-constants.ts directly
+ * or from this file.
+ *
+ * @deprecated Consider importing directly from api-constants.ts instead of this file.
  */
 
-// Define environment
-const isDevelopment = import.meta.env.MODE === 'development';
-
-// Default headers
-const DEFAULT_HEADERS = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json'
-};
-
-// Determine if mock mode should be enabled
-const shouldUseMockData = () => {
-  // Explicit setting via env var takes precedence
-  if (import.meta.env.VITE_DISABLE_MOCK === "false") return true;
-  if (import.meta.env.VITE_DISABLE_MOCK === "true") return false;
-  
-  // Default to using real data even in development
-  console.log("API Config: Using real API data");
-  return false;
-};
+// Import all constants from api-constants.ts
+import {
+  API_URL,
+  API_VERSION,
+  API_PREFIX,
+  FULL_API_URL,
+  DEFAULT_HEADERS,
+  DEFAULT_TIMEOUT,
+  FETCH_OPTIONS,
+  shouldUseMockData
+} from './api-constants';
 
 // API configuration options
 export const apiConfig = {
-  // Use a fallback URL if the environment variable is not set
-  baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:5000',
-  apiPrefix: '/api/v1',
+  // Base URL configuration
+  baseUrl: API_URL,
+  apiVersion: API_VERSION,
+  apiPrefix: API_PREFIX,
+  fullApiUrl: FULL_API_URL,
+
+  // Request configuration
   headers: DEFAULT_HEADERS,
-  timeout: 10000, // 10 seconds
+  timeout: DEFAULT_TIMEOUT,
   useMockData: shouldUseMockData(),
   
-  // CORS settings
-  fetchOptions: {
-    credentials: 'include',
-    mode: 'cors',
-    // Add timeout and retry options
-    timeout: 10000,
-    retries: 2,
-    retryDelay: 1000
+  // Feature-specific mock data settings
+  featureMockSettings: {
+    roles: false // Never use mock data for roles
   },
-  
+
+  // CORS settings
+  fetchOptions: FETCH_OPTIONS,
+
   // Module-specific endpoints
   endpoints: {
     'employment-types': '/employment-types',
@@ -60,7 +60,7 @@ export const apiConfig = {
     'staff-payroll': '/staff/payroll',
     'staff-training': '/staff/training',
     'staff-schedules': '/staff/schedules',
-    'roles': '/staff/roles',
+    'roles': '/roles',
     'shops': '/shops',
     'suppliers': '/suppliers',
     'suppliers-price-lists': '/suppliers/price-lists',
@@ -80,7 +80,7 @@ export const apiConfig = {
     'forgot-password': '/auth/forgot-password',
     'reset-password': '/auth/reset-password',
     'products': '/products',
-    'products-categories': '/products/categories',
+    'products-categories': '/categories',
     'products-variants': '/products/variants',
     'products-attributes': '/products/attributes',
     'products-pricing': '/products/pricing',
@@ -121,14 +121,43 @@ export const apiConfig = {
 
 /**
  * Get the full API endpoint URL for a specific feature
- * 
+ *
  * @param feature - The feature endpoint key
  * @returns The complete API endpoint URL
+ * @deprecated CRITICAL: This function is deprecated and will be removed in a future release.
+ * Use getApiUrl or getApiPath from enhanced-config instead.
+ * Example: Replace getApiEndpoint('shops') with getApiUrl('shops', 'LIST')
  */
 export const getApiEndpoint = (feature: keyof typeof apiConfig.endpoints): string => {
+  // Get the stack trace to identify where this function is being called from
+  const stackTrace = new Error().stack || '';
+  const callerInfo = stackTrace.split('\n')[2] || '';
+
+  // Log a more severe warning with caller information
+  console.error(
+    `DEPRECATED API USAGE: getApiEndpoint('${feature}') is deprecated and will be removed soon.\n` +
+    `Called from: ${callerInfo.trim()}\n` +
+    `Please migrate to the enhanced API client and endpoint registry.\n` +
+    `Use getApiUrl or getApiPath from @/lib/api/enhanced-config instead.`
+  );
+
+  // Fall back to the original implementation
   if (!apiConfig.endpoints[feature]) {
     console.warn(`No endpoint defined for feature: ${feature}`);
-    return `${apiConfig.baseUrl}${apiConfig.apiPrefix}`;
+    return apiConfig.fullApiUrl;
   }
-  return `${apiConfig.baseUrl}${apiConfig.apiPrefix}${apiConfig.endpoints[feature]}`;
-}; 
+  return `${apiConfig.fullApiUrl}${apiConfig.endpoints[feature]}`;
+};
+
+/**
+ * Re-export constants for use in other modules
+ * This ensures backward compatibility while encouraging direct imports from api-constants.ts
+ */
+export { API_CONSTANTS } from './api-constants';
+
+/**
+ * Export a helper function to check if we're using the API or mock data
+ */
+export function isUsingRealApi(): boolean {
+  return !apiConfig.useMockData;
+}

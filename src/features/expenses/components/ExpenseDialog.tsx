@@ -37,7 +37,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { format } from 'date-fns'
 import { CalendarIcon, Upload } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils';
 
 // Mock data for expense categories
 const expenseCategories = [

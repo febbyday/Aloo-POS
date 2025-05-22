@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FileMetadata } from '@/lib/services/fileStorage';
 import { FileUpload } from './file-upload';
 import { FileList } from './file-list';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 
 interface FileUploadContainerProps {
   module: string;

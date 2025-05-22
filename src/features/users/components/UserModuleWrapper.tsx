@@ -1,11 +1,11 @@
 /**
  * User Module Wrapper
- * 
+ *
  * This component wraps the user module to ensure authentication is maintained
  * when navigating to the user module.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { UserManagementPage } from '@/features/auth/pages/UserManagementPage';
 import { Loader2 } from 'lucide-react';
@@ -13,9 +13,26 @@ import { Loader2 } from 'lucide-react';
 export function UserModuleWrapper() {
   const { isAuthenticated, isLoading, refreshAuth } = useAuth();
 
+  // Use a ref to track if the component is mounted
+  const isMountedRef = useRef<boolean>(true);
+
+  // Use a ref to track if we've already attempted a refresh
+  const refreshAttemptedRef = useRef<boolean>(false);
+
   // Ensure authentication is refreshed when the component mounts
   useEffect(() => {
+    // Set mounted flag
+    isMountedRef.current = true;
+
     const ensureAuthentication = async () => {
+      // Skip if we've already attempted a refresh or component unmounted
+      if (refreshAttemptedRef.current || !isMountedRef.current) {
+        return;
+      }
+
+      // Mark that we've attempted a refresh
+      refreshAttemptedRef.current = true;
+
       if (isAuthenticated) {
         // If already authenticated, still refresh in the background
         // to ensure the token is fresh
@@ -23,13 +40,24 @@ export function UserModuleWrapper() {
           console.log('[USER_MODULE] Refreshing authentication in the background');
           await refreshAuth();
         } catch (error) {
-          console.error('[USER_MODULE] Error refreshing authentication:', error);
+          // Only log error if component is still mounted
+          if (isMountedRef.current) {
+            console.error('[USER_MODULE] Error refreshing authentication:', error);
+          }
         }
       }
     };
 
-    ensureAuthentication();
-  }, [isAuthenticated, refreshAuth]);
+    // Only run if not already loading
+    if (!isLoading) {
+      ensureAuthentication();
+    }
+
+    // Cleanup function
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [isAuthenticated, isLoading, refreshAuth]);
 
   // Show loading state while checking authentication
   if (isLoading) {

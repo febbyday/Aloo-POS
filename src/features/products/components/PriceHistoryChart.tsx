@@ -1,4 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +16,7 @@ import {
   AreaChart
 } from "recharts";
 import type { Product } from '../types';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 // Mock price history data - in a real app this would come from an API
 interface PricePoint {

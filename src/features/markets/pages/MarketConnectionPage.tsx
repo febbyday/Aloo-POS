@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2, 
-  LinkIcon, 
-  Settings, 
-  RefreshCw, 
-  Database 
+import {
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  LinkIcon,
+  Settings,
+  RefreshCw,
+  Database
 } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import { MARKETS_FULL_ROUTES } from '@/routes/marketRoutes';
@@ -137,7 +137,7 @@ const MarketConnectionPage = () => {
                 <TabsTrigger value="settings">Settings</TabsTrigger>
                 <TabsTrigger value="sync">Synchronization</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="status" className="space-y-4">
                 <Alert>
                   <AlertTitle className="flex items-center">
@@ -161,13 +161,13 @@ const MarketConnectionPage = () => {
                       </CardHeader>
                       <CardContent className="flex justify-between items-center">
                         <span>Status: {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}</span>
-                        {connectionStatus === 'connected' ? 
-                          <CheckCircle2 className="h-5 w-5 text-green-500" /> : 
+                        {connectionStatus === 'connected' ?
+                          <CheckCircle2 className="h-5 w-5 text-green-500" /> :
                           <AlertCircle className="h-5 w-5 text-red-500" />
                         }
                       </CardContent>
                     </Card>
-                    
+
                     <Card>
                       <CardHeader>
                         <CardTitle>Inventory Sync</CardTitle>
@@ -175,14 +175,14 @@ const MarketConnectionPage = () => {
                       </CardHeader>
                       <CardContent className="flex justify-between items-center">
                         <span>Status: {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}</span>
-                        {connectionStatus === 'connected' ? 
-                          <CheckCircle2 className="h-5 w-5 text-green-500" /> : 
+                        {connectionStatus === 'connected' ?
+                          <CheckCircle2 className="h-5 w-5 text-green-500" /> :
                           <AlertCircle className="h-5 w-5 text-red-500" />
                         }
                       </CardContent>
                     </Card>
                   </div>
-                  
+
                   <div className="flex space-x-4">
                     <Button onClick={testConnection} disabled={testingConnection}>
                       {testingConnection ? (
@@ -191,7 +191,7 @@ const MarketConnectionPage = () => {
                         <><RefreshCw className="mr-2 h-4 w-4" /> Test Connection</>
                       )}
                     </Button>
-                    
+
                     <Button onClick={initiateConnection} variant={connectionStatus === 'connected' ? 'outline' : 'default'} disabled={connecting}>
                       {connecting ? (
                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Connecting...</>
@@ -202,7 +202,7 @@ const MarketConnectionPage = () => {
                   </div>
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="settings" className="space-y-4">
                 <Alert>
                   <AlertTitle className="flex items-center">
@@ -213,7 +213,7 @@ const MarketConnectionPage = () => {
                     Configure your market connection settings. Changes will require reconnection.
                   </AlertDescription>
                 </Alert>
-                
+
                 <Card>
                   <CardHeader>
                     <CardTitle>API Configuration</CardTitle>
@@ -224,14 +224,14 @@ const MarketConnectionPage = () => {
                       The connection settings are managed through the system configuration.
                       Contact your administrator to modify these settings if needed.
                     </p>
-                    
+
                     <Button variant="outline" onClick={() => navigate(MARKETS_FULL_ROUTES.SETTINGS)}>
                       <Settings className="mr-2 h-4 w-4" /> Go to Settings
                     </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
               <TabsContent value="sync" className="space-y-4">
                 <Alert>
                   <AlertTitle className="flex items-center">
@@ -242,7 +242,7 @@ const MarketConnectionPage = () => {
                     Synchronize data between your POS system and market platforms.
                   </AlertDescription>
                 </Alert>
-                
+
                 <Card>
                   <CardHeader>
                     <CardTitle>Synchronization Status</CardTitle>
@@ -266,7 +266,7 @@ const MarketConnectionPage = () => {
                         <span>Market Settings</span>
                         <span className="text-green-500">Synchronized</span>
                       </div>
-                      
+
                       <Button onClick={syncData} disabled={syncingData || connectionStatus !== 'connected'} className="w-full mt-4">
                         {syncingData ? (
                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing...</>
@@ -286,4 +286,4 @@ const MarketConnectionPage = () => {
   );
 };
 
-export default MarketConnectionPage; 
+export default MarketConnectionPage;

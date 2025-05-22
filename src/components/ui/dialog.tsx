@@ -2,41 +2,16 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils/cn';
 
-// Add hook to properly handle dialog lifecycle
-const useDialogCleanup = (open: boolean, onOpenChange?: (open: boolean) => void) => {
-  const unmountedRef = React.useRef(false);
-  
-  // Handle component unmount
-  React.useEffect(() => {
-    return () => {
-      unmountedRef.current = true;
-    };
-  }, []);
-  
-  // Safe open change handler
-  const handleOpenChange = React.useCallback((open: boolean) => {
-    if (unmountedRef.current) return;
-    onOpenChange?.(open);
-  }, [onOpenChange]);
-  
-  return { handleOpenChange };
-};
-
-// Add cleanup to Dialog component
 const Dialog = DialogPrimitive.Root
-
-// Add cleanup to DialogTrigger
 const DialogTrigger = DialogPrimitive.Trigger
 
-// Enhanced DialogPortal with cleanup
 const DialogPortal = ({
-  className,
   children,
   ...props
 }: DialogPrimitive.DialogPortalProps) => (
-  <DialogPrimitive.Portal className={cn(className)} {...props}>
+  <DialogPrimitive.Portal {...props}>
     <div className="fixed inset-0 z-50 flex items-start justify-center sm:items-center">
       {children}
     </div>
@@ -44,7 +19,6 @@ const DialogPortal = ({
 )
 DialogPortal.displayName = DialogPrimitive.Portal.displayName
 
-// Enhanced DialogOverlay with cleanup
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -60,12 +34,10 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-// Enhanced DialogContent with cleanup
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => {
-  // Use cleanup hook
   const unmountedRef = React.useRef(false);
   
   React.useEffect(() => {
@@ -84,19 +56,16 @@ const DialogContent = React.forwardRef<
           className
         )}
         onCloseAutoFocus={(event) => {
-          // Prevent focus issues after close
           if (unmountedRef.current) {
             event.preventDefault();
           }
         }}
         onEscapeKeyDown={(event) => {
-          // Prevent escape key issues if unmounted
           if (unmountedRef.current) {
             event.preventDefault();
           }
         }}
         onPointerDownOutside={(event) => {
-          // Prevent pointer issues if unmounted
           if (unmountedRef.current) {
             event.preventDefault();
           }
@@ -107,7 +76,6 @@ const DialogContent = React.forwardRef<
         <DialogPrimitive.Close
           className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
           onPointerDown={(event) => {
-            // Prevent close issues if unmounted
             if (unmountedRef.current) {
               event.preventDefault();
             }

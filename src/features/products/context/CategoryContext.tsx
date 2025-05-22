@@ -1,13 +1,16 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react'
-import { 
-  Category, 
-  CategoryFormData, 
-  CategoryFilter, 
-  CategorySort, 
-  CategoryBulkAction 
+import {
+  Category,
+  CategoryFormData,
+  CategoryFilter,
+  CategorySort,
+  CategoryBulkAction
 } from '../types/category'
+import { categoryService } from '../services/categoryService'
+import { useToast } from '@/lib/toast'
+import { useToastManager } from '@/components/ui/toast-manager'
 
-// Mock categories data
+// Fallback mock categories data in case API fails
 const mockCategories: Category[] = [
   {
     id: "1",
@@ -28,66 +31,6 @@ const mockCategories: Category[] = [
     updatedAt: new Date().toISOString(),
     slug: "handbags",
     status: "active"
-  },
-  {
-    id: "3",
-    name: "Backpacks",
-    description: "Casual and travel bags",
-    products: 30,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    slug: "backpacks",
-    status: "active"
-  },
-  {
-    id: "4",
-    name: "Clutches",
-    description: "Evening and party bags",
-    products: 20,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    slug: "clutches",
-    status: "active"
-  },
-  {
-    id: "5",
-    name: "Totes",
-    description: "Shopping and beach bags",
-    products: 15,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    slug: "totes",
-    status: "active"
-  },
-  {
-    id: "6",
-    name: "Crossbody",
-    description: "Shoulder strap bags",
-    products: 35,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    slug: "crossbody",
-    status: "active"
-  },
-  {
-    id: "7",
-    name: "Travel",
-    description: "Luggage and duffels",
-    products: 18,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    slug: "travel",
-    status: "active"
-  },
-  {
-    id: "8",
-    name: "Mini Bags",
-    description: "Small fashion bags",
-    products: 22,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    slug: "mini-bags",
-    status: "active"
   }
 ]
 
@@ -107,11 +50,13 @@ interface CategoryContextType {
   setFilters: (filters: CategoryFilter) => void
   setSort: (sort: CategorySort) => void
   setPagination: (pagination: { page: number, pageSize: number }) => void
-  addCategory: (data: CategoryFormData) => Promise<void>
-  updateCategory: (id: string, data: CategoryFormData) => Promise<void>
+  addCategory: (data: CategoryFormData) => Promise<Category>
+  updateCategory: (id: string, data: CategoryFormData) => Promise<Category>
+  deleteCategory: (id: string) => Promise<void>
   deleteCategories: (ids: string[]) => Promise<void>
   bulkAction: (action: CategoryBulkAction) => Promise<void>
   refreshCategories: () => Promise<void>
+  getCategory: (id: string) => Promise<Category | null>
   getCategoryHierarchy: () => Category[]
   moveCategory: (id: string, newParentId: string | null) => Promise<void>
   getChildCategories: (parentId: string) => Category[]
@@ -121,13 +66,50 @@ interface CategoryContextType {
 export const CategoryContext = createContext<CategoryContextType | undefined>(undefined)
 
 export function CategoryProvider({ children }: { children: ReactNode }) {
-  const [categories, setCategories] = useState<Category[]>(mockCategories)
-  const [loading, setLoading] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [filters, setFilters] = useState<CategoryFilter>({})
   const [sort, setSort] = useState<CategorySort>({ field: 'name', direction: 'asc' })
   const [pagination, setPagination] = useState({ page: 1, pageSize: 10, total: 0 })
+  const showToast = useToastManager();
+
+  // Fetch categories on mount
+  useEffect(() => {
+    refreshCategories();
+  }, []);
+
+  // Refresh categories from API
+  const refreshCategories = async () => {
+    setLoading(true);
+    try {
+      const data = await categoryService.fetchAll();
+      setCategories(data);
+      setPagination(prev => ({ ...prev, total: data.length }));
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      setError(err as Error);
+      // Fallback to mock data if API fails
+      setCategories(mockCategories);
+      setPagination(prev => ({ ...prev, total: mockCategories.length }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get a single category by ID
+  const getCategory = async (id: string): Promise<Category | null> => {
+    try {
+      const category = await categoryService.fetchById(id);
+      return category;
+    } catch (err) {
+      console.error(`Error fetching category ${id}:`, err);
+      setError(err as Error);
+      // Try to find in local state as fallback
+      return categories.find(cat => cat.id === id) || null;
+    }
+  };
 
   // Build category hierarchy
   const buildHierarchy = useCallback((cats: Category[]): Category[] => {
@@ -175,7 +157,7 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
     // Apply filters
     if (filters.search) {
       const search = filters.search.toLowerCase()
-      filtered = filtered.filter(cat => 
+      filtered = filtered.filter(cat =>
         cat.name.toLowerCase().includes(search) ||
         cat.description?.toLowerCase().includes(search)
       )
@@ -187,6 +169,10 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
 
     if (filters.hasProducts !== undefined) {
       filtered = filtered.filter(cat => filters.hasProducts ? cat.products > 0 : cat.products === 0)
+    }
+
+    if (filters.parentId) {
+      filtered = filtered.filter(cat => cat.parentId === filters.parentId)
     }
 
     // Apply sorting
@@ -205,79 +191,173 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
     return filtered
   }, [categories, filters, sort])
 
-  // Implement other methods...
+  // Add a new category
   const addCategory = async (data: CategoryFormData) => {
     setLoading(true)
     try {
-      // API call would go here
-      const newCategory: Category = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...data,
-        products: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        slug: data.name.toLowerCase().replace(/\s+/g, '-'),
-        metrics: {
-          totalProducts: 0,
-          activeProducts: 0,
-          lowStockProducts: 0,
-          productsTrend: {
-            percentage: 0,
-            trend: 'stable',
-            periodChange: 0
-          },
-          lastUpdated: new Date().toISOString(),
-          usage: { views: 0, searches: 0 }
-        }
+      // Generate slug if not provided
+      if (!data.slug) {
+        data.slug = data.name.toLowerCase().replace(/\s+/g, '-');
       }
-      setCategories(prev => [...prev, newCategory])
+
+      // Call API to create category
+      const newCategory = await categoryService.create(data);
+
+      // Update local state
+      setCategories(prev => [...prev, newCategory]);
+      showToast.success('Success', 'Category created successfully');
+      return newCategory;
     } catch (err) {
-      setError(err as Error)
+      console.error('Error creating category:', err);
+      setError(err as Error);
+      showToast.error('Error', 'Failed to create category');
+      throw err;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  // Update an existing category
+  const updateCategory = async (id: string, data: CategoryFormData) => {
+    setLoading(true);
+    try {
+      // Call API to update category
+      const updatedCategory = await categoryService.update(id, data);
+
+      // Update local state
+      setCategories(prev =>
+        prev.map(cat => cat.id === id ? updatedCategory : cat)
+      );
+
+      showToast.success('Success', 'Category updated successfully');
+      return updatedCategory;
+    } catch (err) {
+      console.error(`Error updating category ${id}:`, err);
+      setError(err as Error);
+      showToast.error('Error', 'Failed to update category');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete a single category
+  const deleteCategory = async (id: string) => {
+    setLoading(true);
+    try {
+      // Call API to delete category
+      await categoryService.delete(id);
+
+      // Update local state
+      setCategories(prev => prev.filter(cat => cat.id !== id));
+      showToast.success('Success', 'Category deleted successfully');
+    } catch (err) {
+      console.error(`Error deleting category ${id}:`, err);
+      setError(err as Error);
+      showToast.error('Error', 'Failed to delete category');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete multiple categories
+  const deleteCategories = async (ids: string[]) => {
+    setLoading(true);
+    try {
+      // Delete each category one by one
+      await Promise.all(ids.map(id => categoryService.delete(id)));
+
+      // Update local state
+      setCategories(prev => prev.filter(cat => !ids.includes(cat.id)));
+      showToast.success('Success', `${ids.length} categories deleted successfully`);
+    } catch (err) {
+      console.error('Error deleting categories:', err);
+      setError(err as Error);
+      showToast.error('Error', 'Failed to delete categories');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Move a category to a new parent
+  const moveCategory = async (id: string, newParentId: string | null) => {
+    setLoading(true);
+    try {
+      const category = categories.find(cat => cat.id === id);
+      if (!category) {
+        throw new Error(`Category with ID ${id} not found`);
+      }
+
+      // Update category with new parent
+      const updatedData: CategoryFormData = {
+        name: category.name,
+        description: category.description,
+        parentId: newParentId,
+        status: category.status
+      };
+
+      await updateCategory(id, updatedData);
+      showToast.success('Success', 'Category moved successfully');
+    } catch (err) {
+      console.error(`Error moving category ${id}:`, err);
+      setError(err as Error);
+      showToast.error('Error', 'Failed to move category');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Bulk actions implementation
   const bulkAction = async (action: CategoryBulkAction) => {
-    setLoading(true)
+    setLoading(true);
     try {
       switch (action.type) {
         case 'delete':
-          await deleteCategories(action.ids)
-          break
+          await deleteCategories(action.ids);
+          break;
         case 'status':
-          setCategories(prev => prev.map(cat => 
-            action.ids.includes(cat.id) 
-              ? { ...cat, status: action.value, updatedAt: new Date().toISOString() }
-              : cat
-          ))
-          break
+          // Update status for each category
+          await Promise.all(action.ids.map(id => {
+            const category = categories.find(cat => cat.id === id);
+            if (category) {
+              return updateCategory(id, {
+                ...category,
+                status: action.value
+              });
+            }
+            return Promise.resolve();
+          }));
+          break;
         case 'move':
-          setCategories(prev => prev.map(cat => 
-            action.ids.includes(cat.id)
-              ? { ...cat, parentId: action.value, updatedAt: new Date().toISOString() }
-              : cat
-          ))
-          break
+          // Move each category to new parent
+          await Promise.all(action.ids.map(id => moveCategory(id, action.value)));
+          break;
         case 'attribute':
-          setCategories(prev => prev.map(cat => 
-            action.ids.includes(cat.id)
-              ? { 
-                  ...cat, 
-                  attributes: [...(cat.attributes || []), action.value],
-                  updatedAt: new Date().toISOString()
-                }
-              : cat
-          ))
-          break
+          // Add attribute to each category
+          await Promise.all(action.ids.map(id => {
+            const category = categories.find(cat => cat.id === id);
+            if (category) {
+              return updateCategory(id, {
+                ...category,
+                attributes: [...(category.attributes || []), action.value]
+              });
+            }
+            return Promise.resolve();
+          }));
+          break;
       }
+      showToast.success('Success', 'Bulk action completed successfully');
     } catch (err) {
-      setError(err as Error)
+      console.error('Error performing bulk action:', err);
+      setError(err as Error);
+      showToast.error('Error', 'Failed to complete bulk action');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const value = {
     categories,
@@ -292,16 +372,18 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
     setSort,
     setPagination,
     addCategory,
-    updateCategory: async () => {}, // Implement
-    deleteCategories: async () => {}, // Implement
+    updateCategory,
+    deleteCategory,
+    deleteCategories,
     bulkAction,
-    refreshCategories: async () => {}, // Implement
+    refreshCategories,
+    getCategory,
     getCategoryHierarchy: () => buildHierarchy(categories),
-    moveCategory: async () => {}, // Implement
+    moveCategory,
     getChildCategories: (parentId: string) => categories.filter(cat => cat.parentId === parentId),
     getCategoryPath: (id: string) => {
-      const category = categories.find(cat => cat.id === id)
-      return category?.path?.map(id => categories.find(cat => cat.id === id)) ?? []
+      const category = categories.find(cat => cat.id === id);
+      return category?.path?.map(id => categories.find(cat => cat.id === id)) ?? [];
     }
   }
 

@@ -10,7 +10,7 @@ import {
   Area,
   AreaChart
 } from "recharts"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 
 interface ChartData {
   date: string

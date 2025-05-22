@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../features/auth/hooks/useAuth';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
+import { API_CONSTANTS } from '@/lib/api/config';
 
 // Define notification types
 export interface Notification {
@@ -41,16 +42,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const isAuthenticated = auth.isAuthenticated;
   // Get token from localStorage
   const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || '';
-  const { toast } = useToast();
+  const toast = useToast();
 
-  // Configure axios with auth token
+  // Configure axios with auth token using centralized API configuration
   const getApi = () => {
     return axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
+      baseURL: API_CONSTANTS.URL, // Use centralized API URL
       headers: {
         'Content-Type': 'application/json',
         Authorization: token ? `Bearer ${token}` : ''
-      }
+      },
+      timeout: API_CONSTANTS.TIMEOUT // Use centralized timeout value
     });
   };
 
@@ -64,7 +66,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       // Add a fallback for development - if the API call fails, use mock data
       try {
-        const response = await getApi().get('/notifications');
+        const response = await getApi().get(`/api/${API_CONSTANTS.VERSION}/notifications`);
         setNotifications(response.data || []);
       } catch (apiErr) {
         console.warn('API call failed, using mock data:', apiErr);
@@ -72,22 +74,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setNotifications([]);
         // Only show toast in production
         if (import.meta.env.PROD) {
-          toast({
-            title: 'Notice',
-            description: 'Using mock notification data',
-            variant: 'default'
-          });
+          toast.info('Notice', 'Using mock notification data');
         }
       }
     } catch (err) {
       console.error('Error in notification handling:', err);
       setError('Failed to handle notifications');
       setNotifications([]);
-      toast({
-        title: 'Error',
-        description: 'Failed to load notifications',
-        variant: 'destructive'
-      });
+      toast.error('Error', 'Failed to load notifications');
     } finally {
       setLoading(false);
     }
@@ -99,7 +93,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       try {
-        const response = await getApi().get('/notifications/unread/count');
+        const response = await getApi().get(`/api/${API_CONSTANTS.VERSION}/notifications/unread/count`);
         setUnreadCount(response.data?.count || 0);
       } catch (apiErr) {
         console.warn('API call for unread count failed, using 0:', apiErr);
@@ -117,7 +111,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!isAuthenticated) return;
 
     try {
-      await getApi().post(`/notifications/${id}/read`);
+      await getApi().post(`/api/${API_CONSTANTS.VERSION}/notifications/${id}/read`);
 
       // Update local state
       setNotifications(prev =>
@@ -132,11 +126,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
       console.error(`Error marking notification ${id} as read:`, err);
-      toast({
-        title: 'Error',
-        description: 'Failed to mark notification as read',
-        variant: 'destructive'
-      });
+      toast.error('Error', 'Failed to mark notification as read');
     }
   }, [isAuthenticated, toast]);
 
@@ -145,7 +135,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!isAuthenticated) return;
 
     try {
-      await getApi().post('/notifications/read/all');
+      await getApi().post(`/api/${API_CONSTANTS.VERSION}/notifications/read/all`);
 
       // Update local state
       setNotifications(prev =>
@@ -159,17 +149,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Update unread count
       setUnreadCount(0);
 
-      toast({
-        title: 'Success',
-        description: 'All notifications marked as read'
-      });
+      toast.success('Success', 'All notifications marked as read');
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to mark all notifications as read',
-        variant: 'destructive'
-      });
+      toast.error('Error', 'Failed to mark all notifications as read');
     }
   }, [isAuthenticated, toast]);
 
@@ -178,7 +161,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!isAuthenticated) return;
 
     try {
-      await getApi().post(`/notifications/${id}/archive`);
+      await getApi().post(`/api/${API_CONSTANTS.VERSION}/notifications/${id}/archive`);
 
       // Update local state
       setNotifications(prev =>
@@ -195,17 +178,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
 
-      toast({
-        title: 'Success',
-        description: 'Notification archived'
-      });
+      toast.success('Success', 'Notification archived');
     } catch (err) {
       console.error(`Error archiving notification ${id}:`, err);
-      toast({
-        title: 'Error',
-        description: 'Failed to archive notification',
-        variant: 'destructive'
-      });
+      toast.error('Error', 'Failed to archive notification');
     }
   }, [isAuthenticated, notifications, toast]);
 
@@ -214,7 +190,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!isAuthenticated) return;
 
     try {
-      await getApi().delete(`/notifications/${id}`);
+      await getApi().delete(`/api/${API_CONSTANTS.VERSION}/notifications/${id}`);
 
       // Update local state
       setNotifications(prev => prev.filter(notification => notification.id !== id));
@@ -225,17 +201,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
 
-      toast({
-        title: 'Success',
-        description: 'Notification deleted'
-      });
+      toast.success('Success', 'Notification deleted');
     } catch (err) {
       console.error(`Error deleting notification ${id}:`, err);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete notification',
-        variant: 'destructive'
-      });
+      toast.error('Error', 'Failed to delete notification');
     }
   }, [isAuthenticated, notifications, toast]);
 

@@ -1,7 +1,5 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { useCallback } from 'react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/lib/toast';
 import { safeStringify } from '@/utils/errorHandling';
 
 /**
@@ -28,12 +26,12 @@ export const useSafeRender = () => {
       fallback: string = ''
     ): string => {
       if (!obj) return fallback;
-      
+
       try {
         const value = obj[property];
-        return value !== undefined && value !== null 
-          ? typeof value === 'object' 
-            ? safeStringify(value) 
+        return value !== undefined && value !== null
+          ? typeof value === 'object'
+            ? safeStringify(value)
             : String(value)
           : fallback;
       } catch (error) {

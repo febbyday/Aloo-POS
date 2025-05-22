@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { prisma } from '../prisma';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -32,6 +30,8 @@ export enum AuthEvent {
   LOGIN_SUCCESS = 'LOGIN_SUCCESS',
   LOGIN_FAILURE = 'LOGIN_FAILURE',
   LOGOUT = 'LOGOUT',
+  PIN_LOGIN_SUCCESS = 'PIN_LOGIN_SUCCESS',
+  PIN_LOGIN_FAILURE = 'PIN_LOGIN_FAILURE',
   TOKEN_REFRESH = 'TOKEN_REFRESH',
   REGISTER = 'REGISTER',
   PASSWORD_CHANGE = 'PASSWORD_CHANGE',
@@ -197,7 +197,8 @@ export class AuditLogger {
     if (status === 'FAILURE') {
       if ([
         AuthEvent.LOGIN_FAILURE,
-        AuthEvent.RATE_LIMIT_EXCEEDED
+        AuthEvent.RATE_LIMIT_EXCEEDED,
+        AuthEvent.PIN_LOGIN_FAILURE
       ].includes(type as AuthEvent)) {
         severity = Severity.WARNING;
       } else {

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Save, ArrowLeft, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { useToastManager } from "@/components/ui/toast-manager";
 import { OperationButton } from "@/components/ui/action-feedback";
 import { PurchaseOrderModal } from '../components/PurchaseOrderModal';
@@ -25,7 +25,7 @@ export function PurchaseOrderEditPage() {
   const { toast } = useToast();
   const showToast = useToastManager();
   const { trackAction } = usePurchaseOrderHistory();
-  
+
   const [purchaseOrder, setPurchaseOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(true);
@@ -55,12 +55,12 @@ export function PurchaseOrderEditPage() {
 
   const handleSubmit = (data: any) => {
     if (!purchaseOrderId || !purchaseOrder) return;
-    
+
     try {
       // Track this action for history
       trackAction(
-        { 
-          type: 'update_order', 
+        {
+          type: 'update_order',
           id: purchaseOrderId,
           before: purchaseOrder,
           after: data
@@ -78,12 +78,12 @@ export function PurchaseOrderEditPage() {
 
   const handleDelete = () => {
     if (!purchaseOrderId || !purchaseOrder) return;
-    
+
     try {
       // Track this action for history
       trackAction(
-        { 
-          type: 'delete_order', 
+        {
+          type: 'delete_order',
           order: purchaseOrder
         },
         `Deleted purchase order ${purchaseOrder.orderNumber}`

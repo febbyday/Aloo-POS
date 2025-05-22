@@ -1,0 +1,235 @@
+import { useState, useEffect, useCallback } from 'react';
+import { GiftCard, GiftCardTransaction, TransactionType } from '../types';
+import { GiftCardService } from '@/features/sales/services';
+
+// Interface for gift card filtering
+interface GiftCardFilter {
+  status?: string;
+  minBalance?: number;
+  maxBalance?: number;
+  startDate?: Date;
+  endDate?: Date;
+  search?: string;
+}
+
+// Hook for managing gift cards
+export function useGiftCards() {
+  const [giftCards, setGiftCards] = useState<GiftCard[]>([]);
+  const [filteredGiftCards, setFilteredGiftCards] = useState<GiftCard[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<GiftCardFilter>({});
+  const [selectedGiftCard, setSelectedGiftCard] = useState<GiftCard | null>(null);
+  const [transactions, setTransactions] = useState<GiftCardTransaction[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
+
+  // Load gift cards
+  const loadGiftCards = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const cards = await GiftCardService.getAllGiftCards();
+      setGiftCards(cards);
+      setFilteredGiftCards(cards);
+    } catch (err) {
+      setError('Failed to load gift cards');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load transactions for a gift card
+  const loadTransactions = useCallback(async (giftCardId: string) => {
+    setTransactionsLoading(true);
+    try {
+      const history = await GiftCardService.getTransactionHistory(giftCardId);
+      setTransactions(history);
+    } catch (err) {
+      console.error('Failed to load transaction history', err);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  }, []);
+
+  // Select a gift card and load its transactions
+  const selectGiftCard = useCallback(async (giftCard: GiftCard) => {
+    setSelectedGiftCard(giftCard);
+    loadTransactions(giftCard.id);
+  }, [loadTransactions]);
+
+  // Clear selected gift card
+  const clearSelectedGiftCard = useCallback(() => {
+    setSelectedGiftCard(null);
+    setTransactions([]);
+  }, []);
+
+  // Create a new gift card
+  const createGiftCard = useCallback(async (giftCardData: Partial<GiftCard>) => {
+    try {
+      const newGiftCard = await GiftCardService.createGiftCard(giftCardData);
+      setGiftCards(prevCards => [...prevCards, newGiftCard]);
+      applyFilter(filter, [...giftCards, newGiftCard]);
+      return newGiftCard;
+    } catch (err) {
+      console.error('Failed to create gift card', err);
+      throw err;
+    }
+  }, [giftCards, filter]);
+
+  // Update a gift card
+  const updateGiftCard = useCallback(async (id: string, updates: Partial<GiftCard>) => {
+    try {
+      const updatedGiftCard = await GiftCardService.updateGiftCard(id, updates);
+      if (updatedGiftCard) {
+        setGiftCards(prevCards => 
+          prevCards.map(card => card.id === id ? updatedGiftCard : card)
+        );
+        applyFilter(filter, giftCards.map(card => card.id === id ? updatedGiftCard : card));
+        
+        // Update selected gift card if it's the one being updated
+        if (selectedGiftCard && selectedGiftCard.id === id) {
+          setSelectedGiftCard(updatedGiftCard);
+        }
+      }
+      return updatedGiftCard;
+    } catch (err) {
+      console.error('Failed to update gift card', err);
+      throw err;
+    }
+  }, [giftCards, selectedGiftCard, filter]);
+
+  // Adjust gift card balance
+  const adjustBalance = useCallback(async (
+    id: string, 
+    amount: number, 
+    type: TransactionType, 
+    notes: string = '',
+    orderId?: string
+  ) => {
+    try {
+      const updatedGiftCard = await GiftCardService.adjustBalance(id, amount, type, notes, orderId);
+      if (updatedGiftCard) {
+        setGiftCards(prevCards => 
+          prevCards.map(card => card.id === id ? updatedGiftCard : card)
+        );
+        applyFilter(filter, giftCards.map(card => card.id === id ? updatedGiftCard : card));
+        
+        // Update selected gift card if it's the one being updated
+        if (selectedGiftCard && selectedGiftCard.id === id) {
+          setSelectedGiftCard(updatedGiftCard);
+          loadTransactions(id); // Reload transactions
+        }
+      }
+      return updatedGiftCard;
+    } catch (err) {
+      console.error('Failed to adjust gift card balance', err);
+      throw err;
+    }
+  }, [giftCards, selectedGiftCard, filter, loadTransactions]);
+
+  // Validate a gift card by code
+  const validateGiftCard = useCallback(async (code: string) => {
+    try {
+      return await GiftCardService.validateGiftCard(code);
+    } catch (err) {
+      console.error('Failed to validate gift card', err);
+      throw err;
+    }
+  }, []);
+
+  // Redeem a gift card
+  const redeemGiftCard = useCallback(async (code: string, amount: number, orderId: string) => {
+    try {
+      const result = await GiftCardService.redeemGiftCard(code, amount, orderId);
+      if (result.success && result.giftCard) {
+        setGiftCards(prevCards => 
+          prevCards.map(card => card.id === result.giftCard!.id ? result.giftCard! : card)
+        );
+        applyFilter(filter, giftCards.map(card => card.id === result.giftCard!.id ? result.giftCard! : card));
+        
+        // Update selected gift card if it's the one being redeemed
+        if (selectedGiftCard && selectedGiftCard.id === result.giftCard.id) {
+          setSelectedGiftCard(result.giftCard);
+          loadTransactions(result.giftCard.id); // Reload transactions
+        }
+      }
+      return result;
+    } catch (err) {
+      console.error('Failed to redeem gift card', err);
+      throw err;
+    }
+  }, [giftCards, selectedGiftCard, filter, loadTransactions]);
+
+  // Apply filter to gift cards
+  const applyFilter = useCallback((newFilter: GiftCardFilter, cards = giftCards) => {
+    setFilter(newFilter);
+    
+    let filtered = [...cards];
+    
+    // Apply status filter
+    if (newFilter.status) {
+      filtered = filtered.filter(card => card.status === newFilter.status);
+    }
+    
+    // Apply balance filters
+    if (newFilter.minBalance !== undefined) {
+      filtered = filtered.filter(card => card.balance >= newFilter.minBalance!);
+    }
+    
+    if (newFilter.maxBalance !== undefined) {
+      filtered = filtered.filter(card => card.balance <= newFilter.maxBalance!);
+    }
+    
+    // Apply date filters
+    if (newFilter.startDate) {
+      filtered = filtered.filter(card => 
+        new Date(card.issueDate) >= newFilter.startDate!
+      );
+    }
+    
+    if (newFilter.endDate) {
+      filtered = filtered.filter(card => 
+        new Date(card.issueDate) <= newFilter.endDate!
+      );
+    }
+    
+    // Apply search filter
+    if (newFilter.search) {
+      const searchLower = newFilter.search.toLowerCase();
+      filtered = filtered.filter(card => 
+        card.code.toLowerCase().includes(searchLower) ||
+        (card.recipient?.name && card.recipient.name.toLowerCase().includes(searchLower)) ||
+        (card.recipient?.email && card.recipient.email.toLowerCase().includes(searchLower)) ||
+        (card.sender?.name && card.sender.name.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    setFilteredGiftCards(filtered);
+  }, [giftCards]);
+
+  // Load gift cards on initial render
+  useEffect(() => {
+    loadGiftCards();
+  }, [loadGiftCards]);
+
+  return {
+    giftCards,
+    filteredGiftCards,
+    loading,
+    error,
+    filter,
+    selectedGiftCard,
+    transactions,
+    transactionsLoading,
+    loadGiftCards,
+    selectGiftCard,
+    clearSelectedGiftCard,
+    createGiftCard,
+    updateGiftCard,
+    adjustBalance,
+    validateGiftCard,
+    redeemGiftCard,
+    applyFilter,
+  };
+}

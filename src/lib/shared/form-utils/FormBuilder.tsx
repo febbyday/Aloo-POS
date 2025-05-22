@@ -3,18 +3,18 @@
 import React from 'react';
 import { z } from 'zod';
 import { FieldValues, UseFormReturn } from 'react-hook-form';
-import { 
-  Form, 
-  FormControl, 
-  FormDescription, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -25,19 +25,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 
-export type FieldType = 
-  | 'text' 
-  | 'number' 
-  | 'email' 
-  | 'password' 
-  | 'textarea' 
-  | 'select' 
-  | 'multiselect' 
-  | 'checkbox' 
-  | 'switch' 
-  | 'date' 
+export type FieldType =
+  | 'text'
+  | 'number'
+  | 'email'
+  | 'password'
+  | 'textarea'
+  | 'select'
+  | 'multiselect'
+  | 'checkbox'
+  | 'switch'
+  | 'date'
   | 'custom';
 
 export interface SelectOption {
@@ -106,12 +106,12 @@ export function FormBuilder<T extends FieldValues>({
   submitButtonDisabled = false,
   formFooter,
 }: FormBuilderProps<T>) {
-  // Generate grid columns class based on the columns prop
+  // Generate grid columns class based on the columns prop with improved responsive behavior
   const gridClass = {
-    1: '',
-    2: 'grid grid-cols-1 md:grid-cols-2 gap-4',
-    3: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4',
-    4: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4',
+    1: 'space-y-4',
+    2: 'grid grid-cols-1 sm:grid-cols-2 gap-4',
+    3: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4',
+    4: 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4',
   }[columns];
 
   return (
@@ -216,26 +216,26 @@ export function FormBuilder<T extends FieldValues>({
           </div>
         )}
 
-        <div className="flex items-center justify-end space-x-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:space-x-2">
           {formFooter}
-          
+
           {showCancelButton && onCancel && (
             <Button
               type="button"
               variant="outline"
               onClick={onCancel}
               disabled={isSubmitting}
-              className={cancelButtonClassName}
+              className={cn("w-full sm:w-auto", cancelButtonClassName)}
             >
               {cancelLabel}
             </Button>
           )}
-          
+
           {showSubmitButton && (
             <Button
               type="submit"
               disabled={isSubmitting || submitButtonDisabled}
-              className={submitButtonClassName}
+              className={cn("w-full sm:w-auto", submitButtonClassName)}
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {submitLabel}

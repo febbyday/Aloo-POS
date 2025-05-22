@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
+import { API_CONSTANTS } from '../api/config';
 
 // Types
 export const FileStorageConfigSchema = z.object({
@@ -42,7 +43,8 @@ export class FileStorageService {
 
   constructor(config: FileStorageConfig) {
     this.config = FileStorageConfigSchema.parse(config);
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    // Use centralized API configuration
+    this.baseUrl = API_CONSTANTS.URL;
   }
 
   private async ensureDirectoryExists(dirPath: string): Promise<void> {
@@ -118,7 +120,7 @@ export class FileStorageService {
         mimetype: file.type,
         size: processedBuffer.length,
         path: filePath,
-        url: `${this.baseUrl}/api/files/${module}/${filename}`,
+        url: `${this.baseUrl}${API_CONSTANTS.PREFIX}/files/${module}/${filename}`,
         module,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -167,7 +169,7 @@ export class FileStorageService {
         mimetype,
         size: stats.size,
         path: path.join(modulePath, file),
-        url: `${this.baseUrl}/api/files/${module}/${file}`,
+        url: `${this.baseUrl}${API_CONSTANTS.PREFIX}/files/${module}/${file}`,
         module,
         createdAt: stats.birthtime,
         updatedAt: stats.mtime,
@@ -194,4 +196,4 @@ export class FileStorageService {
     };
     return mimeTypes[ext] || 'application/octet-stream';
   }
-} 
+}

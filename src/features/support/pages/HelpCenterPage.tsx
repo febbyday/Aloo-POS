@@ -15,7 +15,7 @@ import {
   Search, 
   Video 
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 
 export function HelpCenterPage() {
   const [activeSection, setActiveSection] = useState("getting-started")

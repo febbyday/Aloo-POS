@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { LucideIcon } from "lucide-react"
 import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import { ReactNode } from "react";
 
 interface ToolbarButton {
@@ -39,9 +39,6 @@ export function ProductsToolbar({ groups, rightContent, children }: ProductsTool
             transition={{ delay: groupIndex * 0.05 }}
             className="flex items-center shrink-0"
           >
-            {groupIndex > 0 && (
-              <Separator orientation="vertical" className="h-8 bg-zinc-700/50 mx-2 shrink-0" />
-            )}
             {group.buttons.map((button, buttonIndex) => {
               const Icon = button.icon
               return (
@@ -93,16 +90,12 @@ export function ProductsToolbar({ groups, rightContent, children }: ProductsTool
             })}
           </motion.div>
         ))}
-        
-        {rightContent && (
-          <>
-            <Separator orientation="vertical" className="h-8 bg-zinc-700/50 mx-2 shrink-0" />
-            <div className="h-8 flex items-center ml-auto shrink-0">
-              {rightContent}
-            </div>
-          </>
-        )}
       </div>
+      {rightContent && (
+        <div className="h-8 flex items-center ml-auto shrink-0">
+          {rightContent}
+        </div>
+      )}
       {children}
     </motion.div>
   )

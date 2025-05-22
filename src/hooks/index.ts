@@ -5,8 +5,8 @@
  * Re-exports from other locations to provide a unified hooks API.
  */
 
-// Re-export useToast from the UI components
-export { useToast } from '@/components/ui/use-toast';
+// Re-export useToast from the standardized toast system
+export { useToast } from '@/lib/toast';
 
 // Export the useConfirm hook
 export { useConfirmDialog as useConfirm } from './useConfirmDialog';

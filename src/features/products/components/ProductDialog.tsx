@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 import { generateSKU, generateBarcode, generateVariantSKU } from "../utils/productUtils";
 import { PreviewProductDialog } from "./PreviewProductDialog";
 import { Checkbox } from "@/components/ui/checkbox";

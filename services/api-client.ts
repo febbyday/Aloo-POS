@@ -1,12 +1,13 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse } from 'axios';
+import { API_CONSTANTS } from '../src/lib/api/config';
 
-// Create axios instance with default config
+// Create axios instance with default config using centralized API configuration
 const axiosInstance: AxiosInstance = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_CONSTANTS.PREFIX, // Use the centralized API prefix
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 seconds
+  timeout: API_CONSTANTS.TIMEOUT, // Use the centralized timeout value (30 seconds)
 });
 
 // Add request interceptor for handling requests

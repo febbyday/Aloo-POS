@@ -241,7 +241,7 @@ export function StockHistoryPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [reasonFilter, setReasonFilter] = useState<string>("all")
   const [sortConfig, setSortConfig] = useState<{column: string, direction: 'asc' | 'desc'} | null>(null)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
   const [filters, setFilters] = useState<FilterCondition[]>([])
   const [sortOrder, setSortOrder] = useState<SortCondition[]>([])
 
@@ -486,11 +486,10 @@ export function StockHistoryPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="15">15 per page</SelectItem>
+                  <SelectItem value="25">25 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                  <SelectItem value="100">100 per page</SelectItem>
                 </SelectContent>
               </Select>
               <span className="text-sm text-zinc-500">entries</span>

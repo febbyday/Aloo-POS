@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,58 +9,95 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import { EmailSettings } from '../types/settings.types';
-import { Eye, EyeOff, Save, TestTube } from 'lucide-react';
+import { Eye, EyeOff, Save, TestTube, RotateCcw, Loader2 } from 'lucide-react';
+import { SettingsService, emailService } from '../services/email.service';
+import { EmailSettings, emailSettingsSchema } from '../schemas/email-settings.schema';
 
-interface EmailSettingsProps {
-  settings: EmailSettings;
-  onUpdate: (settings: EmailSettings) => void;
-}
-
-// Define schema for email settings
-const emailSettingsSchema = z.object({
-  server: z.object({
-    host: z.string().min(1, "SMTP host is required"),
-    port: z.number().int().min(1, "Port must be a positive number"),
-    secure: z.boolean(),
-    useMock: z.boolean()
-  }),
-  auth: z.object({
-    user: z.string(),
-    password: z.string()
-  }),
-  sender: z.object({
-    name: z.string().min(1, "Sender name is required"),
-    email: z.string().email("Must be a valid email address")
-  }),
-  templates: z.object({
-    welcomeEmail: z.boolean(),
-    passwordReset: z.boolean(),
-    orderConfirmation: z.boolean(),
-    staffCredentials: z.boolean(),
-    invoices: z.boolean()
-  })
-});
-
-type EmailSettingsFormValues = z.infer<typeof emailSettingsSchema>;
-
-export function EmailSettingsPanel({ settings, onUpdate }: EmailSettingsProps) {
+export function EmailSettingsPanel() {
   const { toast } = useToast();
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [testEmailAddress, setTestEmailAddress] = React.useState('');
-  const [isSending, setIsSending] = React.useState(false);
+  const [settings, setSettings] = useState<EmailSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
-  const form = useForm<EmailSettingsFormValues>({
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await SettingsService.getSettings();
+        setSettings(data);
+      } catch (error) {
+        console.error("Error loading email settings:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load email settings",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [toast]);
+
+  const form = useForm<EmailSettings>({
     resolver: zodResolver(emailSettingsSchema),
-    defaultValues: settings
+    defaultValues: settings || undefined,
+    values: settings || undefined
   });
 
-  const onSubmit = (data: EmailSettingsFormValues) => {
-    onUpdate(data);
-    toast({
-      title: "Settings Updated",
-      description: "Email settings have been saved successfully."
-    });
+  // Update form when settings change
+  useEffect(() => {
+    if (settings) {
+      form.reset(settings);
+    }
+  }, [settings, form]);
+
+  const saveSettings = async (updatedSettings: EmailSettings) => {
+    setSaving(true);
+    try {
+      await SettingsService.saveSettings(updatedSettings);
+      setSettings(updatedSettings);
+      toast({
+        title: "Settings saved",
+        description: "Email settings have been updated successfully",
+      });
+    } catch (error) {
+      console.error("Error saving email settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save email settings",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onSubmit = (data: EmailSettings) => {
+    saveSettings(data);
+  };
+
+  const handleResetSettings = async () => {
+    try {
+      const defaultSettings = await SettingsService.resetSettings();
+      setSettings(defaultSettings);
+      form.reset(defaultSettings);
+      toast({
+        title: "Settings reset",
+        description: "Email settings have been reset to defaults",
+      });
+    } catch (error) {
+      console.error("Error resetting email settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reset email settings",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleTestEmail = () => {
@@ -75,7 +111,7 @@ export function EmailSettingsPanel({ settings, onUpdate }: EmailSettingsProps) {
     }
 
     setIsSending(true);
-    
+
     // Simulate sending a test email
     setTimeout(() => {
       setIsSending(false);
@@ -85,6 +121,37 @@ export function EmailSettingsPanel({ settings, onUpdate }: EmailSettingsProps) {
       });
     }, 1500);
   };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Email Settings</CardTitle>
+          <CardDescription>Configure email server settings and templates</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Email Settings</CardTitle>
+          <CardDescription>Configure email server settings and templates</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground">Failed to load settings. Please try again.</p>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <Button onClick={() => window.location.reload()}>Reload</Button>
+        </CardFooter>
+      </Card>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -133,10 +200,10 @@ export function EmailSettingsPanel({ settings, onUpdate }: EmailSettingsProps) {
                       <FormItem>
                         <FormLabel>SMTP Port</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="587" 
-                            {...field} 
+                          <Input
+                            type="number"
+                            placeholder="587"
+                            {...field}
                             onChange={e => field.onChange(parseInt(e.target.value))}
                           />
                         </FormControl>
@@ -220,17 +287,17 @@ export function EmailSettingsPanel({ settings, onUpdate }: EmailSettingsProps) {
                         <FormLabel>Password</FormLabel>
                         <div className="flex">
                           <FormControl>
-                            <Input 
-                              type={showPassword ? "text" : "password"} 
-                              placeholder="••••••••" 
-                              {...field} 
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              {...field}
                               className="rounded-r-none"
                             />
                           </FormControl>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="icon" 
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
                             className="rounded-l-none"
                             onClick={() => setShowPassword(!showPassword)}
                           >
@@ -296,14 +363,14 @@ export function EmailSettingsPanel({ settings, onUpdate }: EmailSettingsProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex space-x-2">
-                    <Input 
-                      placeholder="test@example.com" 
+                    <Input
+                      placeholder="test@example.com"
                       value={testEmailAddress}
                       onChange={(e) => setTestEmailAddress(e.target.value)}
                       className="flex-1"
                     />
-                    <Button 
-                      type="button" 
+                    <Button
+                      type="button"
                       onClick={handleTestEmail}
                       disabled={isSending}
                     >
@@ -432,10 +499,31 @@ export function EmailSettingsPanel({ settings, onUpdate }: EmailSettingsProps) {
             </TabsContent>
           </Tabs>
 
-          <div className="flex justify-end">
-            <Button type="submit">
-              Save Changes
-              <Save className="ml-2 h-4 w-4" />
+          <div className="flex justify-between mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleResetSettings}
+              disabled={loading || saving}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset to Defaults
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading || saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </div>
         </form>

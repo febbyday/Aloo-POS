@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { useToastManager } from "@/components/ui/toast-manager";
 import { useProductForm, ProductFormData } from '../context/ProductFormContext';
 import { PRODUCTS_FULL_ROUTES } from '@/routes/productRoutes';

@@ -1,51 +1,28 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useToast } from '@/components/ui/use-toast';
-import UnifiedErrorBoundary, { ErrorBoundary } from '@/components/unified-error-boundary';
+import { useToast } from '@/lib/toast';
+import { ErrorBoundary as UnifiedErrorBoundary } from '@/components/unified-error-boundary';
 
-interface Props {
+/**
+ * Props for the ReportErrorBoundary component
+ */
+export interface ReportErrorBoundaryProps {
+  /** The child components to render */
   children: ReactNode;
-  fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+
+  /** Optional callback for when an error is caught */
+  onError?: (error: Error) => void;
+
+  /** Optional title for the error message */
+  title?: string;
 }
 
 /**
- * @deprecated This component is deprecated. Please use the UnifiedErrorBoundary from '@/components/unified-error-boundary' instead.
- * This component now delegates to the unified implementation while maintaining backward compatibility.
+ * Default error fallback component for reports module
  */
-export class ReportErrorBoundary extends React.Component<Props> {
-  render() {
-    // Show deprecation warning in development
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(
-        'Deprecation Warning: ReportErrorBoundary is deprecated. ' +
-        'Please use the UnifiedErrorBoundary from @/components/unified-error-boundary instead.'
-      );
-    }
-    
-    return (
-      <UnifiedErrorBoundary
-        fallback={(error, reset) => 
-          this.props.fallback || <ReportErrorFallback error={error} onReset={reset} />
-        }
-        onError={this.props.onError}
-        showToast={true}
-        title="Report Error"
-      >
-        {this.props.children}
-      </UnifiedErrorBoundary>
-    );
-  }
-}
-
-/**
- * Default error fallback component
- */
-function ReportErrorFallback({ error, onReset }: { error: Error, onReset?: () => void }) {
+export function ReportErrorFallback({ error, onReset }: { error: Error, onReset?: () => void }) {
   const { toast } = useToast();
 
   const handleRetry = () => {
@@ -95,32 +72,32 @@ function ReportErrorFallback({ error, onReset }: { error: Error, onReset?: () =>
 }
 
 /**
- * @deprecated Please use the withErrorBoundary HOC from '@/components/unified-error-boundary' instead.
- * Higher-order component to wrap components with error boundary
+ * Error boundary component specialized for reports module
+ *
+ * This component uses the UnifiedErrorBoundary internally but provides
+ * a report-specific error fallback UI with reporting capabilities.
  */
-export function withReportErrorBoundary<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  options: Omit<Props, 'children'> = {}
-) {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(
-      'Deprecation Warning: withReportErrorBoundary is deprecated. ' +
-      'Please use the withErrorBoundary HOC from @/components/unified-error-boundary instead.'
-    );
-  }
-  
-  return function WithErrorBoundary(props: P) {
-    return (
-      <ErrorBoundary 
-        fallback={(error, reset) => 
-          options.fallback || <ReportErrorFallback error={error} onReset={reset} />
-        }
-        onError={options.onError}
-        showToast={true}
-        title="Report Error"
-      >
-        <WrappedComponent {...props} />
-      </ErrorBoundary>
-    );
+export function ReportErrorBoundary({ children, onError, title = "Report Error" }: ReportErrorBoundaryProps) {
+  // Create an error handler adapter that matches the UnifiedErrorBoundary's expected signature
+  const handleError = (error: Error, errorInfo: React.ErrorInfo) => {
+    if (onError) {
+      onError(error);
+    }
+    console.log('Report Error Boundary caught an error:', error, errorInfo);
   };
-} 
+
+  return (
+    <UnifiedErrorBoundary
+      fallback={(error, reset) => (
+        <ReportErrorFallback error={error} onReset={reset} />
+      )}
+      onError={handleError}
+      title={title}
+      showToast={false} // We handle toasts in our custom fallback
+    >
+      {children}
+    </UnifiedErrorBoundary>
+  );
+}
+
+export default ReportErrorBoundary;

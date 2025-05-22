@@ -1,20 +1,15 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
+// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! ��
 
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import * as z from 'zod';
 import { ArrowLeft, Globe, Hash, Mail, MapPin, Phone, Save, Store, User, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import {
   Form,
   FormControl,
@@ -33,8 +28,9 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRealShopContext } from '../context/RealShopContext';
-import { SHOP_STATUS, SHOP_TYPE } from '../types';
+import { SHOP_STATUS, SHOP_TYPE, Shop } from '../types';
 import { Checkbox } from '@/components/ui/checkbox';
+import { realShopService } from '../services/realShopService';
 
 // Define the form schema using Zod
 const shopFormSchema = z.object({
@@ -70,6 +66,8 @@ export function ShopAddPage() {
   const { toast } = useToast();
   const { createShop, isLoading } = useRealShopContext();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [checkingCode, setCheckingCode] = useState(false);
+  const [isCodeUnique, setIsCodeUnique] = useState(true);
 
   // Initialize form with default values
   const form = useForm<ShopFormValues>({
@@ -101,42 +99,90 @@ export function ShopAddPage() {
     },
   });
 
+  // Check if shop code is unique when it changes
+  const shopCode = form.watch('code');
+
+  useEffect(() => {
+    // Skip empty codes or very short codes (still typing)
+    if (!shopCode || shopCode.length < 2) {
+      setIsCodeUnique(true);
+      return;
+    }
+
+    // Debounce the check to avoid too many API calls while typing
+    const timer = setTimeout(async () => {
+      setCheckingCode(true);
+      try {
+        const exists = await realShopService.checkCodeExists(shopCode);
+        setIsCodeUnique(!exists);
+
+        if (exists) {
+          form.setError('code', {
+            type: 'manual',
+            message: 'This shop code is already in use'
+          });
+        } else {
+          form.clearErrors('code');
+        }
+      } catch (error) {
+        console.error('Error checking shop code:', error);
+      } finally {
+        setCheckingCode(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [shopCode, form]);
+
   // Handle form submission
   const onSubmit = async (data: ShopFormValues) => {
     setSubmitError(null);
-    
+
+    // Double-check code uniqueness before submission
+    if (data.code) {
+      try {
+        const exists = await realShopService.checkCodeExists(data.code);
+        if (exists) {
+          form.setError('code', {
+            type: 'manual',
+            message: 'This shop code is already in use'
+          });
+          setSubmitError('A shop with this code already exists. Please use a different code.');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking shop code uniqueness:', error);
+        // Continue with submission even if the check fails
+      }
+    }
+
     try {
-      // Create a shop object with the required fields
-      const shopData = {
+      // Prepare the shop data
+      const shopData: Partial<Shop> = {
         ...data,
-        // Convert type string to SHOP_TYPE enum
-        type: data.type as SHOP_TYPE,
-        // Ensure required string fields are not undefined
-        phone: data.phone || '',
-        email: data.email || '',
-        manager: data.manager || '',
-        taxId: data.taxId || '',
-        licenseNumber: data.licenseNumber || '',
-        website: data.website || '',
-        // Add fields required by the API but not in the form
-        operatingHours: {
-          monday: { open: true, openTime: '09:00', closeTime: '17:00', breakStart: null, breakEnd: null },
-          tuesday: { open: true, openTime: '09:00', closeTime: '17:00', breakStart: null, breakEnd: null },
-          wednesday: { open: true, openTime: '09:00', closeTime: '17:00', breakStart: null, breakEnd: null },
-          thursday: { open: true, openTime: '09:00', closeTime: '17:00', breakStart: null, breakEnd: null },
-          friday: { open: true, openTime: '09:00', closeTime: '17:00', breakStart: null, breakEnd: null },
-          saturday: { open: true, openTime: '10:00', closeTime: '15:00', breakStart: null, breakEnd: null },
-          sunday: { open: false, openTime: null, closeTime: null, breakStart: null, breakEnd: null },
+        // Ensure address is properly formatted
+        address: {
+          street: data.address?.street || '',
+          city: data.address?.city || '',
+          state: data.address?.state || '',
+          postalCode: data.address?.postalCode || '',
+          country: data.address?.country || 'USA',
+          street2: data.address?.street2,
+          latitude: data.address?.latitude,
+          longitude: data.address?.longitude,
         },
+        // Ensure settings has the necessary defaults
         settings: {
           allowNegativeInventory: false,
-          defaultTaxRate: 0,
           requireStockCheck: true,
-          autoPrintReceipt: true,
+          defaultTaxRate: 10,
           defaultDiscountRate: 0,
-          enableCashierTracking: true,
+          autoPrintReceipt: true,
           allowReturnWithoutReceipt: false,
+          enableCashierTracking: true,
           minPasswordLength: 8,
+          receiptHeader: '',
+          receiptFooter: '',
           requireManagerApproval: {
             forDiscount: true,
             forVoid: true,
@@ -145,8 +191,8 @@ export function ShopAddPage() {
             forPriceChange: true
           },
           thresholds: {
-            lowStock: 5,
-            criticalStock: 2,
+            lowStock: 10,
+            criticalStock: 5,
             reorderPoint: 10
           }
         },
@@ -165,7 +211,7 @@ export function ShopAddPage() {
       };
 
       const newShop = await createShop(shopData);
-      
+
       if (newShop) {
         toast({
           title: 'Shop Created',
@@ -177,11 +223,29 @@ export function ShopAddPage() {
       }
     } catch (err) {
       console.error('Error creating shop:', err);
-      setSubmitError(err instanceof Error ? err.message : 'An unexpected error occurred');
-      
+
+      let errorMessage = 'An unexpected error occurred';
+
+      if (err instanceof Error) {
+        // Check for 409 conflict error (duplicate code or name)
+        if (err.message.includes('409 Conflict') || err.message.includes('already exists')) {
+          errorMessage = 'A shop with this code or name already exists. Please try a different one.';
+
+          // Set specific field errors
+          form.setError('code', {
+            type: 'manual',
+            message: 'This shop code may already be in use'
+          });
+        } else {
+          errorMessage = err.message;
+        }
+      }
+
+      setSubmitError(errorMessage);
+
       toast({
         title: 'Error',
-        description: 'Failed to create shop. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
@@ -190,8 +254,8 @@ export function ShopAddPage() {
   return (
     <div className="w-full">
       <div className="flex items-center mb-6">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="mr-4"
           onClick={() => navigate('/shops')}
         >
@@ -251,7 +315,35 @@ export function ShopAddPage() {
                       <FormControl>
                         <div className="flex items-center">
                           <Hash className="mr-2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="MST001" {...field} />
+                          <div className="relative flex-1">
+                            <Input
+                              placeholder="MST001"
+                              {...field}
+                              className={`${!isCodeUnique && field.value ? 'border-red-500 pr-10' : ''}`}
+                            />
+                            {checkingCode && field.value && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                              </div>
+                            )}
+                            {!checkingCode && !isCodeUnique && field.value && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <svg className="h-4 w-4 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10" />
+                                  <line x1="15" y1="9" x2="9" y2="15" />
+                                  <line x1="9" y1="9" x2="15" y2="15" />
+                                </svg>
+                              </div>
+                            )}
+                            {!checkingCode && isCodeUnique && field.value && field.value.length >= 2 && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <svg className="h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                  <polyline points="22 4 12 14.01 9 11.01" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </FormControl>
                       <FormDescription>
@@ -262,7 +354,7 @@ export function ShopAddPage() {
                   )}
                 />
               </div>
-              
+
               {/* Shop Type */}
               <FormField
                 control={form.control}
@@ -270,8 +362,8 @@ export function ShopAddPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Shop Type*</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
+                    <Select
+                      onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
@@ -303,8 +395,8 @@ export function ShopAddPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status*</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -374,7 +466,7 @@ export function ShopAddPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="address.street2"
@@ -418,7 +510,7 @@ export function ShopAddPage() {
                       )}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -516,8 +608,8 @@ export function ShopAddPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Timezone</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
+                        <Select
+                          onValueChange={field.onChange}
                           defaultValue={field.value}
                         >
                           <FormControl>
@@ -541,7 +633,7 @@ export function ShopAddPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="mt-4">
                   <FormField
                     control={form.control}
@@ -564,7 +656,7 @@ export function ShopAddPage() {
                   />
                 </div>
               </div>
-              
+
               {/* Legal Information */}
               <div className="border rounded-md p-4 mt-4">
                 <h3 className="text-lg font-medium mb-4 flex items-center">
@@ -624,10 +716,10 @@ export function ShopAddPage() {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Enter details about this shop location..." 
+                      <Textarea
+                        placeholder="Enter details about this shop location..."
                         className="min-h-[120px]"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormDescription>
@@ -646,7 +738,7 @@ export function ShopAddPage() {
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   type="submit"
                   disabled={isLoading}
                 >

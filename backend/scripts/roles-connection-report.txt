@@ -1,0 +1,136 @@
+# ROLES MODULE DATABASE CONNECTION REPORT
+Generated: 2025-05-05T06:05:39.157Z
+
+## Database Connection
+✅ Database connection successful
+
+## Roles Table Check
+✅ Roles table is accessible (3 roles found)
+
+Sample role:
+```json
+{
+  "id": "cmaaoelfg0000hhs06xd44okm",
+  "name": "Administrator",
+  "description": "Full system access with all permissions",
+  "createdAt": "2025-05-05T06:04:46.971Z",
+  "updatedAt": "2025-05-05T06:04:46.971Z",
+  "createdBy": null,
+  "isActive": true,
+  "isSystemRole": true,
+  "permissions": {
+    "roles": {
+      "read": true,
+      "create": true,
+      "delete": true,
+      "update": true
+    },
+    "staff": {
+      "read": true,
+      "create": true,
+      "delete": true,
+      "update": true
+    },
+    "users": {
+      "read": true,
+      "create": true,
+      "delete": true,
+      "update": true
+    },
+    "reports": {
+      "read": true,
+      "create": true,
+      "delete": true,
+      "update": true
+    },
+    "settings": {
+      "read": true,
+      "create": true,
+      "delete": true,
+      "update": true
+    },
+    "inventory": {
+      "read": true,
+      "create": true,
+      "delete": true,
+      "update": true
+    }
+  },
+  "staffCount": 0,
+  "updatedBy": null
+}
+```
+
+## Staff-Role Relationship
+❌ Failed to check staff-role relationship: 
+Invalid `prisma.staff.count()` invocation in
+D:\Projects\POS\backend\scripts\roles-connection-report.js:123:49
+
+  120 report.push('## Staff-Role Relationship');
+  121 log.info('Checking staff-role relationship...');
+  122 
+→ 123 const staffWithRoles = await prisma.staff.count({
+        select: {
+          _count: {
+            select: {
+              _all: true
+            }
+          }
+        },
+        where: {
+          roleId: {
+      +     not: String
+          }
+        }
+      })
+
+Argument `not` must not be null.
+```
+PrismaClientValidationError: 
+Invalid `prisma.staff.count()` invocation in
+D:\Projects\POS\backend\scripts\roles-connection-report.js:123:49
+
+  120 report.push('## Staff-Role Relationship');
+  121 log.info('Checking staff-role relationship...');
+  122 
+→ 123 const staffWithRoles = await prisma.staff.count({
+        select: {
+          _count: {
+            select: {
+              _all: true
+            }
+          }
+        },
+        where: {
+          roleId: {
+      +     not: String
+          }
+        }
+      })
+
+Argument `not` must not be null.
+    at Cn (D:\Projects\POS\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at Wn.handleRequestError (D:\Projects\POS\backend\node_modules\@prisma\client\runtime\library.js:121:7177)
+    at Wn.handleAndLogRequestError (D:\Projects\POS\backend\node_modules\@prisma\client\runtime\library.js:121:6858)
+    at Wn.request (D:\Projects\POS\backend\node_modules\@prisma\client\runtime\library.js:121:6565)
+    at async l (D:\Projects\POS\backend\node_modules\@prisma\client\runtime\library.js:130:10067)
+    at async generateReport (D:\Projects\POS\backend\scripts\roles-connection-report.js:123:30)
+    at async main (D:\Projects\POS\backend\scripts\roles-connection-report.js:263:20)
+```
+
+## API Routes Check
+✅ API routes for roles are implemented
+- GET /api/v1/staff/roles - Get all staff roles
+- GET /api/v1/staff/roles/:id - Get role by ID
+- POST /api/v1/staff/roles - Create a new role
+- PUT /api/v1/staff/roles/:id - Update a role
+- DELETE /api/v1/staff/roles/:id - Delete a role
+
+## Summary
+
+The roles module:
+
+✅ Is connected to the database
+✅ Has access to the role table (3 roles found)
+❌ Cannot verify staff-role relationships
+✅ Has API routes implemented for CRUD operations

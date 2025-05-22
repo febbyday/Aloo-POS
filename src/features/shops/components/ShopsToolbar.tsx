@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils/cn';
 import { ReactNode } from 'react'
 import { Shop } from '../types/shops.types'
 

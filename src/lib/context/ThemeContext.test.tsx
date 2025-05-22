@@ -1,149 +1,161 @@
 /**
- * ThemeContext Tests
- * 
- * This file contains tests for the ThemeContext provider
- * created in Phase 2.
+ * Theme Provider Tests
+ *
+ * This file contains tests for the ThemeProvider component
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { customRender, screen, waitFor, userEvent } from '@/test/utils';
-import { ThemeProvider, useTheme } from './ThemeContext';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { ThemeProvider, useTheme } from '@/components/theme-provider';
 
-// Mock the useLocalStorage hook
-vi.mock('../hooks/useLocalStorage', () => ({
-  useLocalStorage: vi.fn()
-}));
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value.toString();
+    }),
+    clear: vi.fn(() => {
+      store = {};
+    })
+  };
+})();
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock
+});
+
+// Mock matchMedia for system theme testing
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false, // Default to light mode
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 
 // Test component that uses the theme context
 const TestComponent = () => {
-  const { theme, toggleTheme } = useTheme();
-  
+  const { theme, setTheme, resolvedTheme } = useTheme();
+
   return (
     <div>
       <div data-testid="current-theme">{theme}</div>
-      <button onClick={toggleTheme}>Toggle Theme</button>
+      <div data-testid="resolved-theme">{resolvedTheme}</div>
+      <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+        Toggle Theme
+      </button>
     </div>
   );
 };
 
-describe('ThemeContext', () => {
-  let mockSetValue: any;
-  
+describe('ThemeProvider', () => {
   beforeEach(() => {
-    mockSetValue = vi.fn();
-    
-    // Default mock implementation for useLocalStorage
-    (useLocalStorage as any).mockReturnValue(['light', mockSetValue]);
-    
-    // Clear all mocks between tests
+    // Clear localStorage and mocks before each test
+    localStorageMock.clear();
     vi.clearAllMocks();
+
+    // Reset document classList
+    document.documentElement.classList.remove('light', 'dark');
   });
-  
-  it('provides the current theme from localStorage', () => {
+
+  it('provides the default theme when no theme is stored', () => {
     customRender(
-      <ThemeProvider>
+      <ThemeProvider defaultTheme="light" storageKey="test-theme">
         <TestComponent />
       </ThemeProvider>
     );
-    
+
     expect(screen.getByTestId('current-theme')).toHaveTextContent('light');
-    expect(useLocalStorage).toHaveBeenCalledWith('theme', 'light');
+    expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
+    expect(localStorageMock.getItem).toHaveBeenCalledWith('test-theme');
   });
-  
-  it('toggles the theme when toggleTheme is called', async () => {
+
+  it('changes the theme when setTheme is called', async () => {
     const user = userEvent.setup();
-    
+
     customRender(
-      <ThemeProvider>
+      <ThemeProvider defaultTheme="light" storageKey="test-theme">
         <TestComponent />
       </ThemeProvider>
     );
-    
+
     // Initial theme is light
     expect(screen.getByTestId('current-theme')).toHaveTextContent('light');
-    
-    // Click the toggle button
-    await user.click(screen.getByRole('button', { name: 'Toggle Theme' }));
-    
-    // Check that the setter from useLocalStorage was called with 'dark'
-    expect(mockSetValue).toHaveBeenCalledWith('dark');
-  });
-  
-  it('uses dark theme when localStorage has dark theme', () => {
-    // Mock useLocalStorage to return 'dark' theme
-    (useLocalStorage as any).mockReturnValue(['dark', mockSetValue]);
-    
-    customRender(
-      <ThemeProvider>
-        <TestComponent />
-      </ThemeProvider>
-    );
-    
+
+    // Click the toggle button to change to dark
+    await user.click(screen.getByRole('button'));
+
+    // Check that localStorage was updated
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('test-theme', 'dark');
+
+    // Check that the theme was updated in the component
     expect(screen.getByTestId('current-theme')).toHaveTextContent('dark');
   });
-  
+
+  it('uses the theme from localStorage if available', () => {
+    // Set a theme in localStorage
+    localStorageMock.getItem.mockReturnValueOnce('dark');
+
+    customRender(
+      <ThemeProvider defaultTheme="light" storageKey="test-theme">
+        <TestComponent />
+      </ThemeProvider>
+    );
+
+    // Should use the theme from localStorage (dark) instead of the default (light)
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('dark');
+  });
+
   it('applies the theme class to the document element', () => {
-    // Mock document.documentElement
-    const originalClassList = document.documentElement.classList;
-    const mockClassList = {
-      add: vi.fn(),
-      remove: vi.fn()
-    };
-    
-    Object.defineProperty(document.documentElement, 'classList', {
-      value: mockClassList,
-      writable: true
-    });
-    
+    // Mock document.documentElement.classList
+    const addSpy = vi.spyOn(document.documentElement.classList, 'add');
+    const removeSpy = vi.spyOn(document.documentElement.classList, 'remove');
+
     customRender(
-      <ThemeProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="test-theme">
         <TestComponent />
       </ThemeProvider>
     );
-    
-    // Check that the light theme class was added
-    expect(mockClassList.add).toHaveBeenCalledWith('light');
-    
-    // Restore original classList
-    Object.defineProperty(document.documentElement, 'classList', {
-      value: originalClassList
-    });
+
+    // Check that the dark theme class was added
+    expect(addSpy).toHaveBeenCalledWith('dark');
+    expect(removeSpy).toHaveBeenCalledWith('light', 'dark');
   });
-  
-  it('removes the previous theme class when theme changes', async () => {
-    const user = userEvent.setup();
-    
-    // Mock document.documentElement
-    const originalClassList = document.documentElement.classList;
-    const mockClassList = {
-      add: vi.fn(),
-      remove: vi.fn()
-    };
-    
-    Object.defineProperty(document.documentElement, 'classList', {
-      value: mockClassList,
-      writable: true
+
+  it('handles system theme preference', () => {
+    // Mock system preference to dark
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(query => ({
+        matches: true, // System prefers dark
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
     });
-    
+
     customRender(
-      <ThemeProvider>
+      <ThemeProvider defaultTheme="system" storageKey="test-theme">
         <TestComponent />
       </ThemeProvider>
     );
-    
-    // Initial theme is light
-    expect(mockClassList.add).toHaveBeenCalledWith('light');
-    
-    // Click the toggle button to change to dark
-    await user.click(screen.getByRole('button', { name: 'Toggle Theme' }));
-    
-    // Check that the light theme class was removed
-    expect(mockClassList.remove).toHaveBeenCalledWith('light');
-    
-    // Restore original classList
-    Object.defineProperty(document.documentElement, 'classList', {
-      value: originalClassList
-    });
+
+    // Theme should be "system"
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('system');
+
+    // But resolved theme should be "dark" because system prefers dark
+    expect(screen.getByTestId('resolved-theme')).toHaveTextContent('dark');
   });
-}); 
+});

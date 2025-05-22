@@ -46,7 +46,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { useToast } from '@/components/ui/use-toast';
+import { ToastService } from '@/lib/toast';
 
 import { useTemplates } from '../hooks/useTemplates';
 import { GiftCardSettings } from '../types';
@@ -57,15 +57,15 @@ const formSchema = z.object({
   enableEmailDelivery: z.boolean().default(true),
   enablePrintFormat: z.boolean().default(true),
   enableDigitalWallet: z.boolean().default(false),
-  
+
   // Code Format Settings
   codePrefix: z.string().max(10, 'Prefix cannot exceed 10 characters'),
   codeLength: z.coerce.number().min(8, 'Code must be at least 8 characters').max(24, 'Code cannot exceed 24 characters'),
   allowManualCodes: z.boolean().default(true),
-  
+
   // Expiration Settings
   defaultExpirationPeriod: z.coerce.number().min(0, 'Must be 0 or greater'),
-  
+
   // Template Settings
   defaultTemplate: z.string(),
 });
@@ -78,7 +78,6 @@ interface GiftCardSettingsProps {
 }
 
 export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
-  const { toast } = useToast();
   const { templates, loading: loadingTemplates } = useTemplates();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -102,16 +101,15 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
     setIsSubmitting(true);
     try {
       await onSave(data as GiftCardSettings);
-      toast({
-        title: 'Settings Saved',
-        description: 'Gift card settings have been updated successfully.',
-      });
+      ToastService.success(
+        'Settings Saved',
+        'Gift card settings have been updated successfully.'
+      );
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to save settings. Please try again.',
-        variant: 'destructive',
-      });
+      ToastService.error(
+        'Error',
+        'Failed to save settings. Please try again.'
+      );
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -149,7 +147,7 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="enablePrintFormat"
@@ -170,7 +168,7 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="enableDigitalWallet"
@@ -193,7 +191,7 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
             />
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Gift Card Code Settings</CardTitle>
@@ -219,7 +217,7 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="codeLength"
@@ -237,7 +235,7 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
                 )}
               />
             </div>
-            
+
             <FormField
               control={form.control}
               name="allowManualCodes"
@@ -260,7 +258,7 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
             />
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Expiration Settings</CardTitle>
@@ -276,11 +274,11 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
                 <FormItem>
                   <FormLabel>Default Expiration Period (Days)</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      min={0} 
+                    <Input
+                      type="number"
+                      min={0}
                       placeholder="90"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -292,7 +290,7 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
             />
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Default Template</CardTitle>
@@ -364,7 +362,7 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
             />
           </CardContent>
         </Card>
-        
+
         <div className="flex justify-end">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : 'Save Settings'}
@@ -374,4 +372,4 @@ export function GiftCardSettings({ settings, onSave }: GiftCardSettingsProps) {
       </form>
     </Form>
   );
-} 
+}

@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { CategoryMetricsCell } from './CategoryMetricsCell'
 import { CategoryNameCell } from './CategoryNameCell'
-import { formatDate } from '@/lib/utils'
+import { formatDate } from '@/lib/utils/formatters';
 
 export const categoryColumns: ColumnDef<Category>[] = [
   {

@@ -1,6 +1,6 @@
 /**
  * Staff Hooks
- * 
+ *
  * This module exports all custom hooks for the staff feature.
  */
 
@@ -8,6 +8,7 @@
 
 export * from './useStaff';
 export * from './useStaffDocuments';
-export * from './useRoles';
+// Import useRoles from the centralized roles module
+export { useRoles, useUserManagement } from '@/features/roles/hooks';
 export * from './useEmploymentTypes';
 export * from './useEmploymentStatuses';

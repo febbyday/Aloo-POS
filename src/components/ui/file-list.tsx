@@ -1,7 +1,7 @@
 import React from 'react';
 import { FileMetadata } from '@/lib/services/fileStorage';
 import { FilePreview } from './file-preview';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 
 interface FileListProps {
   files: FileMetadata[];

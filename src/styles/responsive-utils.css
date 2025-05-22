@@ -1,0 +1,178 @@
+/* Responsive Utility Classes */
+
+/* Hide elements based on screen size */
+.hide-xs {
+  @media (max-width: 639px) {
+    display: none !important;
+  }
+}
+
+.hide-sm {
+  @media (min-width: 640px) and (max-width: 767px) {
+    display: none !important;
+  }
+}
+
+.hide-md {
+  @media (min-width: 768px) and (max-width: 1023px) {
+    display: none !important;
+  }
+}
+
+.hide-lg {
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    display: none !important;
+  }
+}
+
+.hide-xl {
+  @media (min-width: 1280px) {
+    display: none !important;
+  }
+}
+
+/* Show elements based on screen size */
+.show-xs {
+  @media (min-width: 640px) {
+    display: none !important;
+  }
+}
+
+.show-sm {
+  @media (max-width: 639px), (min-width: 768px) {
+    display: none !important;
+  }
+}
+
+.show-md {
+  @media (max-width: 767px), (min-width: 1024px) {
+    display: none !important;
+  }
+}
+
+.show-lg {
+  @media (max-width: 1023px), (min-width: 1280px) {
+    display: none !important;
+  }
+}
+
+.show-xl {
+  @media (max-width: 1279px) {
+    display: none !important;
+  }
+}
+
+/* Responsive spacing utilities */
+.responsive-p {
+  padding: 0.5rem !important;
+}
+
+@media (min-width: 640px) {
+  .responsive-p {
+    padding: 0.75rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-p {
+    padding: 1rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-p {
+    padding: 1.5rem !important;
+  }
+}
+
+/* Responsive margin utilities */
+.responsive-m {
+  margin: 0.5rem !important;
+}
+
+@media (min-width: 640px) {
+  .responsive-m {
+    margin: 0.75rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-m {
+    margin: 1rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-m {
+    margin: 1.5rem !important;
+  }
+}
+
+/* Responsive text utilities */
+.responsive-text {
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+@media (min-width: 640px) {
+  .responsive-text {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-text {
+    font-size: 1.125rem !important;
+    line-height: 1.75rem !important;
+  }
+}
+
+/* Responsive container width */
+.responsive-container {
+  width: 100% !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media (min-width: 640px) {
+  .responsive-container {
+    max-width: 640px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-container {
+    max-width: 768px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-container {
+    max-width: 1024px !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .responsive-container {
+    max-width: 1280px !important;
+  }
+}
+
+/* Touch-friendly utilities */
+@media (max-width: 767px) {
+  .touch-target {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  .touch-padding {
+    padding: 0.75rem !important;
+  }
+  
+  .touch-spacing > * + * {
+    margin-top: 1rem !important;
+  }
+}

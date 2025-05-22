@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { useOutletContext } from "react-router-dom";
 import { POSSettings } from "../types/settings.types";
 import { AppearanceSettingsPanel } from "./AppearanceSettings";
@@ -15,6 +13,11 @@ import { CompanySettingsPanel } from "./CompanySettings";
 import { PaymentSettingsPanel } from "./PaymentSettings";
 import { ProductsSettingsPanel } from "./ProductsSettings";
 import { EmailSettingsPanel } from "./EmailSettings";
+import MonitoringSettings from "./MonitoringSettings";
+import { ThemeSettings } from "./ThemeSettings";
+import { GiftCardSettingsPanel } from "./GiftCardSettings";
+import SettingsMigrationWrapper from "./SettingsMigrationWrapper";
+import SessionSettings from "./SessionSettings";
 
 // Define the type for the context provided by the outlet
 type SettingsContextType = {
@@ -24,22 +27,14 @@ type SettingsContextType = {
 
 // Wrapper components for each settings panel that use the outlet context
 export function AppearanceSettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <AppearanceSettingsPanel
-      settings={settings.appearance}
-      onUpdate={(newSettings) => handleSettingsUpdate('appearance', newSettings)}
-    />
+    <AppearanceSettingsPanel />
   );
 }
 
 export function NotificationSettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <NotificationSettingsPanel
-      settings={settings.notifications}
-      onUpdate={(newSettings) => handleSettingsUpdate('notifications', newSettings)}
-    />
+    <NotificationSettingsPanel />
   );
 }
 
@@ -54,52 +49,32 @@ export function BackupSettingsWrapper() {
 }
 
 export function ReceiptSettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <ReceiptSettingsPanel
-      settings={settings.receipt}
-      onUpdate={(newSettings) => handleSettingsUpdate('receipt', newSettings)}
-    />
+    <ReceiptSettingsPanel />
   );
 }
 
 export function TaxSettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <TaxSettingsPanel
-      settings={settings.tax}
-      onUpdate={(newSettings) => handleSettingsUpdate('tax', newSettings)}
-    />
+    <TaxSettingsPanel />
   );
 }
 
 export function SecuritySettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <SecuritySettingsPanel
-      settings={settings.security}
-      onUpdate={(newSettings) => handleSettingsUpdate('security', newSettings)}
-    />
+    <SecuritySettingsPanel />
   );
 }
 
 export function SystemSettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <SystemSettingsPanel
-      settings={settings.system}
-      onUpdate={(newSettings) => handleSettingsUpdate('system', newSettings)}
-    />
+    <SystemSettingsPanel />
   );
 }
 
 export function HardwareSettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <HardwareSettingsPanel
-      settings={settings.hardware}
-      onUpdate={(newSettings) => handleSettingsUpdate('hardware', newSettings)}
-    />
+    <HardwareSettingsPanel />
   );
 }
 
@@ -114,22 +89,14 @@ export function WooCommerceSettingsWrapper() {
 }
 
 export function CompanySettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <CompanySettingsPanel
-      settings={settings.company}
-      onUpdate={(newSettings) => handleSettingsUpdate('company', newSettings)}
-    />
+    <CompanySettingsPanel />
   );
 }
 
 export function PaymentSettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <PaymentSettingsPanel
-      settings={settings.payment}
-      onUpdate={(newSettings) => handleSettingsUpdate('payment', newSettings)}
-    />
+    <PaymentSettingsPanel />
   );
 }
 
@@ -141,11 +108,35 @@ export function ProductsSettingsWrapper() {
 }
 
 export function EmailSettingsWrapper() {
-  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
   return (
-    <EmailSettingsPanel
-      settings={settings.email}
-      onUpdate={(newSettings) => handleSettingsUpdate('email', newSettings)}
-    />
+    <EmailSettingsPanel />
   );
 }
+
+export function MonitoringSettingsWrapper() {
+  const { settings, handleSettingsUpdate } = useOutletContext<SettingsContextType>();
+  return (
+    <MonitoringSettings />
+  );
+}
+
+export function ThemeSettingsWrapper() {
+  return (
+    <ThemeSettings />
+  );
+}
+
+export function GiftCardSettingsWrapper() {
+  return (
+    <GiftCardSettingsPanel />
+  );
+}
+
+// Session settings wrapper
+export function SessionSettingsWrapper() {
+  return (
+    <SessionSettings />
+  );
+}
+
+// Migration wrapper is imported directly in App.tsx

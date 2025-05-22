@@ -1,4 +1,6 @@
-import { GiftCardSettings } from "../types";
+import { createSettingsService } from '@/lib/settings';
+import { giftCardSettingsSchema } from '../schemas/gift-card-settings.schema';
+import type { GiftCardSettings } from '../schemas/gift-card-settings.schema';
 
 // Default settings
 const defaultSettings: GiftCardSettings = {
@@ -12,40 +14,16 @@ const defaultSettings: GiftCardSettings = {
   allowManualCodes: true,
 };
 
-// Settings service
-export const SettingsService = {
-  // Get current settings
-  getSettings: async (): Promise<GiftCardSettings> => {
-    // In a real app, this would fetch from an API or local storage
-    const storedSettings = localStorage.getItem('giftCardSettings');
-    if (storedSettings) {
-      try {
-        return JSON.parse(storedSettings);
-      } catch (error) {
-        console.error('Error parsing stored settings', error);
-        return { ...defaultSettings };
-      }
-    }
-    return { ...defaultSettings };
-  },
+/**
+ * Gift card settings service
+ * Uses the unified settings architecture
+ */
+export const SettingsService = createSettingsService<GiftCardSettings>('gift-cards', {
+  defaultSettings,
+  schema: giftCardSettingsSchema,
+  apiEndpoint: 'gift-cards/settings',
+  cacheable: true,
+});
 
-  // Save settings
-  saveSettings: async (settings: GiftCardSettings): Promise<void> => {
-    // In a real app, this would save to an API
-    try {
-      localStorage.setItem('giftCardSettings', JSON.stringify(settings));
-    } catch (error) {
-      console.error('Error saving settings', error);
-      throw new Error('Failed to save settings');
-    }
-    return Promise.resolve();
-  },
-
-  // Reset settings to defaults
-  resetSettings: async (): Promise<GiftCardSettings> => {
-    localStorage.removeItem('giftCardSettings');
-    return { ...defaultSettings };
-  }
-};
-
-export default SettingsService; 
+// For backward compatibility, maintain the default export
+export default SettingsService;

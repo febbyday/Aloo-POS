@@ -8,7 +8,7 @@ export function EditTransferPage() {
   const transfer = location.state?.transfer
 
   if (!transfer) {
-    navigate('/products/transfers')
+    navigate('/products/stock/transfers')
     return null
   }
 
@@ -51,15 +51,15 @@ export function EditTransferPage() {
 
   return (
     <div className="p-6 w-full">
-      <TransferWizard 
+      <TransferWizard
         initialData={initialTransferData}
         onComplete={(transferData) => {
           // TODO: Handle transfer update
           console.log('Transfer updated:', transferData)
-          navigate('/products/transfers')
+          navigate('/products/stock/transfers')
         }}
         onCancel={() => {
-          navigate('/products/transfers')
+          navigate('/products/stock/transfers')
         }}
       />
     </div>

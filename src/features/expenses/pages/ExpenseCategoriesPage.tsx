@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Edit, Trash2, Search } from 'lucide-react'
 import { CategoryDialog } from '../components/CategoryDialog'
-import { useToast } from '@/components/ui/use-toast'
-import { 
+import { useToast } from '@/lib/toast'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -84,7 +84,7 @@ export function ExpenseCategoriesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const { toast } = useToast()
 
-  const filteredCategories = categories.filter(category => 
+  const filteredCategories = categories.filter(category =>
     category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     category.description.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -92,7 +92,7 @@ export function ExpenseCategoriesPage() {
   const handleAddCategory = (newCategory: any) => {
     if (currentCategory) {
       // Edit existing category
-      setCategories(categories.map(cat => 
+      setCategories(categories.map(cat =>
         cat.id === currentCategory.id ? { ...cat, ...newCategory } : cat
       ))
       toast({
@@ -193,8 +193,8 @@ export function ExpenseCategoriesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {categories.length > 0 ? 
-                categories.reduce((prev, current) => 
+              {categories.length > 0 ?
+                categories.reduce((prev, current) =>
                   prev.budget > current.budget ? prev : current
                 ).name : 'N/A'}
             </div>
@@ -253,9 +253,9 @@ export function ExpenseCategoriesPage() {
       </Card>
 
       {/* Add/Edit Category Dialog */}
-      <CategoryDialog 
-        open={isDialogOpen} 
-        onOpenChange={setIsDialogOpen} 
+      <CategoryDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
         onSave={handleAddCategory}
         category={currentCategory}
       />

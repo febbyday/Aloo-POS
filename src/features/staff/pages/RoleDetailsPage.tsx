@@ -1,435 +1,361 @@
-import { useState, useEffect } from "react"
-import { useNavigate, useParams } from "react-router-dom"
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card"
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from "@/components/ui/tabs"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { 
-  ArrowLeft, 
-  Edit, 
-  Trash2, 
-  Shield, 
-  Users, 
-  Lock, 
-  Info,
-  CheckCircle2,
-  XCircle
-} from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import { useToastManager } from '@/components/ui/toast-manager'
-import { useRoleHistory } from '../context/RoleHistoryContext'
-import { LoadingState } from '@/components/ui/loading-state'
-import { roleService } from "../services/roleService"
-import { Role } from "../types/role"
-import { useRoles } from "../hooks/useRoles"
-import { RoleModal } from "../components/RoleModal"
+/**
+ * Role Details Page
+ *
+ * Displays detailed information about a specific role,
+ * including its permissions and assigned users.
+ */
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { IRole } from '@/features/users/types/role';
+
+// UI Components
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { Shield, Edit, Trash2, Users, ChevronRight, AlertTriangle } from 'lucide-react';
+
+// Custom Components
+import { RolePermissionsGrid } from '../components/roles/RolePermissionsGrid';
+import { UsersWithRoleList } from '../components/roles/UsersWithRoleList';
+import { PageHeader } from '@/components/page-header';
+
+// Hooks and Services
+import { useToast } from '@/lib/toast';
+import { roleService } from '@/features/users/services/roleService';
+import { useRoles } from '../hooks/useRoles';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function RoleDetailsPage() {
-  const { roleId } = useParams()
-  const navigate = useNavigate()
-  const { getRoleById, deleteRole } = useRoles()
-  const [role, setRole] = useState<Role | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const { toast } = useToast()
-  const showToast = useToastManager()
-  const { trackAction } = useRoleHistory()
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [role, setRole] = useState<IRole | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Fetch role details from API
+  // Load role details
   useEffect(() => {
-    const fetchRole = async () => {
-      if (!roleId) {
-        setError("Role ID is missing")
-        setIsLoading(false)
-        return
-      }
+    const fetchRoleDetails = async () => {
+      if (!id) return;
 
       try {
-        setIsLoading(true)
-        setError(null)
-
-        const roleData = await getRoleById(roleId)
-        
-        if (!roleData) {
-          setError("Role not found")
-          toast({
-            title: "Error",
-            description: "Role not found.",
-            variant: "destructive"
-          })
-        } else {
-          setRole(roleData)
-        }
+        setIsLoading(true);
+        setIsError(false);
+        const roleData = await roleService.getRoleById(id);
+        setRole(roleData);
       } catch (error) {
-        console.error("Error fetching role details:", error)
-        setError("Failed to load role details")
+        console.error('Error fetching role details:', error);
+        setIsError(true);
         toast({
-          title: "Error",
-          description: "Failed to load role details. Please try again.",
-          variant: "destructive"
-        })
+          title: 'Error',
+          description: 'Failed to load role details. Please try again.',
+          variant: 'destructive',
+        });
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchRole()
-  }, [roleId, getRoleById, toast])
+    fetchRoleDetails();
+  }, [id, toast]);
 
-  const handleEdit = () => {
-    setIsEditModalOpen(true)
-  }
+  // Handle edit role
+  const handleEditRole = () => {
+    navigate(`/staff/roles/edit/${id}`);
+  };
 
-  const handleDelete = async () => {
-    if (!roleId || !role) return
-    
+  // Handle delete role
+  const handleDeleteRole = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  // Confirm role deletion
+  const confirmDeleteRole = async () => {
+    if (!id) return;
+
     try {
-      await deleteRole(roleId)
-      
-      // Track this action for history
-      trackAction(
-        { 
-          type: 'delete_role', 
-          role: role
-        },
-        `Deleted role "${role.name}"`
-      )
-
-      showToast.success('Success', 'Role deleted successfully')
-      navigate('/staff/roles')
+      await roleService.deleteRole(id);
+      toast({
+        title: 'Role Deleted',
+        description: `The role "${role?.name}" has been deleted successfully.`,
+      });
+      navigate('/staff/roles');
     } catch (error) {
-      console.error('Error deleting role:', error)
-      showToast.error('Error', 'Failed to delete role')
+      console.error('Error deleting role:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete role. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setShowDeleteConfirm(false);
     }
-  }
+  };
 
-  const handleEditSubmit = async (data: any) => {
-    if (!roleId || !role) return
-    
+  // Handle role status toggle
+  const handleToggleStatus = async () => {
+    if (!role || !id) return;
+
     try {
-      // In a real implementation, this would call the API to update the role
-      // For now, we'll just update the local state
       const updatedRole = {
         ...role,
-        ...data,
-        updatedAt: new Date().toISOString()
-      }
-      
-      setRole(updatedRole)
-      
-      // Track this action for history
-      trackAction(
-        { 
-          type: 'update_role', 
-          id: roleId,
-          before: role,
-          after: updatedRole
-        },
-        `Updated role "${data.name}"`
-      )
+        isActive: !role.isActive
+      };
 
-      setIsEditModalOpen(false)
-      showToast.success('Success', 'Role updated successfully')
+      await roleService.updateRole(id, updatedRole);
+      setRole(updatedRole);
+      toast({
+        title: 'Role Updated',
+        description: `The role "${role.name}" is now ${updatedRole.isActive ? 'active' : 'inactive'}.`,
+      });
     } catch (error) {
-      console.error('Error updating role:', error)
-      showToast.error('Error', 'Failed to update role')
+      console.error('Error updating role status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update role status. Please try again.',
+        variant: 'destructive',
+      });
     }
-  }
+  };
 
-  if (!role) {
+  // Error state
+  if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <h2 className="text-2xl font-bold">Role not found</h2>
-        <Button 
-          variant="link" 
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("/staff/roles", { replace: true });
-          }}
+      <div className="container mx-auto py-6 space-y-6">
+        <PageHeader
+          title="Role Not Found"
+          description="The requested role could not be found"
+          icon={<AlertTriangle className="h-6 w-6 mr-2" />}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Roles List
-        </Button>
+          <Button onClick={() => navigate('/staff/roles')}>
+            Back to Roles
+          </Button>
+        </PageHeader>
+
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+            <h3 className="text-lg font-medium mb-2">Role Not Found</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-4">
+              The role you are looking for does not exist or you may not have permission to view it.
+            </p>
+            <Button onClick={() => navigate('/staff/roles')}>
+              Return to Roles Page
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="w-full">
-      <LoadingState
-        isLoading={isLoading}
-        loadingText="Loading role details..."
-        center
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb className="mb-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <ChevronRight className="h-4 w-4" />
+          </BreadcrumbSeparator>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/staff">Staff</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <ChevronRight className="h-4 w-4" />
+          </BreadcrumbSeparator>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/staff/roles">Roles</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <ChevronRight className="h-4 w-4" />
+          </BreadcrumbSeparator>
+          <BreadcrumbItem>
+            <BreadcrumbLink>
+              {isLoading ? 'Loading...' : role?.name || 'Role Details'}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      {/* Page Header */}
+      <PageHeader
+        title={isLoading ? 'Loading Role...' : role?.name || 'Role Details'}
+        description={isLoading ? '' : role?.description || 'No description provided'}
+        icon={<Shield className="h-6 w-6 mr-2" />}
       >
-        {role && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    navigate("/staff/roles", { replace: true });
-                  }}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <h1 className="text-2xl font-bold">{role.name}</h1>
-                <Badge variant={role.isActive ? "default" : "secondary"}>
-                  {role.isActive ? "Active" : "Inactive"}
+        <div className="flex items-center gap-2">
+          {!isLoading && role && (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleToggleStatus}
+                disabled={role.isSystem}
+              >
+                {role.isActive ? 'Deactivate' : 'Activate'}
+              </Button>
+              <Button
+                onClick={handleEditRole}
+                disabled={role.isSystem}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Role
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteRole}
+                disabled={role.isSystem}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            </>
+          )}
+        </div>
+      </PageHeader>
+
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : role ? (
+        <div className="space-y-6">
+          {/* Role status banner */}
+          {!role.isActive && (
+            <div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300 px-4 py-3 rounded-md flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
+              <div>
+                <p className="font-medium">This role is currently inactive</p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                  Users assigned to this role will not have access to its permissions.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Role Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Role Details</span>
+                {role.isSystem && (
+                  <Badge variant="secondary">System Role</Badge>
+                )}
+                <Badge variant={role.isActive ? 'default' : 'outline'}>
+                  {role.isActive ? 'Active' : 'Inactive'}
                 </Badge>
-                {role.isSystemRole && (
-                  <Badge variant="outline" className="ml-2">
-                    System Role
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleEdit}
-                  disabled={role.isSystemRole}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Role
-                </Button>
-                
-                {!role.isSystemRole && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => setIsDeleteDialogOpen(true)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                )}
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Info className="h-5 w-5 mr-2 text-primary" />
-                    Role Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
-                    <p className="mt-1">{role.description || "No description provided"}</p>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="grid grid-cols-2 gap-4">
+              </CardTitle>
+              <CardDescription>
+                Detailed information about this role
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="overview">
+                <TabsList className="grid grid-cols-3 mb-4">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="permissions">Permissions</TabsTrigger>
+                  <TabsTrigger value="users">Assigned Users</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-4">
+                  <div className="rounded-md border p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Role Name</h4>
+                        <p className="font-medium">{role.name}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Status</h4>
+                        <p>{role.isActive ? 'Active' : 'Inactive'}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Type</h4>
+                        <p>{role.isSystem ? 'System Role' : 'Custom Role'}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Created</h4>
+                        <p>{role.createdAt ? new Date(role.createdAt).toLocaleDateString() : 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Last Updated</h4>
+                        <p>{role.updatedAt ? new Date(role.updatedAt).toLocaleDateString() : 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Created By</h4>
+                        <p>{role.createdBy || 'Unknown'}</p>
+                      </div>
+                    </div>
+
+                    <Separator className="my-4" />
+
                     <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Staff Count</h3>
-                      <p className="mt-1">{role.staffCount} {role.staffCount === 1 ? "member" : "members"}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                      <div className="flex items-center mt-1">
-                        {role.isActive ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
-                            <span>Active</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="h-4 w-4 text-red-500 mr-1" />
-                            <span>Inactive</span>
-                          </>
-                        )}
-                      </div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-1">Description</h4>
+                      <p className="text-sm">{role.description || 'No description provided'}</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Lock className="h-5 w-5 mr-2 text-primary" />
-                    Permissions Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      This role has permissions configured for the following areas:
-                    </p>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {Object.keys(role.permissions).map((module) => (
-                        <Badge key={module} variant="outline" className="capitalize">
-                          {module}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => navigate(`/permissions/${role.id}`)}
-                  >
-                    View Detailed Permissions
-                  </Button>
-                </CardFooter>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Users className="h-5 w-5 mr-2 text-primary" />
-                    Assigned Staff
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      This role is currently assigned to {role.staffCount} staff {role.staffCount === 1 ? "member" : "members"}.
-                    </p>
-                    
-                    {role.staffCount > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-sm">View the list of staff members with this role.</p>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-muted-foreground italic">
-                        No staff members are currently assigned to this role.
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-                {role.staffCount > 0 && (
-                  <CardFooter>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                      onClick={() => navigate(`/staff?role=${role.id}`)}
-                    >
-                      View Assigned Staff
-                    </Button>
-                  </CardFooter>
-                )}
-              </Card>
-            </div>
-            
-            <Tabs defaultValue="permissions" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="permissions" className="flex items-center">
-                  <Lock className="h-4 w-4 mr-2" />
-                  Detailed Permissions
-                </TabsTrigger>
-                <TabsTrigger value="history" className="flex items-center">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Role History
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="permissions" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Permission Details</CardTitle>
-                    <CardDescription>
-                      Detailed view of all permissions assigned to this role
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-sm text-muted-foreground mb-4">
-                      For a more detailed view and management of permissions, please use the Permissions Management page.
-                    </div>
-                    
-                    <Button 
-                      onClick={() => navigate(`/permissions/${role.id}`)}
-                    >
-                      <Lock className="h-4 w-4 mr-2" />
-                      Manage Permissions
-                    </Button>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="history" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Role History</CardTitle>
-                    <CardDescription>
-                      History of changes made to this role
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-sm text-muted-foreground italic">
-                      Role history tracking is not available in this version.
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
-      </LoadingState>
-      
-      <RoleModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        initialData={role}
-        onSubmit={handleEditSubmit}
-      />
-      
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                </TabsContent>
+
+                <TabsContent value="permissions">
+                  <RolePermissionsGrid
+                    role={role}
+                    readOnly={role.isSystem}
+                  />
+                </TabsContent>
+
+                <TabsContent value="users">
+                  <UsersWithRoleList
+                    roleId={role.id}
+                  />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Role</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the role
-              and remove it from any staff members it's assigned to.
+              Are you sure you want to delete the role "{role?.name}"? This action cannot be undone.
+              {role?.isSystem && (
+                <div className="mt-2 text-red-500 font-medium">
+                  System roles cannot be deleted.
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmDeleteRole}
+              disabled={!role || role.isSystem}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -438,3 +364,5 @@ export function RoleDetailsPage() {
     </div>
   );
 }
+
+export default RoleDetailsPage;

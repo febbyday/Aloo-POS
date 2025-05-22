@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp, TrendingDown, Percent, Calendar, Tag } from "lucide-react";
 import type { Product } from "../../types";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface PriceDetailsTableProps {
   product: Product;

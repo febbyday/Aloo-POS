@@ -1,15 +1,13 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
-import { useState } from 'react'
-import { 
-  ArrowDownUp, 
-  FileText, 
+import { useState, useEffect } from 'react'
+import {
+  ArrowDownUp,
+  FileText,
   Eye,
   Pencil,
-  Plus, 
-  Printer, 
-  Tags, 
-  Trash2 as Trash, 
+  Plus,
+  Printer,
+  Tags,
+  Trash2 as Trash,
   RefreshCw,
   Search,
   AlertTriangle,
@@ -37,7 +35,7 @@ import * as XLSX from 'xlsx'
 import { useProducts } from '../context/ProductContext'
 
 // Hooks
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 import { useNavigate } from 'react-router-dom'
 
 // Error Boundary
@@ -50,7 +48,7 @@ import type { Product, InventoryFilter } from '../types'
 import { validateAndProcessImport } from '@/utils/importValidation'
 
 // UI Components
-import { 
+import {
   Card,
   CardContent,
 } from '@/components/ui/card'
@@ -75,7 +73,8 @@ const mockTrendData = {
 }
 
 export function ProductsPage() {
-  const { products, deleteProduct, categories, updateProduct, addProduct } = useProducts();
+  const { products = [], deleteProduct, categories = [], updateProduct, addProduct } = useProducts();
+  const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<InventoryFilter>({})
   const [sortConfig, setSortConfig] = useState<{column: string; direction: 'asc' | 'desc'} | null>(null)
   const [visibleColumns, setVisibleColumns] = useState(['name', 'productType', 'sku', 'price', 'stock', 'status', 'category', 'supplier'])
@@ -85,15 +84,20 @@ export function ProductsPage() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [bulkEditModalOpen, setBulkEditModalOpen] = useState(false);
-  const { toast } = useToast()
+  const toast = useToast()
   const navigate = useNavigate()
+
+  // Set loading state based on products availability
+  useEffect(() => {
+    setIsLoading(!Array.isArray(products) || products.length === 0);
+  }, [products]);
 
   const handleRefresh = () => {
     // TODO: Implement refresh logic
-    toast({
-      title: "Refreshing data...",
-      description: "Your inventory data is being updated."
-    })
+    toast.info(
+      "Refreshing data...",
+      "Your inventory data is being updated."
+    )
   }
 
   const handleCreate = () => {
@@ -103,11 +107,10 @@ export function ProductsPage() {
 
   const handleEdit = () => {
     if (selectedItems.length !== 1) {
-      toast({
-        title: "Select one product",
-        description: "Please select exactly one product to edit.",
-        variant: "destructive"
-      })
+      toast.error(
+        "Select one product",
+        "Please select exactly one product to edit."
+      )
       return
     }
     // Navigate to the new ProductEditPage
@@ -116,33 +119,31 @@ export function ProductsPage() {
 
   const handleView = () => {
     if (selectedItems.length !== 1) {
-      toast({
-        title: "Select one product",
-        description: "Please select exactly one product to view.",
-        variant: "destructive"
-      })
+      toast.error(
+        "Select one product",
+        "Please select exactly one product to view."
+      )
       return
     }
-    
+
     // Navigate to the product details page instead of showing a dialog
     navigate(`/products/${selectedItems[0]}`);
   }
 
   const handleDeleteProduct = () => {
     if (selectedItems.length === 0) {
-      toast({
-        title: "No products selected",
-        description: "Please select at least one product to delete.",
-        variant: "destructive"
-      })
+      toast.error(
+        "No products selected",
+        "Please select at least one product to delete."
+      )
       return
     }
     // Delete each selected product
     selectedItems.forEach(id => deleteProduct(id));
-    toast({
-      title: "Products deleted",
-      description: `Successfully deleted ${selectedItems.length} products.`
-    })
+    toast.success(
+      "Products deleted",
+      `Successfully deleted ${selectedItems.length} products.`
+    )
     setSelectedItems([])
   }
 
@@ -153,38 +154,52 @@ export function ProductsPage() {
   const handleAssignCategory = async (categoryId: string) => {
     try {
       // Get the category name for the toast message
-      const categoryName = categories.find(c => c.id === categoryId)?.name
+      const categoryName = Array.isArray(categories)
+        ? categories.find(c => c?.id === categoryId)?.name
+        : 'Unknown';
+
+      // Check if products is an array
+      if (!Array.isArray(products)) {
+        throw new Error('Products data is not available');
+      }
 
       // Update all selected products with the new category
       for (const productId of selectedItems) {
-        const product = products.find(p => p.id === productId)
+        const product = products.find(p => p?.id === productId);
         if (product) {
-          await updateProduct(productId, { ...product, category: categoryId })
+          await updateProduct(productId, { ...product, category: categoryId });
         }
       }
 
-      toast({
-        title: "Category Assigned",
-        description: `Successfully assigned ${selectedItems.length} products to ${categoryName}`
-      })
+      toast.success(
+        "Category Assigned",
+        `Successfully assigned ${selectedItems.length} products to ${categoryName || 'selected category'}`
+      );
 
       // Clear selection after successful assignment
-      setSelectedItems([])
+      setSelectedItems([]);
     } catch (error) {
-      console.error('Failed to assign category:', error)
-      toast({
-        title: "Error",
-        description: "Failed to assign category to selected products",
-        variant: "destructive"
-      })
+      console.error('Failed to assign category:', error);
+      toast.error(
+        "Error",
+        "Failed to assign category to selected products"
+      );
     }
   }
 
   const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
     try {
+      // Check if products is an array
+      if (!Array.isArray(products)) {
+        throw new Error('Products data is not available for export');
+      }
+
+      // Use a safe copy of the products array with null checks
+      const safeProducts = products.filter(p => p != null);
+
       switch (format) {
         case 'csv': {
-          const csvData = exportProductsToCSV(products, true);
+          const csvData = exportProductsToCSV(safeProducts, true);
           const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
@@ -197,7 +212,7 @@ export function ProductsPage() {
           break;
         }
         case 'excel': {
-          const workbook = exportProductsToExcel(products, true);
+          const workbook = exportProductsToExcel(safeProducts, true);
           const blob = new Blob([s2ab(XLSX.write(workbook, { bookType: 'xlsx', type: 'binary' }))], {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
           });
@@ -212,7 +227,7 @@ export function ProductsPage() {
           break;
         }
         case 'pdf': {
-          const pdfDoc = exportProductsToPDF(products, true);
+          const pdfDoc = exportProductsToPDF(safeProducts, true);
           const blob = pdfDoc.output('blob');
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
@@ -225,25 +240,23 @@ export function ProductsPage() {
           break;
         }
         default:
-          toast({
-            title: "Export Error",
-            description: "Invalid export format selected.",
-            variant: "destructive"
-          });
+          toast.error(
+            "Export Error",
+            "Invalid export format selected."
+          );
           return;
       }
-      
-      toast({
-        title: "Export Successful",
-        description: `Products exported successfully as ${format.toUpperCase()}.`
-      });
+
+      toast.success(
+        "Export Successful",
+        `Products exported successfully as ${format.toUpperCase()}.`
+      );
     } catch (error) {
       console.error('Export error:', error);
-      toast({
-        title: "Export Failed",
-        description: "An error occurred while exporting products.",
-        variant: "destructive"
-      });
+      toast.error(
+        "Export Failed",
+        "An error occurred while exporting products."
+      );
     }
   };
 
@@ -270,20 +283,19 @@ export function ProductsPage() {
       const { validData, errors } = await validateAndProcessImport(jsonData, 'Products');
 
       if (errors.length > 0) {
-        toast({
-          title: "Import Errors",
-          description: `${errors.length} errors found during import. Check console for details.`,
-          variant: "destructive"
-        });
+        toast.error(
+          "Import Errors",
+          `${errors.length} errors found during import. Check console for details.`
+        );
         console.error('Import Errors:', errors);
       }
 
       if (validData.length > 0) {
         updateProductList(validData);
-        toast({
-          title: "Import Successful",
-          description: `${validData.length} products imported successfully.`
-        });
+        toast.success(
+          "Import Successful",
+          `${validData.length} products imported successfully.`
+        );
       }
     };
     reader.readAsArrayBuffer(file);
@@ -291,8 +303,16 @@ export function ProductsPage() {
 
   const updateProductList = (newProducts: Product[]) => {
     // Assuming updateProduct is a function from the context to update products
+    if (!Array.isArray(products)) {
+      // If products is not an array, just add all the new products
+      newProducts.forEach(product => {
+        addProduct(product);
+      });
+      return;
+    }
+
     newProducts.forEach(product => {
-      const existingProduct = products.find(p => p.id === product.id);
+      const existingProduct = products.find(p => p?.id === product.id);
       if (existingProduct) {
         updateProduct(product.id, product);
       } else {
@@ -304,34 +324,51 @@ export function ProductsPage() {
   };
 
   // Filter and sort products
-  const filteredProducts = products.filter(product => {
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase()
-      if (!product.name.toLowerCase().includes(searchLower) && 
-          !product.sku.toLowerCase().includes(searchLower)) {
-        return false
-      }
-    }
-    if (filters.categories?.length && !filters.categories.includes(product.category)) {
-      return false
-    }
-    if (filters.locations?.length && !product.locations.some(loc => filters.locations?.includes(loc.locationId))) {
-      return false
-    }
-    if (filters.priceRange?.min && product.retailPrice < filters.priceRange.min) {
-      return false
-    }
-    if (filters.priceRange?.max && product.retailPrice > filters.priceRange.max) {
-      return false
-    }
-    if (filters.min && product.locations.reduce((total, loc) => total + loc.stock, 0) < filters.min) {
-      return false
-    }
-    if (filters.max && product.locations.reduce((total, loc) => total + loc.stock, 0) > filters.max) {
-      return false
-    }
-    return true
-  })
+  const filteredProducts = Array.isArray(products)
+    ? products.filter(product => {
+        if (!product) return false;
+
+        if (filters.search) {
+          const searchLower = filters.search.toLowerCase();
+          if (!(product.name?.toLowerCase()?.includes(searchLower)) &&
+              !(product.sku?.toLowerCase()?.includes(searchLower))) {
+            return false;
+          }
+        }
+
+        if (filters.categories?.length && !filters.categories.includes(product.category)) {
+          return false;
+        }
+
+        if (filters.locations?.length &&
+            Array.isArray(product.locations) &&
+            !product.locations.some(loc => filters.locations?.includes(loc?.locationId))) {
+          return false;
+        }
+
+        if (filters.priceRange?.min && product.retailPrice < filters.priceRange.min) {
+          return false;
+        }
+
+        if (filters.priceRange?.max && product.retailPrice > filters.priceRange.max) {
+          return false;
+        }
+
+        if (filters.min &&
+            Array.isArray(product.locations) &&
+            product.locations.reduce((total, loc) => total + (loc?.stock || 0), 0) < filters.min) {
+          return false;
+        }
+
+        if (filters.max &&
+            Array.isArray(product.locations) &&
+            product.locations.reduce((total, loc) => total + (loc?.stock || 0), 0) > filters.max) {
+          return false;
+        }
+
+        return true;
+      })
+    : [];
 
   // Sort products
   const sortedProducts = sortConfig
@@ -339,11 +376,11 @@ export function ProductsPage() {
         const aVal = a[sortConfig.column as keyof Product]
         const bVal = b[sortConfig.column as keyof Product]
         const modifier = sortConfig.direction === 'asc' ? 1 : -1
-        
+
         if (typeof aVal === 'string' && typeof bVal === 'string') {
           return aVal.localeCompare(bVal) * modifier
         }
-        
+
         return ((aVal as any) < (bVal as any) ? -1 : 1) * modifier
       })
     : filteredProducts
@@ -351,11 +388,10 @@ export function ProductsPage() {
   // New bulk edit handler
   const handleBulkEdit = () => {
     if (selectedItems.length === 0) {
-      toast({
-        title: "No products selected",
-        description: "Please select at least one product to edit.",
-        variant: "destructive"
-      })
+      toast.error(
+        "No products selected",
+        "Please select at least one product to edit."
+      )
       return
     }
     setBulkEditModalOpen(true)
@@ -363,19 +399,32 @@ export function ProductsPage() {
 
   // Handler for applying bulk updates
   const handleApplyBulkUpdates = (updates: Partial<Product>, productIds: string[]) => {
-    // Update each selected product
-    productIds.forEach(id => {
-      const product = products.find(p => p.id === id)
-      if (product) {
-        const updatedProduct = { ...product, ...updates }
-        updateProduct(id, updatedProduct)
+    try {
+      // Check if products is an array
+      if (!Array.isArray(products)) {
+        throw new Error('Products data is not available');
       }
-    })
-    
-    toast({
-      title: "Bulk update complete",
-      description: `Updated ${productIds.length} products successfully.`
-    })
+
+      // Update each selected product
+      productIds.forEach(id => {
+        const product = products.find(p => p?.id === id);
+        if (product) {
+          const updatedProduct = { ...product, ...updates };
+          updateProduct(id, updatedProduct);
+        }
+      });
+
+      toast.success(
+        "Bulk update complete",
+        `Updated ${productIds.length} products successfully.`
+      );
+    } catch (error) {
+      console.error('Failed to apply bulk updates:', error);
+      toast.error(
+        "Error",
+        "Failed to apply bulk updates to selected products"
+      );
+    }
   }
 
   const toolbarGroups = [
@@ -474,7 +523,7 @@ export function ProductsPage() {
           <ErrorBoundary>
             <StatsCard
               title="Total Products"
-              value={products.length}
+              value={Array.isArray(products) ? products.length : 0}
               icon={Tags}
               iconColor="text-primary"
               iconBgColor="bg-primary/10"
@@ -483,16 +532,19 @@ export function ProductsPage() {
                 isPositive: true,
                 percentage: 12
               }}
+              isLoading={isLoading}
             />
           </ErrorBoundary>
           <ErrorBoundary>
             <StatsCard
               title="Low Stock Items"
-              value={products.filter(p => 
-                p.locations?.some(loc => 
-                  (loc.stock || 0) <= (loc.minStock || 0)
-                )
-              ).length}
+              value={Array.isArray(products)
+                ? products.filter(p =>
+                    p?.locations?.some(loc =>
+                      (loc?.stock || 0) <= (loc?.minStock || 0)
+                    )
+                  ).length
+                : 0}
               icon={AlertCircle}
               iconColor="text-destructive"
               iconBgColor="bg-destructive/10"
@@ -501,14 +553,17 @@ export function ProductsPage() {
                 isPositive: false,
                 percentage: 8
               }}
+              isLoading={isLoading}
             />
           </ErrorBoundary>
           <ErrorBoundary>
             <StatsCard
               title="Out of Stock"
-              value={products.filter(p => 
-                !p.locations?.some(loc => (loc.stock || 0) > 0)
-              ).length}
+              value={Array.isArray(products)
+                ? products.filter(p =>
+                    !p?.locations?.some(loc => (loc?.stock || 0) > 0)
+                  ).length
+                : 0}
               icon={AlertTriangle}
               iconColor="text-destructive"
               iconBgColor="bg-destructive/10"
@@ -517,12 +572,15 @@ export function ProductsPage() {
                 isPositive: false,
                 percentage: 5
               }}
+              isLoading={isLoading}
             />
           </ErrorBoundary>
           <ErrorBoundary>
             <StatsCard
               title="Categories"
-              value={new Set(products.map(p => p.category)).size}
+              value={Array.isArray(products)
+                ? new Set(products.filter(p => p?.category).map(p => p.category)).size
+                : 0}
               icon={FolderTree}
               iconColor="text-primary"
               iconBgColor="bg-primary/10"
@@ -531,6 +589,7 @@ export function ProductsPage() {
                 isPositive: true,
                 percentage: 15
               }}
+              isLoading={isLoading}
             />
           </ErrorBoundary>
         </div>
@@ -538,15 +597,15 @@ export function ProductsPage() {
         {/* Filters and Table */}
         <div className="space-y-4">
           <ErrorBoundary>
-            <ProductFilters 
-              filters={filters} 
-              onFilterChange={setFilters} 
-              onFilterReset={() => setFilters({})} 
+            <ProductFilters
+              filters={filters}
+              onFilterChange={setFilters}
+              onFilterReset={() => setFilters({})}
             />
           </ErrorBoundary>
-          
+
           <ErrorBoundary>
-            <ProductsTable 
+            <ProductsTable
               data={mapFeatureProductsToInventoryProducts(sortedProducts)}
               selectedItems={selectedItems}
               onSelectionChange={setSelectedItems}
@@ -564,6 +623,7 @@ export function ProductsPage() {
                 });
               }}
               visibleColumns={visibleColumns}
+              isLoading={isLoading}
             />
           </ErrorBoundary>
         </div>
@@ -572,8 +632,10 @@ export function ProductsPage() {
           <AssignCategoryDialog
             open={assignCategoryDialog}
             onOpenChange={setAssignCategoryDialog}
-            selectedProducts={products.filter(p => selectedItems.includes(p.id))}
-            categories={categories}
+            selectedProducts={Array.isArray(products)
+              ? products.filter(p => p?.id && selectedItems.includes(p.id))
+              : []}
+            categories={Array.isArray(categories) ? categories : []}
             onAssign={handleAssignCategory}
           />
         </ErrorBoundary>
@@ -582,9 +644,11 @@ export function ProductsPage() {
           <BulkEditModal
             open={bulkEditModalOpen}
             onOpenChange={setBulkEditModalOpen}
-            selectedProducts={products.filter(p => selectedItems.includes(p.id))}
+            selectedProducts={Array.isArray(products)
+              ? products.filter(p => p?.id && selectedItems.includes(p.id))
+              : []}
             onSave={handleApplyBulkUpdates}
-            categories={categories}
+            categories={Array.isArray(categories) ? categories : []}
             suppliers={[
               { id: "sup1", name: "Audio Supplies Co." },
               { id: "sup2", name: "Other Supplier" }

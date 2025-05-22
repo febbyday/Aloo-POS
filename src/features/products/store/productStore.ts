@@ -16,7 +16,8 @@ import {
   StockStatus,
   ProductListResponse
 } from '../types/unified-product.types';
-import { productService } from '../services/productService';
+// Import the new factory-based product service instead of the legacy service
+import productService from '../services/factory-product-service';
 
 /**
  * Normalized product state interface
@@ -170,44 +171,65 @@ export const useProductStore = create<ProductStore>()(
        * Fetch products with optional filtering
        */
       fetchProducts: async (filter?: InventoryFilter) => {
-        const currentFilter = filter || get().filter;
-        
-        set(state => {
-          state.loading.products = true;
-          state.errors.products = null;
-        });
-        
+        // Don't fetch again if already loading
+        if (get().loading.products) {
+          console.log('[ProductStore] Skipping fetch, already loading');
+          return get().metadata;
+        }
+
+        const mergedFilter = { ...get().filter, ...filter };
+
         try {
-          const response = await productService.getProducts(currentFilter);
-          
           set(state => {
-            // Normalize products
-            const products: Record<string, UnifiedProduct> = {};
-            const productIds: string[] = [];
-            
-            response.products.forEach(product => {
-              if (product.id) {
-                products[product.id] = product;
-                productIds.push(product.id);
-              }
-            });
-            
-            // Update state
-            state.products = products;
-            state.productIds = productIds;
-            state.pagination = {
-              page: response.page,
-              limit: response.limit,
-              total: response.total,
-              totalPages: response.totalPages,
-            };
-            state.filter = currentFilter;
-            state.loading.products = false;
-            state.lastUpdated = Date.now();
-            state.invalidateCache = false;
+            state.loading.products = true;
+            state.errors.products = null;
           });
+
+          console.log('[ProductStore] Fetching products with filter:', mergedFilter);
           
-          return response;
+          // Factory-based service uses getAll instead of fetchProducts
+          const response = await productService.getAll(mergedFilter);
+          
+          // Handle the response based on its structure
+          let productsArray: UnifiedProduct[] = [];
+          
+          if (Array.isArray(response)) {
+            productsArray = response;
+          } else if (response && typeof response === 'object' && 'products' in response) {
+            productsArray = response.products;
+          }
+
+          const normalized = normalizeProducts(productsArray);
+
+          set(state => {
+            // Update the normalized state
+            state.products = {
+              ...state.products,
+              ...normalized.entities
+            };
+            state.productIds = normalized.ids;
+            
+            // Update metadata
+            state.metadata = {
+              total: ('total' in response && typeof response.total === 'number') 
+                ? response.total 
+                : productsArray.length,
+              page: mergedFilter.page || 1,
+              limit: mergedFilter.limit || 20,
+              pages: Math.ceil(
+                (('total' in response && typeof response.total === 'number') 
+                  ? response.total 
+                  : productsArray.length) / 
+                (mergedFilter.limit || 20)
+              )
+            };
+            
+            // Clear loading state and set timestamp
+            state.loading.products = false;
+            state.lastFetched = new Date().getTime();
+          });
+
+          return get().metadata;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to fetch products';
           
@@ -224,29 +246,49 @@ export const useProductStore = create<ProductStore>()(
        * Fetch a product by ID
        */
       fetchProductById: async (id: string) => {
-        set(state => {
-          state.loading.product = true;
-          state.errors.product = null;
-        });
+        // Skip if already loading
+        if (get().loading.product) {
+          console.log(`[ProductStore] Already fetching a product, skipping fetch for ${id}`);
+          return null;
+        }
+        
+        // Check if we have it in the cache and it's fresh enough
+        const cachedProduct = get().products[id];
+        const lastFetched = get().lastFetched;
+        const cacheInvalidated = get().cacheInvalidated;
+        
+        if (cachedProduct && !cacheInvalidated && lastFetched && (Date.now() - lastFetched < 300000)) {
+          console.log(`[ProductStore] Using cached product for ${id}`);
+          return cachedProduct;
+        }
         
         try {
-          const product = await productService.getProductById(id);
+          set(state => {
+            state.loading.product = true;
+            state.error.product = null;
+          });
           
-          if (product) {
-            set(state => {
-              state.products[id] = product;
-              state.loading.product = false;
-              
-              // Add to productIds if not already present
-              if (!state.productIds.includes(id)) {
-                state.productIds.push(id);
-              }
-            });
-          } else {
-            set(state => {
-              state.loading.product = false;
-            });
+          console.log(`[ProductStore] Fetching product details for ${id}`);
+          
+          // Factory-based service uses getById instead of getProductById
+          const product = await productService.getById(id);
+          
+          if (!product) {
+            throw new Error(`Product with ID ${id} not found`);
           }
+          
+          set(state => {
+            // Add or update the product in the store
+            state.products[id] = product;
+            
+            // If not in the ID list, add it
+            if (!state.productIds.includes(id)) {
+              state.productIds.push(id);
+            }
+            
+            state.loading.product = false;
+            state.selectedProductId = id;
+          });
           
           return product;
         } catch (error) {
@@ -345,35 +387,40 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Create a new product
        */
-      createProduct: async (productData) => {
-        const operationId = 'create_product';
-        
-        set(state => {
-          state.loading.operations[operationId] = true;
-          state.errors.operations[operationId] = null;
-        });
-        
+      createProduct: async (productData: Omit<UnifiedProduct, 'id'>) => {
         try {
-          const product = await productService.createProduct(productData);
-          
           set(state => {
-            if (product.id) {
-              // Add to normalized state
-              state.products[product.id] = product;
-              state.productIds.push(product.id);
-            }
-            
-            state.loading.operations[operationId] = false;
-            state.invalidateCache = true;
+            state.loading.operations['create'] = true;
+            state.error.operations['create'] = null;
           });
           
-          return product;
+          console.log('[ProductStore] Creating new product:', productData);
+          
+          // Factory-based service uses create instead of createProduct
+          const newProduct = await productService.create(productData);
+          
+          set(state => {
+            // Add the new product to the store
+            state.products[newProduct.id] = newProduct;
+            state.productIds.unshift(newProduct.id);
+            state.loading.operations['create'] = false;
+            
+            // Set as selected product
+            state.selectedProductId = newProduct.id;
+            
+            // Increment total count in metadata
+            if (state.metadata) {
+              state.metadata.total += 1;
+            }
+          });
+          
+          return newProduct;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to create product';
           
           set(state => {
-            state.loading.operations[operationId] = false;
-            state.errors.operations[operationId] = errorMessage;
+            state.loading.operations['create'] = false;
+            state.errors.operations['create'] = errorMessage;
           });
           
           throw error;
@@ -383,37 +430,36 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Update an existing product
        */
-      updateProduct: async (id, data) => {
-        const operationId = `update_product_${id}`;
-        
-        // Get the current product for optimistic update
-        const currentProduct = get().products[id];
-        
-        if (!currentProduct) {
-          throw new Error(`Product with ID ${id} not found in store`);
-        }
-        
-        // Apply optimistic update
-        set(state => {
-          state.loading.operations[operationId] = true;
-          state.errors.operations[operationId] = null;
-          
-          // Optimistically update the product
-          state.products[id] = {
-            ...currentProduct,
-            ...data,
-            updatedAt: new Date().toISOString(),
-          };
-        });
-        
+      updateProduct: async (id: string, data: Partial<UnifiedProduct>) => {
         try {
-          const updatedProduct = await productService.updateProduct(id, data);
+          set(state => {
+            state.loading.operations[`update-${id}`] = true;
+            state.error.operations[`update-${id}`] = null;
+          });
+          
+          // Apply optimistic update locally for better UI feedback
+          const currentProduct = get().products[id];
+          
+          if (currentProduct) {
+            set(state => {
+              state.products[id] = {
+                ...currentProduct,
+                ...data,
+                // Keep the original ID no matter what
+                id: currentProduct.id
+              };
+            });
+          }
+          
+          console.log(`[ProductStore] Updating product ${id}:`, data);
+          
+          // Factory-based service uses update instead of updateProduct
+          const updatedProduct = await productService.update(id, data);
           
           set(state => {
-            // Update with actual server response
+            // Update with the real server response
             state.products[id] = updatedProduct;
-            state.loading.operations[operationId] = false;
-            state.invalidateCache = true;
+            state.loading.operations[`update-${id}`] = false;
           });
           
           return updatedProduct;
@@ -423,8 +469,8 @@ export const useProductStore = create<ProductStore>()(
           // Revert optimistic update on error
           set(state => {
             state.products[id] = currentProduct;
-            state.loading.operations[operationId] = false;
-            state.errors.operations[operationId] = errorMessage;
+            state.loading.operations[`update-${id}`] = false;
+            state.errors.operations[`update-${id}`] = errorMessage;
           });
           
           throw error;
@@ -434,41 +480,41 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Delete a product
        */
-      deleteProduct: async (id) => {
-        const operationId = `delete_product_${id}`;
-        
-        // Get the current product for potential restoration
-        const currentProduct = get().products[id];
-        
-        if (!currentProduct) {
-          throw new Error(`Product with ID ${id} not found in store`);
-        }
-        
-        // Apply optimistic update
-        set(state => {
-          state.loading.operations[operationId] = true;
-          state.errors.operations[operationId] = null;
-          
-          // Optimistically remove the product
-          delete state.products[id];
-          state.productIds = state.productIds.filter(productId => productId !== id);
-          
-          // Clear selection if this product was selected
-          if (state.selectedProductId === id) {
-            state.selectedProductId = null;
-            state.selectedVariantId = null;
-          }
-        });
-        
+      deleteProduct: async (id: string) => {
         try {
-          const result = await productService.deleteProduct(id);
-          
           set(state => {
-            state.loading.operations[operationId] = false;
-            state.invalidateCache = true;
+            state.loading.operations[`delete-${id}`] = true;
+            state.error.operations[`delete-${id}`] = null;
           });
           
-          return result;
+          console.log(`[ProductStore] Deleting product ${id}`);
+          
+          // Factory-based service uses delete instead of deleteProduct
+          await productService.delete(id);
+          
+          set(state => {
+            // Remove the product from the store
+            const { [id]: deletedProduct, ...remainingProducts } = state.products;
+            state.products = remainingProducts;
+            
+            // Remove the ID from the list
+            state.productIds = state.productIds.filter(pid => pid !== id);
+            
+            // Clear selection if it was the selected product
+            if (state.selectedProductId === id) {
+              state.selectedProductId = null;
+              state.selectedVariantId = null;
+            }
+            
+            state.loading.operations[`delete-${id}`] = false;
+            
+            // Decrement total count in metadata
+            if (state.metadata) {
+              state.metadata.total = Math.max(0, state.metadata.total - 1);
+            }
+          });
+          
+          return true;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : `Failed to delete product with ID ${id}`;
           
@@ -476,8 +522,8 @@ export const useProductStore = create<ProductStore>()(
           set(state => {
             state.products[id] = currentProduct;
             state.productIds.push(id);
-            state.loading.operations[operationId] = false;
-            state.errors.operations[operationId] = errorMessage;
+            state.loading.operations[`delete-${id}`] = false;
+            state.errors.operations[`delete-${id}`] = errorMessage;
           });
           
           throw error;
@@ -487,7 +533,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Create a new variant for a product
        */
-      createVariant: async (productId, variantData) => {
+      createVariant: async (productId: string, variantData: Omit<ProductVariant, 'id'>) => {
         const operationId = `create_variant_${productId}`;
         
         set(state => {
@@ -530,7 +576,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Update a product variant
        */
-      updateVariant: async (productId, variantId, data) => {
+      updateVariant: async (productId: string, variantId: string, data: Partial<ProductVariant>) => {
         const operationId = `update_variant_${productId}_${variantId}`;
         
         // Get the current variant for optimistic update
@@ -613,7 +659,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Delete a product variant
        */
-      deleteVariant: async (productId, variantId) => {
+      deleteVariant: async (productId: string, variantId: string) => {
         const operationId = `delete_variant_${productId}_${variantId}`;
         
         // Get the current variant for potential restoration
@@ -676,7 +722,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Update a product's status
        */
-      updateProductStatus: async (id, status) => {
+      updateProductStatus: async (id: string, status: ProductStatus) => {
         const operationId = `update_status_${id}`;
         
         // Get the current product for optimistic update
@@ -727,7 +773,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Update a product's stock level
        */
-      updateProductStock: async (id, newStock, reason) => {
+      updateProductStock: async (id: string, newStock: number, reason?: string) => {
         const operationId = `update_stock_${id}`;
         
         // Get the current product for optimistic update
@@ -789,7 +835,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Bulk update multiple products
        */
-      bulkUpdateProducts: async (ids, changes) => {
+      bulkUpdateProducts: async (ids: string[], changes: Partial<UnifiedProduct>) => {
         const operationId = `bulk_update_products`;
         
         // Get the current products for optimistic update
@@ -848,7 +894,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Bulk delete multiple products
        */
-      bulkDeleteProducts: async (ids) => {
+      bulkDeleteProducts: async (ids: string[]) => {
         const operationId = `bulk_delete_products`;
         
         // Get the current products for potential restoration
@@ -915,7 +961,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Select a product
        */
-      selectProduct: (id) => {
+      selectProduct: (id: string | null) => {
         set(state => {
           state.selectedProductId = id;
           
@@ -929,7 +975,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Select a variant
        */
-      selectVariant: (id) => {
+      selectVariant: (id: string | null) => {
         set(state => {
           state.selectedVariantId = id;
         });
@@ -938,7 +984,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Set filter
        */
-      setFilter: (filter) => {
+      setFilter: (filter: Partial<InventoryFilter>) => {
         set(state => {
           state.filter = {
             ...state.filter,
@@ -961,7 +1007,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Set current page
        */
-      setPage: (page) => {
+      setPage: (page: number) => {
         set(state => {
           state.filter.page = page;
         });
@@ -970,7 +1016,7 @@ export const useProductStore = create<ProductStore>()(
       /**
        * Set items per page
        */
-      setLimit: (limit) => {
+      setLimit: (limit: number) => {
         set(state => {
           state.filter.limit = limit;
           // Reset to page 1 when limit changes

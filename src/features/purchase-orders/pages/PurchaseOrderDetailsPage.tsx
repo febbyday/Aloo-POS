@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
   TabsTrigger,
   Card,
   CardContent,
@@ -14,9 +14,9 @@ import {
   Button,
   Badge,
 } from '@/components/ui';
-import { 
-  ArrowLeft, 
-  Edit, 
+import {
+  ArrowLeft,
+  Edit,
   Trash2,
   ShoppingCart,
   Building2,
@@ -32,22 +32,22 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { Toolbar } from "@/components/ui/toolbar/toolbar";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 
 export function PurchaseOrderDetailsPage() {
   const { purchaseOrderId } = useParams<{ purchaseOrderId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [purchaseOrder, setPurchaseOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -95,7 +95,7 @@ export function PurchaseOrderDetailsPage() {
 
   const handleDelete = () => {
     if (!purchaseOrder) return;
-    
+
     if (confirm(`Are you sure you want to delete purchase order ${purchaseOrder.orderNumber}?`)) {
       // In a real app, you would call an API to delete the purchase order
       toast({
@@ -128,32 +128,32 @@ export function PurchaseOrderDetailsPage() {
   const toolbarGroups = purchaseOrder ? [
     {
       buttons: [
-        { 
-          icon: ArrowLeft, 
-          label: "Back", 
+        {
+          icon: ArrowLeft,
+          label: "Back",
           onClick: () => navigate('/purchase-orders')
         }
       ]
     },
     {
       buttons: [
-        { 
-          icon: Edit, 
-          label: "Edit Order", 
+        {
+          icon: Edit,
+          label: "Edit Order",
           onClick: () => navigate(`/purchase-orders/${purchaseOrderId}/edit`)
         },
-        { 
-          icon: Trash2, 
-          label: "Delete", 
+        {
+          icon: Trash2,
+          label: "Delete",
           onClick: handleDelete
         }
       ]
     },
     {
       buttons: [
-        { 
-          icon: CheckCircle, 
-          label: "Mark as Received", 
+        {
+          icon: CheckCircle,
+          label: "Mark as Received",
           onClick: () => {
             toast({
               title: "Order Received",
@@ -176,12 +176,12 @@ export function PurchaseOrderDetailsPage() {
   return (
     <div className="space-y-6">
       {/* Toolbar */}
-      <Toolbar 
+      <Toolbar
         groups={toolbarGroups}
         variant="default"
         size="default"
       />
-      
+
       {/* Purchase Order Header */}
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1">
@@ -198,7 +198,7 @@ export function PurchaseOrderDetailsPage() {
           </div>
         </div>
       </div>
-      
+
       {/* Purchase Order Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Order Details Card */}
@@ -218,7 +218,7 @@ export function PurchaseOrderDetailsPage() {
                   <p className="text-sm">{purchaseOrder.date}</p>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-xs text-muted-foreground uppercase mb-1">Expected Delivery</p>
                 <div className="flex items-center">
@@ -226,7 +226,7 @@ export function PurchaseOrderDetailsPage() {
                   <p className="text-sm">{purchaseOrder.expectedDelivery}</p>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-xs text-muted-foreground uppercase mb-1">Total Amount</p>
                 <div className="flex items-center">
@@ -237,7 +237,7 @@ export function PurchaseOrderDetailsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Supplier Card */}
         <Card>
           <CardHeader className="pb-2">
@@ -252,7 +252,7 @@ export function PurchaseOrderDetailsPage() {
                 <p className="text-xs text-muted-foreground uppercase mb-1">Supplier Name</p>
                 <p className="text-sm font-semibold">{purchaseOrder.supplier.name}</p>
               </div>
-              
+
               <div>
                 <p className="text-xs text-muted-foreground uppercase mb-1">Email</p>
                 <div className="flex items-center">
@@ -260,7 +260,7 @@ export function PurchaseOrderDetailsPage() {
                   <p className="text-sm">{purchaseOrder.supplier.email}</p>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-xs text-muted-foreground uppercase mb-1">Phone</p>
                 <div className="flex items-center">
@@ -276,7 +276,7 @@ export function PurchaseOrderDetailsPage() {
             </Button>
           </CardFooter>
         </Card>
-        
+
         {/* Notes Card */}
         <Card>
           <CardHeader className="pb-2">
@@ -290,7 +290,7 @@ export function PurchaseOrderDetailsPage() {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Order Items */}
       <Card>
         <CardHeader>
@@ -326,7 +326,7 @@ export function PurchaseOrderDetailsPage() {
           </Table>
         </CardContent>
       </Card>
-      
+
       {/* Tabs Section */}
       <Tabs defaultValue="timeline" className="w-full">
         <TabsList className="grid grid-cols-3 w-full md:w-auto">
@@ -343,7 +343,7 @@ export function PurchaseOrderDetailsPage() {
             History
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="timeline" className="mt-6">
           <Card>
             <CardHeader>
@@ -364,7 +364,7 @@ export function PurchaseOrderDetailsPage() {
                     <p className="text-sm mt-1">Purchase order was created and sent to supplier.</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start gap-4">
                   <div className="mt-1">
                     <div className="bg-yellow-500 rounded-full p-1">
@@ -381,7 +381,7 @@ export function PurchaseOrderDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="documents" className="mt-6">
           <Card>
             <CardHeader>
@@ -393,7 +393,7 @@ export function PurchaseOrderDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="history" className="mt-6">
           <Card>
             <CardHeader>

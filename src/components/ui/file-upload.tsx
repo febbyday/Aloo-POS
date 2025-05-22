@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useFileUpload } from '@/lib/hooks/useFileUpload';

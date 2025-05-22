@@ -8,36 +8,28 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@radix-ui/react-slot": path.resolve(__dirname, "./src/components/ui/slot.tsx"),
     },
   },
   server: {
-    // Configure CORS for development
     cors: true,
-    // Add proxy for API requests
     proxy: {
-      // Proxy API requests to avoid CORS issues
-      '/api/v1': {
+      '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api\/v1/, '/api/v1'),
-        configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
-            console.log('Proxy error:', err);
-          });
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log('Proxy request:', req.method, req.url);
-          });
-          proxy.on('proxyRes', (proxyRes, req, _res) => {
-            console.log('Proxy response:', proxyRes.statusCode, req.url);
-          });
-        }
-      },
+        rewrite: (path) => path,
+      }
     },
-    // Improve error handling
     hmr: {
       overlay: true,
     },
+    // Force dependency optimization
+    force: true,
+    // Increase timeout for dependency optimization
+    optimizeDeps: {
+      force: true,
+      entries: ['src/main.tsx'],
+    },
   },
 })
-

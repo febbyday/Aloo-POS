@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { Prisma } from '@prisma/client';
@@ -7,216 +5,121 @@ import { z } from 'zod';
 import auditService from '../services/auditService';
 import { logger } from '../utils/logger';
 import { AuthRequest } from '../middleware/permissions';
+import { roleSchema, createRoleSchema, updateRoleSchema } from '../../shared/schemas/roleSchema';
+import { Permissions } from '../../shared/schemas/permissions';
+import { AccessLevel } from '../../shared/schemas/accessLevel';
+import { getDefaultPermissions } from '../../shared/schemas/permissions';
+import {
+  stringArrayToPermissions,
+  permissionsToStringArray,
+  convertLegacyPermissions
+} from '../utils/permissionUtils';
 
-// Type definitions for strong typing
-interface Permission {
-  view: string;
-  create: string;
-  edit: string;
-  delete: string;
-  [key: string]: string | boolean;
-}
+// Type alias for compatibility with existing code
+type PermissionsObject = Permissions;
 
-interface PermissionsObject {
-  sales: Permission;
-  inventory: Permission;
-  staff: Permission;
-  reports: Permission;
-  settings: Permission;
-  financial: Permission;
-  customers: Permission;
-  shops: Permission;
-  suppliers: Permission;
-  [key: string]: Permission;
-}
-
-// Input validation schema for roles
-const roleSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters').max(50, 'Name must be at most 50 characters'),
-  description: z.string().max(200, 'Description must be at most 200 characters').optional(),
-  permissions: z.record(z.string(), z.any()),
-  isActive: z.boolean().default(true),
-  isSystemRole: z.boolean().default(false)
-});
-
-// Helper to create default permissions object
+// Use the shared getDefaultPermissions function
 const createDefaultPermissions = (): PermissionsObject => {
-  const defaultAccessLevel = 'none'; // Default access level for all permissions
-  
-  // Base permission item with CRUD operations
-  const defaultItem: Permission = {
-    view: defaultAccessLevel,
-    create: defaultAccessLevel,
-    edit: defaultAccessLevel,
-    delete: defaultAccessLevel
-  };
-  
-  // Return full permissions object structure
-  return {
-    sales: {
-      ...defaultItem,
-      processRefunds: false,
-      applyDiscounts: false,
-      voidTransactions: false,
-      accessReports: false,
-      managePromotions: false,
-      viewSalesHistory: defaultAccessLevel
-    },
-    inventory: {
-      ...defaultItem,
-      adjustStock: false,
-      orderInventory: false,
-      manageSuppliers: false,
-      viewStockAlerts: false,
-      transferStock: false,
-      manageCategories: false
-    },
-    staff: {
-      ...defaultItem,
-      manageRoles: false,
-      assignPermissions: false,
-      viewPerformance: defaultAccessLevel,
-      manageSchedules: defaultAccessLevel,
-      viewSalaries: defaultAccessLevel,
-      manageAttendance: defaultAccessLevel
-    },
-    reports: {
-      ...defaultItem,
-      viewSalesReports: false,
-      viewFinancialReports: false,
-      viewInventoryReports: false,
-      viewStaffReports: false,
-      viewCustomReports: false,
-      scheduleReports: false
-    },
-    settings: {
-      ...defaultItem,
-      manageSystemConfig: false,
-      manageStoreInfo: false,
-      manageTaxSettings: false,
-      manageIntegrations: false,
-      manageBackups: false,
-      viewAuditLogs: false
-    },
-    financial: {
-      ...defaultItem,
-      processPayments: false,
-      manageAccounts: false,
-      reconcileCash: false,
-      viewFinancialSummary: false,
-      manageExpenses: false,
-      approveRefunds: false
-    },
-    customers: {
-      ...defaultItem,
-      manageCustomerGroups: false,
-      viewPurchaseHistory: false,
-      manageRewards: false,
-      manageCredits: false,
-      exportCustomerData: false
-    },
-    shops: { ...defaultItem },
-    suppliers: { ...defaultItem }
-  };
+  return getDefaultPermissions();
 };
 
 // Create predefined role templates with comprehensive permissions
 const createRoleTemplate = (roleName: string): PermissionsObject => {
   // Base permissions for all roles (no permissions)
   const permissions = createDefaultPermissions();
-  
+
   switch (roleName) {
     case 'Administrator': {
       // Administrator gets full access to everything
       Object.keys(permissions).forEach(module => {
         const modulePermissions = permissions[module];
-        
+
         // Set all boolean flags to true
         Object.keys(modulePermissions).forEach(permission => {
           const value = modulePermissions[permission];
           if (typeof value === 'boolean') {
             modulePermissions[permission] = true;
           } else if (typeof value === 'string') {
-            modulePermissions[permission] = 'all'; // Full access to all access level permissions
+            modulePermissions[permission] = AccessLevel.ALL; // Full access to all access level permissions
           }
         });
       });
       break;
     }
-    
+
     case 'Manager': {
       // Store manager gets full access to most areas except some settings
-      
+
       // Sales permissions
-      permissions.sales.view = 'all';
-      permissions.sales.create = 'all';
-      permissions.sales.edit = 'all';
-      permissions.sales.delete = 'dept';
+      permissions.sales.view = AccessLevel.ALL;
+      permissions.sales.create = AccessLevel.ALL;
+      permissions.sales.edit = AccessLevel.ALL;
+      permissions.sales.delete = AccessLevel.DEPARTMENT;
       permissions.sales.processRefunds = true;
       permissions.sales.applyDiscounts = true;
       permissions.sales.voidTransactions = true;
       permissions.sales.accessReports = true;
       permissions.sales.managePromotions = true;
-      permissions.sales.viewSalesHistory = 'all';
-      
+      permissions.sales.viewSalesHistory = AccessLevel.ALL;
+
       // Inventory permissions
-      permissions.inventory.view = 'all';
-      permissions.inventory.create = 'all';
-      permissions.inventory.edit = 'all';
-      permissions.inventory.delete = 'dept';
+      permissions.inventory.view = AccessLevel.ALL;
+      permissions.inventory.create = AccessLevel.ALL;
+      permissions.inventory.edit = AccessLevel.ALL;
+      permissions.inventory.delete = AccessLevel.DEPARTMENT;
       permissions.inventory.adjustStock = true;
       permissions.inventory.orderInventory = true;
       permissions.inventory.manageSuppliers = true;
       permissions.inventory.viewStockAlerts = true;
       permissions.inventory.transferStock = true;
       permissions.inventory.manageCategories = true;
-      
+
       // Staff permissions
-      permissions.staff.view = 'all';
-      permissions.staff.create = 'dept';
-      permissions.staff.edit = 'dept';
-      permissions.staff.delete = 'none';
-      permissions.staff.viewPerformance = 'dept';
-      permissions.staff.manageSchedules = 'dept';
-      permissions.staff.viewSalaries = 'dept';
-      permissions.staff.manageAttendance = 'dept';
-      
+      permissions.staff.view = AccessLevel.ALL;
+      permissions.staff.create = AccessLevel.DEPARTMENT;
+      permissions.staff.edit = AccessLevel.DEPARTMENT;
+      permissions.staff.delete = AccessLevel.NONE;
+      permissions.staff.viewPerformance = AccessLevel.DEPARTMENT;
+      permissions.staff.manageSchedules = AccessLevel.DEPARTMENT;
+      permissions.staff.viewSalaries = AccessLevel.DEPARTMENT;
+      permissions.staff.manageAttendance = AccessLevel.DEPARTMENT;
+
       // Reports permissions
-      permissions.reports.view = 'all';
-      permissions.reports.create = 'all';
-      permissions.reports.edit = 'dept';
-      permissions.reports.delete = 'dept';
+      permissions.reports.view = AccessLevel.ALL;
+      permissions.reports.create = AccessLevel.ALL;
+      permissions.reports.edit = AccessLevel.DEPARTMENT;
+      permissions.reports.delete = AccessLevel.DEPARTMENT;
       permissions.reports.viewSalesReports = true;
       permissions.reports.viewFinancialReports = true;
       permissions.reports.viewInventoryReports = true;
       permissions.reports.viewStaffReports = true;
       permissions.reports.viewCustomReports = true;
       permissions.reports.scheduleReports = true;
-      
+
       // Settings permissions - limited
-      permissions.settings.view = 'all';
-      permissions.settings.create = 'none';
-      permissions.settings.edit = 'none';
-      permissions.settings.delete = 'none';
+      permissions.settings.view = AccessLevel.ALL;
+      permissions.settings.create = AccessLevel.NONE;
+      permissions.settings.edit = AccessLevel.NONE;
+      permissions.settings.delete = AccessLevel.NONE;
       permissions.settings.manageStoreInfo = true;
       permissions.settings.viewAuditLogs = true;
-      
+
       // Financial permissions
-      permissions.financial.view = 'all';
-      permissions.financial.create = 'all';
-      permissions.financial.edit = 'dept';
-      permissions.financial.delete = 'none';
+      permissions.financial.view = AccessLevel.ALL;
+      permissions.financial.create = AccessLevel.ALL;
+      permissions.financial.edit = AccessLevel.DEPARTMENT;
+      permissions.financial.delete = AccessLevel.NONE;
       permissions.financial.processPayments = true;
       permissions.financial.reconcileCash = true;
       permissions.financial.viewFinancialSummary = true;
       permissions.financial.manageExpenses = true;
       permissions.financial.approveRefunds = true;
-      
+
       // Customer permissions
-      permissions.customers.view = 'all';
-      permissions.customers.create = 'all';
-      permissions.customers.edit = 'all';
-      permissions.customers.delete = 'dept';
+      permissions.customers.view = AccessLevel.ALL;
+      permissions.customers.create = AccessLevel.ALL;
+      permissions.customers.edit = AccessLevel.ALL;
+      permissions.customers.delete = AccessLevel.DEPARTMENT;
       permissions.customers.manageCustomerGroups = true;
       permissions.customers.viewPurchaseHistory = true;
       permissions.customers.manageRewards = true;
@@ -224,69 +127,69 @@ const createRoleTemplate = (roleName: string): PermissionsObject => {
       permissions.customers.exportCustomerData = true;
       break;
     }
-    
+
     case 'Cashier': {
       // Cashier gets focused permissions for sales operations
-      
+
       // Sales permissions
-      permissions.sales.view = 'all';
-      permissions.sales.create = 'all';
-      permissions.sales.edit = 'self';
-      permissions.sales.delete = 'none';
+      permissions.sales.view = AccessLevel.ALL;
+      permissions.sales.create = AccessLevel.ALL;
+      permissions.sales.edit = AccessLevel.SELF;
+      permissions.sales.delete = AccessLevel.NONE;
       permissions.sales.processRefunds = false;
       permissions.sales.applyDiscounts = true;
       permissions.sales.voidTransactions = false;
-      permissions.sales.viewSalesHistory = 'self';
-      
+      permissions.sales.viewSalesHistory = AccessLevel.SELF;
+
       // Limited permissions in other areas
-      permissions.inventory.view = 'all';
-      permissions.customers.view = 'all';
-      permissions.customers.create = 'all';
-      
+      permissions.inventory.view = AccessLevel.ALL;
+      permissions.customers.view = AccessLevel.ALL;
+      permissions.customers.create = AccessLevel.ALL;
+
       permissions.financial.processPayments = true;
       break;
     }
-    
+
     case 'Inventory Manager': {
       // Inventory-focused permissions
-      permissions.inventory.view = 'all';
-      permissions.inventory.create = 'all';
-      permissions.inventory.edit = 'all';
-      permissions.inventory.delete = 'all';
+      permissions.inventory.view = AccessLevel.ALL;
+      permissions.inventory.create = AccessLevel.ALL;
+      permissions.inventory.edit = AccessLevel.ALL;
+      permissions.inventory.delete = AccessLevel.ALL;
       permissions.inventory.adjustStock = true;
       permissions.inventory.orderInventory = true;
       permissions.inventory.manageSuppliers = true;
       permissions.inventory.viewStockAlerts = true;
       permissions.inventory.transferStock = true;
       permissions.inventory.manageCategories = true;
-      
-      permissions.suppliers.view = 'all';
-      permissions.suppliers.create = 'all';
-      permissions.suppliers.edit = 'all';
-      permissions.suppliers.delete = 'dept';
-      
-      permissions.reports.view = 'all';
+
+      permissions.suppliers.view = AccessLevel.ALL;
+      permissions.suppliers.create = AccessLevel.ALL;
+      permissions.suppliers.edit = AccessLevel.ALL;
+      permissions.suppliers.delete = AccessLevel.DEPARTMENT;
+
+      permissions.reports.view = AccessLevel.ALL;
       permissions.reports.viewInventoryReports = true;
       break;
     }
-    
+
     case 'Staff Manager': {
       // Staff/HR manager permissions
-      permissions.staff.view = 'all';
-      permissions.staff.create = 'all';
-      permissions.staff.edit = 'all';
-      permissions.staff.delete = 'all';
-      permissions.staff.viewPerformance = 'all';
-      permissions.staff.manageSchedules = 'all';
-      permissions.staff.viewSalaries = 'all';
-      permissions.staff.manageAttendance = 'all';
-      
-      permissions.reports.view = 'all';
+      permissions.staff.view = AccessLevel.ALL;
+      permissions.staff.create = AccessLevel.ALL;
+      permissions.staff.edit = AccessLevel.ALL;
+      permissions.staff.delete = AccessLevel.ALL;
+      permissions.staff.viewPerformance = AccessLevel.ALL;
+      permissions.staff.manageSchedules = AccessLevel.ALL;
+      permissions.staff.viewSalaries = AccessLevel.ALL;
+      permissions.staff.manageAttendance = AccessLevel.ALL;
+
+      permissions.reports.view = AccessLevel.ALL;
       permissions.reports.viewStaffReports = true;
       break;
     }
   }
-  
+
   return permissions;
 };
 
@@ -322,13 +225,13 @@ const createDefaultRoles = async () => {
         isSystemRole: true
       }
     ];
-    
+
     for (const role of defaultRoles) {
       try {
         const exists = await prisma.role.findUnique({
           where: { name: role.name }
         });
-        
+
         if (!exists) {
           await prisma.role.create({
             data: {
@@ -395,7 +298,7 @@ export const getAllRoles = async (req: Request, res: Response) => {
  */
 export const getRoleById = async (req: Request, res: Response) => {
   const { id } = req.params;
-  
+
   try {
     const role = await prisma.role.findUnique({
       where: { id },
@@ -434,7 +337,7 @@ export const createRole = async (req: AuthRequest, res: Response) => {
   try {
     // Validate input
     try {
-      roleSchema.parse({
+      createRoleSchema.parse({
         name,
         description,
         permissions,
@@ -453,18 +356,33 @@ export const createRole = async (req: AuthRequest, res: Response) => {
 
     // Check for existing role with the same name
     const existingRole = await prisma.role.findFirst({
-      where: { 
-        name: { 
-          equals: name, 
-          mode: 'insensitive' 
-        } 
+      where: {
+        name: {
+          equals: name,
+          mode: 'insensitive'
+        }
       }
     });
 
     if (existingRole) {
-      return res.status(409).json({ 
-        error: 'A role with this name already exists' 
+      return res.status(409).json({
+        error: 'A role with this name already exists'
       });
+    }
+
+    // Convert permissions to standardized format if needed
+    let standardizedPermissions: Permissions;
+
+    if (Array.isArray(permissions)) {
+      // If permissions are in string array format, convert to object format
+      standardizedPermissions = stringArrayToPermissions(permissions);
+    } else if (typeof permissions === 'object' &&
+              (permissions.administrator || permissions.manager)) {
+      // If permissions are in legacy format, convert to standardized format
+      standardizedPermissions = convertLegacyPermissions(permissions);
+    } else {
+      // Otherwise, assume it's already in the standardized format
+      standardizedPermissions = permissions as Permissions;
     }
 
     // Create role
@@ -472,7 +390,7 @@ export const createRole = async (req: AuthRequest, res: Response) => {
       data: {
         name,
         description,
-        permissions: permissions as Prisma.JsonValue,
+        permissions: standardizedPermissions as Prisma.JsonValue,
         isActive,
         isSystemRole,
         createdBy: req.user?.id
@@ -502,13 +420,13 @@ export const createRole = async (req: AuthRequest, res: Response) => {
     return res.status(201).json(role);
   } catch (error) {
     logger.error('Error creating role:', error);
-    
+
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
         return res.status(409).json({ error: 'A role with this name already exists' });
       }
     }
-    
+
     return res.status(500).json({ error: 'Failed to create role' });
   }
 };
@@ -538,7 +456,26 @@ export const updateRole = async (req: AuthRequest, res: Response) => {
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (permissions !== undefined) updateData.permissions = permissions;
+
+    // Convert permissions to standardized format if needed
+    if (permissions !== undefined) {
+      let standardizedPermissions: Permissions;
+
+      if (Array.isArray(permissions)) {
+        // If permissions are in string array format, convert to object format
+        standardizedPermissions = stringArrayToPermissions(permissions);
+      } else if (typeof permissions === 'object' &&
+                (permissions.administrator || permissions.manager)) {
+        // If permissions are in legacy format, convert to standardized format
+        standardizedPermissions = convertLegacyPermissions(permissions);
+      } else {
+        // Otherwise, assume it's already in the standardized format
+        standardizedPermissions = permissions as Permissions;
+      }
+
+      updateData.permissions = standardizedPermissions;
+    }
+
     if (isActive !== undefined) updateData.isActive = isActive;
     updateData.updatedBy = req.user?.id;
 
@@ -567,7 +504,7 @@ export const updateRole = async (req: AuthRequest, res: Response) => {
     if (permissions !== undefined) {
       // Compare permissions and track changes
       const permissionChanges: any[] = [];
-      
+
       // Get all modules from both old and new permissions
       const allModules = new Set([
         ...Object.keys(existingRole.permissions || {}),
@@ -577,17 +514,17 @@ export const updateRole = async (req: AuthRequest, res: Response) => {
       allModules.forEach(module => {
         const oldModulePerms = (existingRole.permissions || {})[module] || {};
         const newModulePerms = permissions[module] || {};
-        
+
         // Get all permissions from both old and new for this module
         const allPerms = new Set([
           ...Object.keys(oldModulePerms),
           ...Object.keys(newModulePerms)
         ]);
-        
+
         allPerms.forEach(perm => {
           const oldValue = oldModulePerms[perm];
           const newValue = newModulePerms[perm];
-          
+
           if (oldValue !== newValue) {
             permissionChanges.push({
               module,
@@ -598,7 +535,7 @@ export const updateRole = async (req: AuthRequest, res: Response) => {
           }
         });
       });
-      
+
       if (permissionChanges.length > 0) {
         changes.permissions = permissionChanges;
       }
@@ -658,7 +595,7 @@ export const deleteRole = async (req: AuthRequest, res: Response) => {
     }
 
     if (role._count.staff > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Cannot delete a role that is assigned to staff members',
         staffCount: role._count.staff
       });
@@ -739,7 +676,7 @@ export const getRoleAuditLogs = async (req: Request, res: Response) => {
 
   const pageNum = Number(page);
   const limitNum = Number(limit);
-  
+
   try {
     const role = await prisma.role.findUnique({
       where: { id }
@@ -751,7 +688,7 @@ export const getRoleAuditLogs = async (req: Request, res: Response) => {
 
     // Build the where clause
     const where: any = { roleId: id };
-    
+
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = new Date(startDate as string);
@@ -878,9 +815,9 @@ export const applyTemplateToRole = async (req: AuthRequest, res: Response) => {
         userId: req.user?.id,
         action: 'update',
         changes: {
-          template: { 
-            from: null, 
-            to: template.name 
+          template: {
+            from: null,
+            to: template.name
           },
           permissions: Object.keys(template.permissions).map(module => ({
             module,
@@ -911,7 +848,7 @@ export const applyTemplateToRole = async (req: AuthRequest, res: Response) => {
  */
 export const getRoleTemplateById = async (req: Request, res: Response) => {
   const { id } = req.params;
-  
+
   try {
     const template = await prisma.roleTemplate.findUnique({
       where: { id }

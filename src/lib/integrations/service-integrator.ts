@@ -6,10 +6,10 @@
  */
 
 import { eventBus, POS_EVENTS } from '../events/event-bus';
-import { productService } from '../api/services/product-service';
-import { customerService } from '../api/services/customer-service';
-import { supplierService } from '../api/services/supplier-service';
-import { orderService } from '../api/services/order-service';
+import productService from '../../features/products/services/factory-product-service';
+import customersService from '../../features/customers/services/factory-customers-service';
+import suppliersService from '../../features/suppliers/services/factory-suppliers-service';
+import ordersService from '../../features/orders/services/factory-orders-service';
 import { EntityType, getRelatedEntities } from '../relations/entity-relations';
 
 class ServiceIntegrator {
@@ -74,7 +74,7 @@ class ServiceIntegrator {
     // When a customer's loyalty points change, check if they qualify for a new membership level
     eventBus.subscribe(POS_EVENTS.CUSTOMER_LOYALTY_CHANGED, async (data: { customerId: string, newPoints: number }) => {
       const { customerId, newPoints } = data;
-      const customer = (await customerService.getById(customerId)).data;
+      const customer = (await customersService.getById(customerId)).data;
       
       if (!customer) return;
       
@@ -93,7 +93,7 @@ class ServiceIntegrator {
       
       // Update membership level if it changed
       if (newMembershipLevel !== customer.membershipLevel) {
-        await customerService.update(customerId, { membershipLevel: newMembershipLevel });
+        await customersService.update(customerId, { membershipLevel: newMembershipLevel });
         
         eventBus.emit(POS_EVENTS.CUSTOMER_UPDATED, {
           customerId,
@@ -114,7 +114,7 @@ class ServiceIntegrator {
   private setupOrderIntegrations(): void {
     // When an order is created, update product inventory
     eventBus.subscribe(POS_EVENTS.ORDER_CREATED, async (orderId: string) => {
-      const order = (await orderService.getById(orderId)).data;
+      const order = (await ordersService.getById(orderId)).data;
       
       if (!order) return;
       
@@ -138,9 +138,9 @@ class ServiceIntegrator {
         const pointsToAdd = Math.floor(order.total / 10); // Example: 1 point for every $10 spent
         
         if (pointsToAdd > 0) {
-          await customerService.updateLoyaltyPoints(order.customerId, pointsToAdd, true);
+          await customersService.updateLoyaltyPoints(order.customerId, pointsToAdd, true);
           
-          const customer = (await customerService.getById(order.customerId)).data;
+          const customer = (await customersService.getById(order.customerId)).data;
           
           if (customer) {
             eventBus.emit(POS_EVENTS.CUSTOMER_LOYALTY_CHANGED, {
@@ -157,7 +157,7 @@ class ServiceIntegrator {
       const { orderId, newStatus, oldStatus } = data;
       
       if (newStatus === 'cancelled') {
-        const order = (await orderService.getById(orderId)).data;
+        const order = (await ordersService.getById(orderId)).data;
         
         if (!order) return;
         
@@ -181,9 +181,9 @@ class ServiceIntegrator {
           const pointsToDeduct = Math.floor(order.total / 10); // Example: 1 point for every $10 spent
           
           if (pointsToDeduct > 0) {
-            await customerService.updateLoyaltyPoints(order.customerId, pointsToDeduct, false);
+            await customersService.updateLoyaltyPoints(order.customerId, pointsToDeduct, false);
             
-            const customer = (await customerService.getById(order.customerId)).data;
+            const customer = (await customersService.getById(order.customerId)).data;
             
             if (customer) {
               eventBus.emit(POS_EVENTS.CUSTOMER_LOYALTY_CHANGED, {

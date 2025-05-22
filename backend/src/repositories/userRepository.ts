@@ -1,29 +1,32 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { prisma } from '../prisma';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 // Define User type based on Prisma schema
-type User = {
+export type User = {
   id: string;
   username: string;
   password: string;
   email: string;
-  name: string;
-  firstName?: string | null;
-  lastName?: string | null;
+  firstName: string;
+  lastName: string;
   role: 'ADMIN' | 'MANAGER' | 'CASHIER' | 'USER';
-  active: boolean;
+  isActive: boolean;
   avatar: string | null;
   createdAt: Date;
   lastLogin: Date | null;
   permissions: string[];
-  updatedAt: Date;
+  updatedAt?: Date;
+  // PIN Authentication
+  pinHash?: string | null;
+  isPinEnabled?: boolean;
+  lastPinChange?: Date | null;
+  failedPinAttempts?: number;
+  pinLockedUntil?: Date | null;
 };
 
 // Define UserRole enum to match Prisma schema
-enum UserRole {
+export enum UserRole {
   ADMIN = 'ADMIN',
   MANAGER = 'MANAGER',
   CASHIER = 'CASHIER',
@@ -100,48 +103,30 @@ export class UserRepository {
   /**
    * Create a new user
    */
-  static async create(userData: {
-    username: string;
-    password: string;
-    email: string;
-    name: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    role?: UserRole | string;
-    avatar?: string;
-    permissions?: string[];
-    active?: boolean;
-  }): Promise<User> {
-    // Hash the password
-    const hashedPassword = bcrypt.hashSync(userData.password, 10);
-
-    // Generate avatar URL if not provided
-    const avatar = userData.avatar ||
-      `https://ui-avatars.com/api/?name=${userData.name.replace(' ', '+')}`;
-
-    // Default permissions based on role
-    const permissions = userData.permissions || getDefaultPermissions(userData.role || 'CASHIER');
-
-    // Convert role to string value
-    const role = userData.role?.toString() || 'CASHIER';
-
+  static async create(data: Partial<User>): Promise<User> {
     try {
-      // Create user with Prisma
+      const hashedPassword = await bcrypt.hash(data.password!, 10);
+
+      // Get default permissions based on role if no permissions are provided
+      const role = data.role as UserRole;
+      const permissions = data.permissions && data.permissions.length > 0
+        ? data.permissions
+        : getDefaultPermissions(role);
+
       const user = await prisma.user.create({
         data: {
-          username: userData.username,
+          username: data.username!,
           password: hashedPassword,
-          email: userData.email,
-          name: userData.name,
-          firstName: userData.firstName || '',
-          lastName: userData.lastName || '',
-          role: role as any,
-          avatar,
-          active: userData.active !== undefined ? userData.active : true,
-          permissions
-        }
+          email: data.email!,
+          firstName: data.firstName!,
+          lastName: data.lastName!,
+          role: role,
+          isActive: data.isActive !== undefined ? data.isActive : true,
+          avatar: data.avatar ?? null,
+          permissions: permissions,
+          isPinEnabled: data.isPinEnabled ?? false,
+        },
       });
-
       return user as unknown as User;
     } catch (error) {
       console.error('Error creating user:', error);
@@ -228,10 +213,47 @@ export class UserRepository {
   }
 
   /**
-   * Verify a user's password
+   * Verify a password against a hashed password
    */
-  static verifyPassword(password: string, hashedPassword: string): boolean {
+  static verifyPasswordHash(password: string, hashedPassword: string): boolean {
     return bcrypt.compareSync(password, hashedPassword);
+  }
+
+  /**
+   * Verify a user's password by ID
+   */
+  static async verifyPassword(userId: string, password: string): Promise<boolean> {
+    try {
+      const user = await this.findById(userId);
+      if (!user) return false;
+
+      return this.verifyPasswordHash(password, user.password);
+    } catch (error) {
+      console.error('Error verifying password:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Hash a PIN
+   */
+  static async hashPin(pin: string): Promise<string> {
+    return bcrypt.hash(pin, 10);
+  }
+
+  /**
+   * Verify a user's PIN
+   */
+  static async verifyPin(userId: string, pin: string): Promise<boolean> {
+    try {
+      const user = await this.findById(userId);
+      if (!user || !user.pinHash || !user.isPinEnabled) return false;
+
+      return bcrypt.compareSync(pin, user.pinHash);
+    } catch (error) {
+      console.error('Error verifying PIN:', error);
+      return false;
+    }
   }
 }
 

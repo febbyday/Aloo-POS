@@ -33,7 +33,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Minus } from "lucide-react"
 

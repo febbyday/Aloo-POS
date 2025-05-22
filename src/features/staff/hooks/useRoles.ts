@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
-import { useToast } from "@/components/ui/use-toast"
-import { roleService } from "../services/roleService"
-import type { Role } from "../types/role"
+import { useToast } from "@/lib/toast"
+import { roleService } from "@/features/users/services/roleService"
+import type { Role } from "@/features/users/types/role"
 
 /**
  * Custom hook for managing staff roles

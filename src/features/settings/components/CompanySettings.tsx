@@ -1,68 +1,190 @@
-import { useState } from "react";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Save, Building, Upload, X, Image } from "lucide-react";
+import { Save, Building, Upload, X, Image, RotateCcw, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CompanySettings } from "../types/settings.types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/components/ui/use-toast";
+import { SettingsService, companyService } from '../services/company.service';
+import { CompanySettings, companySettingsSchema } from '../schemas/company-settings.schema';
 
-interface CompanySettingsPanelProps {
-  settings: CompanySettings;
-  onUpdate: (newSettings: CompanySettings) => void;
-}
+export function CompanySettingsPanel() {
+  const { toast } = useToast();
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
+  const [formData, setFormData] = useState<CompanySettings | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPanelProps) {
-  const [formData, setFormData] = useState<CompanySettings>(settings);
-  const [logoPreview, setLogoPreview] = useState<string | null>(settings.logo || null);
+  // Load settings on component mount with improved error handling
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        // First try to load from localStorage to avoid API delays
+        const storedSettings = localStorage.getItem('settings_company');
+        if (storedSettings) {
+          try {
+            const parsedSettings = JSON.parse(storedSettings);
+            // Apply schema validation to ensure data integrity
+            const validatedSettings = companySettingsSchema.parse(parsedSettings);
+            setSettings(validatedSettings);
+            setFormData(validatedSettings);
+            setLogoPreview(validatedSettings.logo || null);
+
+            // Continue loading from API in the background
+            setTimeout(() => {
+              SettingsService.getSettings()
+                .then(apiData => {
+                  setSettings(apiData);
+                  setFormData(apiData);
+                  setLogoPreview(apiData.logo || null);
+                })
+                .catch(err => {
+                  console.warn("Background refresh of company settings failed:", err);
+                });
+            }, 0);
+
+            // Mark as loaded since we have local data
+            setLoading(false);
+            return;
+          } catch (parseError) {
+            console.warn("Error parsing stored company settings, will load from API:", parseError);
+            // Continue to API loading if parsing fails
+          }
+        }
+
+        // If no localStorage data or parsing failed, load from API
+        const data = await SettingsService.getSettings();
+        setSettings(data);
+        setFormData(data);
+        setLogoPreview(data.logo || null);
+      } catch (error) {
+        console.error("Error loading company settings:", error);
+
+        // Use default settings as fallback
+        const defaultData = {
+          name: 'My Company',
+          legalName: '',
+          taxId: '',
+          logo: '',
+          contact: {
+            email: '',
+            phone: '',
+            website: '',
+            socialMedia: '',
+            supportEmail: '',
+          },
+          address: {
+            street: '',
+            city: '',
+            state: '',
+            postalCode: '',
+            country: '',
+          },
+          business: {
+            type: 'Retail',
+            registrationNumber: '',
+            description: '',
+            taxId: '',
+            foundedYear: null,
+            fiscalYear: {
+              startMonth: 1,
+              startDay: 1,
+            },
+          },
+          branding: {
+            primaryColor: '#0284c7',
+            secondaryColor: '#f59e0b',
+            fontFamily: 'Inter',
+          },
+        };
+
+        setSettings(defaultData);
+        setFormData(defaultData);
+
+        toast({
+          title: "Warning",
+          description: "Using default company settings due to loading error",
+          variant: "warning",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [toast]);
 
   const handleInputChange = (field: string, value: string) => {
+    if (!formData) return;
+
     setFormData(prev => ({
-      ...prev,
+      ...prev!,
       [field]: value
     }));
   };
 
   const handleAddressChange = (field: string, value: string) => {
+    if (!formData) return;
+
     setFormData(prev => ({
-      ...prev,
+      ...prev!,
       address: {
-        ...prev.address,
+        ...prev!.address,
         [field]: value
       }
     }));
   };
 
   const handleContactChange = (field: string, value: string) => {
+    if (!formData) return;
+
     setFormData(prev => ({
-      ...prev,
+      ...prev!,
       contact: {
-        ...prev.contact,
+        ...prev!.contact,
         [field]: value
       }
     }));
   };
 
-  const handleTaxDetailsChange = (field: string, value: string) => {
+  const handleBusinessChange = (field: string, value: string | number) => {
+    if (!formData) return;
+
     setFormData(prev => ({
-      ...prev,
-      taxDetails: {
-        ...prev.taxDetails,
+      ...prev!,
+      business: {
+        ...prev!.business,
+        [field]: value
+      }
+    }));
+  };
+
+  const handleBrandingChange = (field: string, value: string) => {
+    if (!formData) return;
+
+    setFormData(prev => ({
+      ...prev!,
+      branding: {
+        ...prev!.branding,
         [field]: value
       }
     }));
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!formData) return;
+
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -70,7 +192,7 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
         const base64String = reader.result as string;
         setLogoPreview(base64String);
         setFormData(prev => ({
-          ...prev,
+          ...prev!,
           logo: base64String
         }));
       };
@@ -79,16 +201,92 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
   };
 
   const handleRemoveLogo = () => {
+    if (!formData) return;
+
     setLogoPreview(null);
     setFormData(prev => ({
-      ...prev,
+      ...prev!,
       logo: ""
     }));
   };
 
-  const handleSave = () => {
-    onUpdate(formData);
+  const saveSettings = async () => {
+    if (!formData) return;
+
+    setSaving(true);
+    try {
+      await SettingsService.saveSettings(formData);
+      setSettings(formData);
+      toast({
+        title: "Settings saved",
+        description: "Company settings have been updated successfully",
+      });
+    } catch (error) {
+      console.error("Error saving company settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save company settings",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const handleResetSettings = async () => {
+    try {
+      const defaultSettings = await SettingsService.resetSettings();
+      setSettings(defaultSettings);
+      setFormData(defaultSettings);
+      setLogoPreview(defaultSettings.logo || null);
+      toast({
+        title: "Settings reset",
+        description: "Company settings have been reset to defaults",
+      });
+    } catch (error) {
+      console.error("Error resetting company settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reset company settings",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Company Information</CardTitle>
+          <CardDescription>Manage your company details, contact information, and legal information</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center py-10 space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading company settings...</p>
+          <div className="w-full max-w-md bg-muted rounded-full h-2.5 overflow-hidden">
+            <div className="bg-primary h-2.5 rounded-full animate-pulse" style={{ width: '90%' }}></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!formData || !settings) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Company Information</CardTitle>
+          <CardDescription>Manage your company details, contact information, and legal information</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground">Failed to load settings. Please try again.</p>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <Button onClick={() => window.location.reload()}>Reload</Button>
+        </CardFooter>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -99,10 +297,25 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
             Manage your company details, contact information, and legal information.
           </p>
         </div>
-        <Button onClick={handleSave}>
-          <Save className="mr-2 h-4 w-4" />
-          Save Changes
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleResetSettings} disabled={saving}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Reset
+          </Button>
+          <Button onClick={saveSettings} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="logo" className="space-y-4">
@@ -128,14 +341,13 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
             </svg>
             Contact
           </TabsTrigger>
-          <TabsTrigger value="tax" className="flex items-center gap-2">
+          <TabsTrigger value="branding" className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
             </svg>
-            Tax Info
+            Branding
           </TabsTrigger>
         </TabsList>
 
@@ -152,13 +364,13 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
                 <div className="w-48 h-48 flex items-center justify-center border rounded-lg overflow-hidden relative">
                   {logoPreview ? (
                     <>
-                      <img 
-                        src={logoPreview} 
-                        alt="Company Logo" 
+                      <img
+                        src={logoPreview}
+                        alt="Company Logo"
                         className="max-w-full max-h-full object-contain"
                       />
-                      <Button 
-                        variant="destructive" 
+                      <Button
+                        variant="destructive"
                         size="icon"
                         className="absolute top-2 right-2 h-8 w-8"
                         onClick={handleRemoveLogo}
@@ -173,7 +385,7 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
                     </div>
                   )}
                 </div>
-                
+
                 <div className="space-y-2 w-full max-w-xs">
                   <Label htmlFor="logo-upload">Upload Logo</Label>
                   <div className="flex gap-2">
@@ -206,43 +418,63 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="companyName">Company Name</Label>
-                  <Input 
-                    id="companyName" 
-                    value={formData.name} 
+                  <Input
+                    id="companyName"
+                    value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="legalName">Legal Name</Label>
-                  <Input 
-                    id="legalName" 
-                    value={formData.legalName} 
+                  <Input
+                    id="legalName"
+                    value={formData.legalName}
                     onChange={(e) => handleInputChange('legalName', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="businessType">Business Type</Label>
-                  <Input 
-                    id="businessType" 
-                    value={formData.businessType} 
-                    onChange={(e) => handleInputChange('businessType', e.target.value)}
+                  <Input
+                    id="businessType"
+                    value={formData.business.type}
+                    onChange={(e) => handleBusinessChange('type', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea 
-                    id="description" 
-                    value={formData.description} 
-                    onChange={(e) => handleInputChange('description', e.target.value)}
+                  <Textarea
+                    id="description"
+                    value={formData.business.description || ''}
+                    onChange={(e) => handleBusinessChange('description', e.target.value)}
                     rows={3}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="foundedYear">Founded Year</Label>
-                  <Input 
-                    id="foundedYear" 
-                    value={formData.foundedYear} 
-                    onChange={(e) => handleInputChange('foundedYear', e.target.value)}
+                  <Input
+                    id="foundedYear"
+                    type="number"
+                    value={formData.business.foundedYear || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? parseInt(e.target.value) : null;
+                      handleBusinessChange('foundedYear', value);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="registrationNumber">Business Registration Number</Label>
+                  <Input
+                    id="registrationNumber"
+                    value={formData.business.registrationNumber}
+                    onChange={(e) => handleBusinessChange('registrationNumber', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="taxId">Tax ID / VAT Number</Label>
+                  <Input
+                    id="taxId"
+                    value={formData.business.taxId || ''}
+                    onChange={(e) => handleBusinessChange('taxId', e.target.value)}
                   />
                 </div>
               </div>
@@ -262,41 +494,41 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="street">Street Address</Label>
-                  <Input 
-                    id="street" 
-                    value={formData.address.street} 
+                  <Input
+                    id="street"
+                    value={formData.address.street}
                     onChange={(e) => handleAddressChange('street', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
-                  <Input 
-                    id="city" 
-                    value={formData.address.city} 
+                  <Input
+                    id="city"
+                    value={formData.address.city}
                     onChange={(e) => handleAddressChange('city', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="state">State/Province</Label>
-                  <Input 
-                    id="state" 
-                    value={formData.address.state} 
+                  <Input
+                    id="state"
+                    value={formData.address.state}
                     onChange={(e) => handleAddressChange('state', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="postalCode">Postal Code</Label>
-                  <Input 
-                    id="postalCode" 
-                    value={formData.address.postalCode} 
+                  <Input
+                    id="postalCode"
+                    value={formData.address.postalCode}
                     onChange={(e) => handleAddressChange('postalCode', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="country">Country</Label>
-                  <Input 
-                    id="country" 
-                    value={formData.address.country} 
+                  <Input
+                    id="country"
+                    value={formData.address.country}
                     onChange={(e) => handleAddressChange('country', e.target.value)}
                   />
                 </div>
@@ -317,41 +549,41 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input 
-                    id="phone" 
-                    value={formData.contact.phone} 
+                  <Input
+                    id="phone"
+                    value={formData.contact.phone}
                     onChange={(e) => handleContactChange('phone', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    value={formData.contact.email} 
+                  <Input
+                    id="email"
+                    value={formData.contact.email}
                     onChange={(e) => handleContactChange('email', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="website">Website</Label>
-                  <Input 
-                    id="website" 
-                    value={formData.contact.website} 
+                  <Input
+                    id="website"
+                    value={formData.contact.website}
                     onChange={(e) => handleContactChange('website', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="socialMedia">Social Media</Label>
-                  <Input 
-                    id="socialMedia" 
-                    value={formData.contact.socialMedia} 
+                  <Input
+                    id="socialMedia"
+                    value={formData.contact.socialMedia || ''}
                     onChange={(e) => handleContactChange('socialMedia', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="supportEmail">Support Email</Label>
-                  <Input 
-                    id="supportEmail" 
-                    value={formData.contact.supportEmail} 
+                  <Input
+                    id="supportEmail"
+                    value={formData.contact.supportEmail || ''}
                     onChange={(e) => handleContactChange('supportEmail', e.target.value)}
                   />
                 </div>
@@ -360,38 +592,54 @@ export function CompanySettingsPanel({ settings, onUpdate }: CompanySettingsPane
           </Card>
         </TabsContent>
 
-        <TabsContent value="tax" className="space-y-4">
+        <TabsContent value="branding" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Tax Information</CardTitle>
+              <CardTitle>Branding Information</CardTitle>
               <CardDescription>
-                Tax and registration details
+                Customize your brand appearance
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="taxId">Tax ID / VAT Number</Label>
-                  <Input 
-                    id="taxId" 
-                    value={formData.taxDetails.taxId} 
-                    onChange={(e) => handleTaxDetailsChange('taxId', e.target.value)}
-                  />
+                  <Label htmlFor="primaryColor">Primary Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="primaryColor"
+                      value={formData.branding.primaryColor}
+                      onChange={(e) => handleBrandingChange('primaryColor', e.target.value)}
+                    />
+                    <Input
+                      type="color"
+                      value={formData.branding.primaryColor}
+                      onChange={(e) => handleBrandingChange('primaryColor', e.target.value)}
+                      className="w-12 p-1 h-10"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="registrationNumber">Business Registration Number</Label>
-                  <Input 
-                    id="registrationNumber" 
-                    value={formData.taxDetails.registrationNumber} 
-                    onChange={(e) => handleTaxDetailsChange('registrationNumber', e.target.value)}
-                  />
+                  <Label htmlFor="secondaryColor">Secondary Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="secondaryColor"
+                      value={formData.branding.secondaryColor}
+                      onChange={(e) => handleBrandingChange('secondaryColor', e.target.value)}
+                    />
+                    <Input
+                      type="color"
+                      value={formData.branding.secondaryColor}
+                      onChange={(e) => handleBrandingChange('secondaryColor', e.target.value)}
+                      className="w-12 p-1 h-10"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="taxJurisdiction">Tax Jurisdiction</Label>
-                  <Input 
-                    id="taxJurisdiction" 
-                    value={formData.taxDetails.taxJurisdiction} 
-                    onChange={(e) => handleTaxDetailsChange('taxJurisdiction', e.target.value)}
+                  <Label htmlFor="slogan">Company Slogan</Label>
+                  <Input
+                    id="slogan"
+                    value={formData.branding.slogan}
+                    onChange={(e) => handleBrandingChange('slogan', e.target.value)}
                   />
                 </div>
               </div>

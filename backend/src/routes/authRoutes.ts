@@ -1,14 +1,12 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import express from 'express';
-import { 
-  login, 
-  register, 
-  logout, 
-  refreshToken, 
-  verifyToken, 
-  setCookie, 
-  clearCookie 
+import {
+  login,
+  register,
+  logout,
+  refreshToken,
+  verifyToken,
+  setCookie,
+  clearCookie
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import { setCsrfToken, validateCsrfToken } from '../middleware/csrf';
@@ -16,8 +14,14 @@ import { setCsrfToken, validateCsrfToken } from '../middleware/csrf';
 // Create router
 const router = express.Router();
 
-// Apply CSRF protection to all routes
+// Add a route to get CSRF token
+router.get('/csrf-token', setCsrfToken, (req, res) => {
+  res.json({ success: true, message: 'CSRF token set in cookie' });
+});
+
+// Apply CSRF protection to all routes except the CSRF token route
 router.use(setCsrfToken);
+// Re-enable CSRF validation for all routes
 router.use(validateCsrfToken);
 
 /**
@@ -25,7 +29,10 @@ router.use(validateCsrfToken);
  * @desc    Authenticate user and get tokens
  * @access  Public
  */
-router.post('/login', login);
+router.post('/login', (req, res, next) => {
+  console.log('Login request received:', req.body);
+  login(req, res, next);
+});
 
 /**
  * @route   POST /auth/register

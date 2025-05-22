@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 /**
  * User Management Utility
  * 
@@ -11,9 +9,8 @@ import { authService } from '../services/authService';
 import { User, RegisterCredentials } from '../types/auth.types';
 import { ApiHealth, ApiStatus } from '@/lib/api/api-health';
 
-// API endpoints
-const API_VERSION = '/api/v1';
-const USERS_ENDPOINT = `${API_VERSION}/users`;
+// API endpoints - using relative paths without /api/v1 prefix (added by API client)
+const USERS_ENDPOINT = '/users';
 
 // Initialize API health monitoring
 const apiHealth = new ApiHealth(apiClient);

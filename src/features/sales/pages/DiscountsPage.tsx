@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { 
+import {
   Plus,
   Calendar,
   Percent,
@@ -16,24 +16,24 @@ import {
   Activity,
   Settings
 } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 import { DiscountsToolbar } from '../components/toolbars/DiscountsToolbar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
@@ -205,8 +205,8 @@ export function DiscountsPage() {
                       <stop offset="100%" stopColor="hsl(var(--secondary))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis 
-                    dataKey="name" 
+                  <XAxis
+                    dataKey="name"
                     tick={{ fontSize: 10 }}
                     stroke="hsl(var(--muted-foreground))"
                     tickLine={false}
@@ -267,15 +267,15 @@ export function DiscountsPage() {
                       <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis 
-                    dataKey="name" 
+                  <XAxis
+                    dataKey="name"
                     tick={{ fontSize: 10 }}
                     stroke="hsl(var(--muted-foreground))"
                     tickLine={false}
                     axisLine={false}
                   />
-                  <YAxis 
-                    hide 
+                  <YAxis
+                    hide
                     domain={['dataMin - 100', 'dataMax + 100']}
                   />
                   <Area
@@ -320,8 +320,8 @@ export function DiscountsPage() {
             <div className="h-[80px] mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={usageData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-                  <XAxis 
-                    dataKey="name" 
+                  <XAxis
+                    dataKey="name"
                     tick={{ fontSize: 10 }}
                     stroke="hsl(var(--muted-foreground))"
                     tickLine={false}
@@ -432,9 +432,9 @@ export function DiscountsPage() {
                   </TableCell>
                   <TableCell>{discount.usageCount} uses</TableCell>
                   <TableCell>
-                    <Badge 
+                    <Badge
                       variant={
-                        discount.status === 'active' ? 'default' : 
+                        discount.status === 'active' ? 'default' :
                         discount.status === 'scheduled' ? 'secondary' : 'destructive'
                       }
                     >

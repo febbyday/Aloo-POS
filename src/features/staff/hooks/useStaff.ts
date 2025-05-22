@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Staff, CreateStaff, UpdateStaff, Shift, CreateShift, UpdateShift } from '../types/staff.types';
 import { staffService } from '../services/staffService';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 
 interface UseStaffOptions {
   initialPage?: number;
@@ -11,11 +11,11 @@ interface UseStaffOptions {
 
 export function useStaff(options: UseStaffOptions = {}) {
   const { initialPage = 1, initialPageSize = 10, autoLoad = true } = options;
-  
+
   const [items, setItems] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const { toast } = useToast();
+  const toast = useToast();
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -26,11 +26,7 @@ export function useStaff(options: UseStaffOptions = {}) {
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch staff');
       setError(error);
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.error('Error', error.message);
     } finally {
       setLoading(false);
     }
@@ -40,18 +36,11 @@ export function useStaff(options: UseStaffOptions = {}) {
     try {
       const newStaff = await staffService.create(data);
       setItems(current => [...current, newStaff]);
-      toast({
-        title: 'Success',
-        description: 'Staff member created successfully',
-      });
+      toast.success('Success', 'Staff member created successfully');
       return newStaff;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to create staff');
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.error('Error', error.message);
       throw error;
     }
   }, [toast]);
@@ -59,21 +48,14 @@ export function useStaff(options: UseStaffOptions = {}) {
   const update = useCallback(async (id: string, data: UpdateStaff) => {
     try {
       const updatedStaff = await staffService.update(id, data);
-      setItems(current => 
+      setItems(current =>
         current.map(item => item.id === id ? updatedStaff : item)
       );
-      toast({
-        title: 'Success',
-        description: 'Staff member updated successfully',
-      });
+      toast.success('Success', 'Staff member updated successfully');
       return updatedStaff;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to update staff');
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.error('Error', error.message);
       throw error;
     }
   }, [toast]);
@@ -82,17 +64,10 @@ export function useStaff(options: UseStaffOptions = {}) {
     try {
       await staffService.delete(id);
       setItems(current => current.filter(item => item.id !== id));
-      toast({
-        title: 'Success',
-        description: 'Staff member deleted successfully',
-      });
+      toast.success('Success', 'Staff member deleted successfully');
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to delete staff');
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.error('Error', error.message);
       throw error;
     }
   }, [toast]);
@@ -119,7 +94,7 @@ export const useStaffShifts = (staffId: string) => {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const { toast } = useToast();
+  const toast = useToast();
 
   const fetchShifts = useCallback(async () => {
     setLoading(true);
@@ -128,20 +103,12 @@ export const useStaffShifts = (staffId: string) => {
       const data = await staffService.fetchShifts(staffId);
       setShifts(data);
       if (staffService.isUsingMockData()) {
-        toast({
-          title: 'Using Mock Data',
-          description: 'The backend service is not available. Using mock data instead.',
-          variant: 'default',
-        });
+        toast.info('Using Mock Data', 'The backend service is not available. Using mock data instead.');
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to fetch shifts');
       setError(error);
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.error('Error', error.message);
     } finally {
       setLoading(false);
     }
@@ -152,25 +119,14 @@ export const useStaffShifts = (staffId: string) => {
       const newShift = await staffService.createShift(staffId, data);
       setShifts(prev => [...prev, newShift]);
       if (staffService.isUsingMockData()) {
-        toast({
-          title: 'Using Mock Data',
-          description: 'The backend service is not available. Using mock data instead.',
-          variant: 'default',
-        });
+        toast.info('Using Mock Data', 'The backend service is not available. Using mock data instead.');
       }
-      toast({
-        title: 'Success',
-        description: 'Shift started successfully',
-      });
+      toast.success('Success', 'Shift started successfully');
       return newShift;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to create shift');
       setError(error);
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.error('Error', error.message);
       throw error;
     }
   }, [staffId, toast]);
@@ -180,25 +136,14 @@ export const useStaffShifts = (staffId: string) => {
       const updatedShift = await staffService.updateShift(staffId, shiftId, data);
       setShifts(prev => prev.map(shift => shift.id === shiftId ? updatedShift : shift));
       if (staffService.isUsingMockData()) {
-        toast({
-          title: 'Using Mock Data',
-          description: 'The backend service is not available. Using mock data instead.',
-          variant: 'default',
-        });
+        toast.info('Using Mock Data', 'The backend service is not available. Using mock data instead.');
       }
-      toast({
-        title: 'Success',
-        description: 'Shift updated successfully',
-      });
+      toast.success('Success', 'Shift updated successfully');
       return updatedShift;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to update shift');
       setError(error);
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.error('Error', error.message);
       throw error;
     }
   }, [staffId, toast]);
@@ -208,24 +153,13 @@ export const useStaffShifts = (staffId: string) => {
       await staffService.deleteShift(staffId, shiftId);
       setShifts(prev => prev.filter(shift => shift.id !== shiftId));
       if (staffService.isUsingMockData()) {
-        toast({
-          title: 'Using Mock Data',
-          description: 'The backend service is not available. Using mock data instead.',
-          variant: 'default',
-        });
+        toast.info('Using Mock Data', 'The backend service is not available. Using mock data instead.');
       }
-      toast({
-        title: 'Success',
-        description: 'Shift deleted successfully',
-      });
+      toast.success('Success', 'Shift deleted successfully');
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to delete shift');
       setError(error);
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.error('Error', error.message);
       throw error;
     }
   }, [staffId, toast]);
@@ -239,4 +173,4 @@ export const useStaffShifts = (staffId: string) => {
     updateShift,
     deleteShift,
   };
-}; 
+};

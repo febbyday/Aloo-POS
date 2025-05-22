@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { z } from 'zod';
 
 // Product size options schema
@@ -126,7 +124,24 @@ export type VariantOptionCombination = {
 };
 
 // Helper type for variant matrix
-export type VariantMatrix = {
+export interface VariantMatrix {
   combinations: VariantOptionCombination[];
   variants: ProductVariant[];
-};
+}
+
+/**
+ * Product filtering, sorting, and pagination options
+ */
+export interface ProductFilter {
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  searchTerm?: string;
+  isActive?: boolean;
+  tags?: string[];
+}

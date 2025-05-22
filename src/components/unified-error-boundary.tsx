@@ -1,6 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode, useState } from 'react';
 import { ErrorDisplay, ErrorMessage } from '@/components/ui/error-display';
-import { showErrorToast } from '@/utils/errorHandling';
 
 /**
  * Props for the UnifiedErrorBoundary component
@@ -8,22 +7,22 @@ import { showErrorToast } from '@/utils/errorHandling';
 interface ErrorBoundaryProps {
   /** The child components to render */
   children: ReactNode;
-  
+
   /** Optional fallback component to render when an error occurs */
   fallback?: ReactNode | ((error: Error, reset: () => void) => ReactNode);
-  
+
   /** Optional callback for when an error is caught */
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
-  
+
   /** Whether to show a toast notification when an error occurs */
   showToast?: boolean;
-  
+
   /** Title to display in the error message */
   title?: string;
-  
+
   /** Whether to show the error stack trace (only visible in development) */
   showStack?: boolean;
-  
+
   /** Whether to automatically log errors to the console */
   logErrors?: boolean;
 }
@@ -34,32 +33,32 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   /** Whether an error has occurred */
   hasError: boolean;
-  
+
   /** The error that occurred */
   error: Error | null;
 }
 
 /**
  * UnifiedErrorBoundary Component
- * 
+ *
  * A standardized error boundary component that catches JavaScript errors
  * anywhere in its child component tree, logs those errors, and displays
  * a fallback UI instead of the component tree that crashed.
- * 
+ *
  * This component unifies multiple error boundary implementations in the codebase
  * and leverages the new error-display component for consistent error rendering.
- * 
+ *
  * @example
  * <UnifiedErrorBoundary>
  *   <ComponentThatMightError />
  * </UnifiedErrorBoundary>
- * 
+ *
  * @example
- * <UnifiedErrorBoundary 
+ * <UnifiedErrorBoundary
  *   fallback={(error, reset) => (
- *     <CustomErrorComponent 
- *       error={error} 
- *       onReset={reset} 
+ *     <CustomErrorComponent
+ *       error={error}
+ *       onReset={reset}
  *     />
  *   )}
  * >
@@ -83,9 +82,9 @@ class UnifiedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
    * Update state so the next render will show the fallback UI
    */
   public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { 
-      hasError: true, 
-      error 
+    return {
+      hasError: true,
+      error
     };
   }
 
@@ -94,24 +93,45 @@ class UnifiedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
    */
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const { onError, showToast, logErrors } = this.props;
-    
+
     // Log the error to console if logErrors is true
     if (logErrors) {
       console.error('UnifiedErrorBoundary caught an error:', error);
       console.error('Component stack:', errorInfo.componentStack);
     }
-    
+
     // Call the onError callback if provided
     if (onError) {
       onError(error, errorInfo);
     }
-    
+
     // Show toast notification if enabled
     if (showToast) {
-      showErrorToast(error);
+      try {
+        // Use console.error to log the error instead of toast to avoid circular dependencies
+        console.error('Error caught by UnifiedErrorBoundary:', error);
+
+        // We'll use a timeout to defer the toast notification to avoid circular dependencies
+        setTimeout(() => {
+          try {
+            // Dynamically import the toast service to avoid circular dependencies
+            import('@/lib/toast').then(({ ToastService }) => {
+              const errorMessage = error.message || 'An unexpected error occurred';
+              ToastService.error(this.props.title || 'Something went wrong', errorMessage);
+            }).catch(importError => {
+              console.error('Failed to import toast service:', importError);
+            });
+          } catch (toastError) {
+            console.error('Error showing toast:', toastError);
+          }
+        }, 0);
+      } catch (logError) {
+        // If there's an error logging the error, just ignore it
+        console.error('Error logging error:', logError);
+      }
     }
   }
-  
+
   /**
    * Reset the error state to recover from the error
    */
@@ -122,18 +142,18 @@ class UnifiedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   public render() {
     const { hasError, error } = this.state;
     const { children, fallback, title, showStack } = this.props;
-    
+
     if (hasError && error) {
       // If a custom fallback is provided as a function, call it with the error and reset handler
       if (typeof fallback === 'function') {
         return fallback(error, this.handleReset);
       }
-      
+
       // If a custom fallback is provided as a component, render it
       if (fallback) {
         return fallback;
       }
-      
+
       // Otherwise, render the default error display
       return (
         <ErrorMessage
@@ -152,11 +172,9 @@ class UnifiedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
 /**
  * Functional component wrapper for the UnifiedErrorBoundary class component
- * 
+ *
  * This provides a more modern API for using error boundaries with hooks and function components.
  */
-export const ErrorBoundary = (props: ErrorBoundaryProps) => {
-  return <UnifiedErrorBoundary {...props} />;
-};
+export const ErrorBoundary = UnifiedErrorBoundary;
 
-export default UnifiedErrorBoundary; 
+export default UnifiedErrorBoundary;

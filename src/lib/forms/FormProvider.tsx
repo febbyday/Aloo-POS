@@ -9,7 +9,7 @@
 
 import React, { useId } from 'react';
 import { FormProvider as RHFFormProvider, FieldValues } from 'react-hook-form';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import { UseZodFormReturn } from './useZodForm';

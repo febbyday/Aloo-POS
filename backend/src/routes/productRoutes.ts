@@ -81,6 +81,20 @@ router.put('/:id/stock', productController.updateStock.bind(productController));
 router.put('/:id/stock/locations', productController.adjustStockAcrossLocations.bind(productController));
 
 /**
+ * @route   GET /api/products/attributes
+ * @desc    Get all product attributes
+ * @access  Public
+ */
+router.get('/attributes', productController.getProductAttributes.bind(productController));
+
+/**
+ * @route   POST /api/products/attributes
+ * @desc    Save product attributes
+ * @access  Private
+ */
+router.post('/attributes', productController.saveProductAttributes.bind(productController));
+
+/**
  * @route   GET /api/products/:id
  * @desc    Get a product by ID
  * @access  Public
@@ -88,4 +102,4 @@ router.put('/:id/stock/locations', productController.adjustStockAcrossLocations.
  */
 router.get('/:id', productController.getProductById.bind(productController));
 
-export default router; 
+export default router;

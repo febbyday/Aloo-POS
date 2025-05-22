@@ -7,10 +7,10 @@ import { RefreshCw } from 'lucide-react';
 
 /**
  * StandardDataFetchingExample
- * 
+ *
  * This component demonstrates the standard pattern for data fetching
  * using the useDataOperation hook and LoadingState components.
- * 
+ *
  * It serves as a reference implementation for the patterns described
  * in the component-patterns.md documentation.
  */
@@ -22,35 +22,34 @@ interface User {
 }
 
 // This would normally be in a service file
-const mockApiService = {
+const apiService = {
   getUsers: async (): Promise<User[]> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Randomly fail to demonstrate error handling
-    if (Math.random() < 0.3) {
+    try {
+      // In a real implementation, this would call an API endpoint
+      const response = await fetch('/api/users');
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch users: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching users:', error);
       throw new Error('Failed to fetch users. Server error.');
     }
-    
-    // Return mock data
-    return [
-      { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Admin' },
-      { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'Editor' },
-      { id: 3, name: 'Bob Johnson', email: 'bob@example.com', role: 'Viewer' },
-    ];
   }
 };
 
 export function StandardDataFetchingExample() {
   // Set up data fetching with useDataOperation
-  const { 
-    execute: fetchUsers, 
-    loading, 
-    error, 
+  const {
+    execute: fetchUsers,
+    loading,
+    error,
     data: users,
     reset
   } = useDataOperation({
-    operation: mockApiService.getUsers,
+    operation: apiService.getUsers,
     // Configure toast notifications
     showSuccessToast: true,
     successTitle: 'Users Loaded',
@@ -79,21 +78,21 @@ export function StandardDataFetchingExample() {
           Example of standardized data fetching pattern
         </CardDescription>
       </CardHeader>
-      
+
       <CardContent>
         {/* Use DataState to handle loading, error, and data states */}
-        <DataState 
-          loading={loading} 
+        <DataState
+          loading={loading}
           error={error}
           text="Loading users..."
           errorComponent={
             <div className="p-4 border border-red-200 rounded bg-red-50 dark:bg-red-900/20 dark:border-red-800">
               <h3 className="text-red-800 dark:text-red-400 font-medium">Error Loading Users</h3>
               <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error?.message}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-2" 
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
                 onClick={handleRetry}
               >
                 <RefreshCw className="h-3 w-3 mr-2" /> Retry
@@ -104,8 +103,8 @@ export function StandardDataFetchingExample() {
           {users ? (
             <div className="space-y-3">
               {users.map(user => (
-                <div 
-                  key={user.id} 
+                <div
+                  key={user.id}
                   className="p-3 border rounded shadow-sm flex justify-between items-center"
                 >
                   <div>
@@ -131,14 +130,14 @@ export function StandardDataFetchingExample() {
           )}
         </DataState>
       </CardContent>
-      
+
       <CardFooter className="flex justify-between">
         <p className="text-xs text-muted-foreground">
           Last updated: {new Date().toLocaleTimeString()}
         </p>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => fetchUsers()}
           disabled={loading}
         >
@@ -148,4 +147,4 @@ export function StandardDataFetchingExample() {
       </CardFooter>
     </Card>
   );
-} 
+}

@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { useState } from "react"
 import {
   Card,
@@ -18,35 +16,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { 
-  SupplierTable, 
-  SupplierTableHeader, 
-  SupplierTableBody, 
-  SupplierTableRow, 
-  SupplierTableHead, 
+import {
+  SupplierTable,
+  SupplierTableHeader,
+  SupplierTableBody,
+  SupplierTableRow,
+  SupplierTableHead,
   SupplierTableCell,
-  SupplierTableFooter 
+  SupplierTableFooter
 } from "@/components/ui/table/SupplierTable"
-import { 
-  Eye, 
-  Filter, 
-  Plus, 
-  Search, 
-  RefreshCw, 
-  FileDown, 
-  Upload, 
-  FileText, 
-  Pencil, 
-  ShoppingCart, 
-  Calendar, 
-  Building2, 
-  Package, 
-  DollarSign, 
-  CheckCircle, 
-  Clock, 
-  XCircle, 
-  ChevronUp, 
-  ChevronDown, 
+import {
+  Eye,
+  Filter,
+  Plus,
+  Search,
+  RefreshCw,
+  FileDown,
+  Upload,
+  FileText,
+  Pencil,
+  ShoppingCart,
+  Calendar,
+  Building2,
+  Package,
+  DollarSign,
+  CheckCircle,
+  Clock,
+  XCircle,
+  ChevronUp,
+  ChevronDown,
   ChevronsUpDown,
   MoreHorizontal,
   Trash2
@@ -54,13 +52,13 @@ import {
 import { CreateOrderModal } from '../components/CreateOrderModal'
 import { ViewOrderModal } from '../components/ViewOrderModal'
 import { EditOrderModal } from '../components/EditOrderModal'
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/lib/toast"
 import { Toolbar, ToolbarButton, ToolbarGroup } from "@/components/ui/toolbar"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { format } from 'date-fns'
-import { 
+import {
   Table,
   TableHeader,
   TableBody,
@@ -116,39 +114,39 @@ const companyDetails = {
 
 // Add columns definition
 const columns = [
-  { 
-    id: 'orderNumber', 
+  {
+    id: 'orderNumber',
     label: 'Order #',
     icon: ShoppingCart,
     width: 'w-[180px]'
   },
-  { 
-    id: 'supplier', 
+  {
+    id: 'supplier',
     label: 'Supplier',
     icon: Building2,
     width: 'w-[250px]'
   },
-  { 
-    id: 'date', 
+  {
+    id: 'date',
     label: 'Date',
     icon: Calendar,
     width: 'w-[150px]'
   },
-  { 
-    id: 'items', 
+  {
+    id: 'items',
     label: 'Items',
     icon: Package,
     width: 'w-[120px]'
   },
-  { 
-    id: 'total', 
+  {
+    id: 'total',
     label: 'Total',
     icon: DollarSign,
     width: 'w-[150px]',
     align: 'text-right'
   },
-  { 
-    id: 'status', 
+  {
+    id: 'status',
     label: 'Status',
     icon: CheckCircle,
     width: 'w-[150px]'
@@ -156,7 +154,7 @@ const columns = [
 ]
 
 export function SupplierOrders() {
-  const { toast } = useToast()
+  const toast = useToast()
   const [orders, setOrders] = useState(mockOrders)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -170,12 +168,12 @@ export function SupplierOrders() {
   const [itemsPerPage] = useState(10)
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
+    const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.supplier.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     const matchesStatus = statusFilter === "all" || order.status.toLowerCase() === statusFilter.toLowerCase()
-    
+
     return matchesSearch && matchesStatus
   })
 
@@ -192,18 +190,18 @@ export function SupplierOrders() {
     console.log('Creating order:', data)
     // Add your order creation logic here
     setOrderModalOpen(false)
-    toast({
-      title: "Success",
-      description: "Order created successfully"
-    })
+    toast.success(
+      "Success",
+      "Order created successfully"
+    )
   }
 
   const handleRefresh = () => {
     // Add refresh logic here
-    toast({
-      title: "Refreshed",
-      description: "Orders list has been refreshed"
-    })
+    toast.info(
+      "Refreshed",
+      "Orders list has been refreshed"
+    )
   }
 
   const handleExport = () => {
@@ -215,7 +213,7 @@ export function SupplierOrders() {
     // Add company header
     doc.setFontSize(20)
     doc.text(companyDetails.name, pageWidth / 2, 20, { align: 'center' })
-    
+
     doc.setFontSize(10)
     doc.text([
       companyDetails.address,
@@ -228,7 +226,7 @@ export function SupplierOrders() {
     // Add report title
     doc.setFontSize(16)
     doc.text('Supplier Orders Report', pageWidth / 2, 60, { align: 'center' })
-    
+
     // Add date
     doc.setFontSize(10)
     doc.text(`Generated on: ${format(new Date(), 'PPP')}`, pageWidth / 2, 70, { align: 'center' })
@@ -270,7 +268,7 @@ export function SupplierOrders() {
     // Add summary
     const totalAmount = paginatedOrders.reduce((sum, order) => sum + order.total, 0)
     const totalItems = paginatedOrders.reduce((sum, order) => sum + order.items, 0)
-    
+
     const finalY = (doc as any).lastAutoTable.finalY || 90
     doc.setFontSize(10)
     doc.text([
@@ -291,18 +289,18 @@ export function SupplierOrders() {
     // Save the PDF
     doc.save(`supplier_orders_${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 
-    toast({
-      title: "Exported",
-      description: "Orders have been exported to PDF"
-    })
+    toast.success(
+      "Exported",
+      "Orders have been exported to PDF"
+    )
   }
 
   const handleImport = () => {
     // Add import logic here
-    toast({
-      title: "Import",
-      description: "Import functionality coming soon"
-    })
+    toast.info(
+      "Import",
+      "Import functionality coming soon"
+    )
   }
 
   const handleViewOrder = (order: typeof mockOrders[0]) => {
@@ -317,14 +315,14 @@ export function SupplierOrders() {
 
   const handleEditSubmit = (data: any) => {
     // Update the order in the orders list
-    setOrders(orders.map(order => 
+    setOrders(orders.map(order =>
       order.id === data.id ? { ...order, ...data } : order
     ))
     setEditModalOpen(false)
-    toast({
-      title: "Success",
-      description: "Order updated successfully"
-    })
+    toast.success(
+      "Success",
+      "Order updated successfully"
+    )
   }
 
   const handleRowClick = (orderId: string, event: React.MouseEvent) => {
@@ -359,14 +357,14 @@ export function SupplierOrders() {
 
   const handleDeleteOrder = () => {
     if (selectedItems.length === 0) return
-    
+
     // Add your delete logic here
     setOrders(orders.filter(order => !selectedItems.includes(order.id)))
     setSelectedItems([])
-    toast({
-      title: "Success",
-      description: "Selected orders have been deleted"
-    })
+    toast.success(
+      "Success",
+      "Selected orders have been deleted"
+    )
   }
 
   const toolbarGroups = [
@@ -435,7 +433,7 @@ export function SupplierOrders() {
   return (
     <div className="space-y-6">
       <Toolbar groups={toolbarGroups} />
-      
+
       <Card className="border-0">
         <CardHeader className="p-0">
           <div className="flex items-center justify-between pb-6">
@@ -518,7 +516,7 @@ export function SupplierOrders() {
             </TableHeader>
             <TableBody>
               {paginatedOrders.map((order) => (
-                <TableRow 
+                <TableRow
                   key={order.id}
                   className={cn(
                     "transition-colors hover:bg-muted/50 cursor-pointer",
@@ -573,10 +571,10 @@ export function SupplierOrders() {
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <Badge 
+                    <Badge
                       variant={
-                        order.status === 'Delivered' ? 'default' : 
-                        order.status === 'Processing' ? 'secondary' : 
+                        order.status === 'Delivered' ? 'default' :
+                        order.status === 'Processing' ? 'secondary' :
                         'outline'
                       }
                     >
@@ -587,7 +585,7 @@ export function SupplierOrders() {
               ))}
             </TableBody>
           </Table>
-          
+
           {/* Pagination Controls */}
           <div className="flex items-center justify-between px-4 py-4">
             <div className="text-sm text-muted-foreground">
@@ -648,4 +646,4 @@ export function SupplierOrders() {
       />
     </div>
   )
-} 
+}

@@ -4,7 +4,7 @@ import { StockAlerts } from '../components/StockAlerts'
 import { useState } from 'react'
 import { InventoryToolbar } from '../components/InventoryToolbar'
 import { AlertSettingsDialog } from '../components/AlertSettingsDialog'
-import { 
+import {
   Bell,
   FileDown,
   FileText,
@@ -19,9 +19,9 @@ import {
   Table as TableIcon,
   FileSpreadsheet
 } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 import { useCompany } from '@/features/store/context/CompanyContext'
-import { 
+import {
   printAlerts,
   exportToPdf,
   exportToExcel,
@@ -326,19 +326,19 @@ export function AlertsPage() {
 
   return (
     <div className="space-y-4">
-      <InventoryToolbar 
-        groups={toolbarGroups} 
+      <InventoryToolbar
+        groups={toolbarGroups}
         rightContent={<StockAlerts />}
       />
-      
+
       <div className="w-full">
-        <DataTable 
-          columns={columns} 
+        <DataTable
+          columns={columns}
           data={alertData}
           className="w-full [&_table]:border-0 [&_table]:rounded-none [&_thead]:bg-zinc-900/90 [&_tr]:border-0 [&_tr]:border-b [&_tr]:border-zinc-800 [&_td]:px-2 [&_td]:text-zinc-100 [&_th]:px-2 [&_th]:text-zinc-100 [&_tr]:h-[50px] hover:bg-white/5"
         />
       </div>
-      <AlertSettingsDialog 
+      <AlertSettingsDialog
         open={alertSettingsOpen}
         onOpenChange={setAlertSettingsOpen}
       />

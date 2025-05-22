@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import {
   Download,
   FileText,
@@ -36,10 +36,11 @@ import {
   Wallet,
   Calendar,
   Loader2,
+  ChevronRight,
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCustomerReports, ReportDateRange } from "../hooks/useCustomerReports"
-import { useParams } from "react-router-dom"
+import { useParams, Link } from "react-router-dom"
 
 const reportTypes = [
   {
@@ -422,26 +423,26 @@ export function CustomerReportsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Breadcrumb navigation */}
+      <div className="flex items-center text-sm text-muted-foreground">
+        <Link to="/customers" className="hover:text-foreground transition-colors">
+          Customers
+        </Link>
+        <ChevronRight className="h-4 w-4 mx-1" />
+        <span className="font-medium text-foreground">Reports</span>
+      </div>
+
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Customer Reports</h1>
-          <p className="text-muted-foreground">
-            Analyze customer behavior and loyalty metrics
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
+        <h2 className="text-3xl font-bold tracking-tight">Customer Reports</h2>
+        <div className="flex gap-2">
           <Button variant="outline" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh Data
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
           </Button>
           <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
-          <Button variant="outline">
-            <FileText className="h-4 w-4 mr-2" />
-            Schedule Report
+            <Download className="mr-2 h-4 w-4" />
+            Export
           </Button>
         </div>
       </div>

@@ -1,7 +1,5 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { useState } from 'react';
-import { 
+import {
   Search,
   RefreshCw,
   Filter,
@@ -15,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -31,7 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -198,23 +196,23 @@ export function InventoryCountPage() {
           <h1 className="text-2xl font-bold">Inventory Count</h1>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleRefresh}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={handleExport}
           >
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button 
+          <Button
             size="sm"
             onClick={handleCompleteSession}
             disabled={activeSession.status === 'completed'}
@@ -326,4 +324,4 @@ export function InventoryCountPage() {
       </div>
     </div>
   );
-} 
+}

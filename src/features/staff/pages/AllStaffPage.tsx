@@ -5,7 +5,7 @@ import { Search, Plus, Download, Upload, Pencil, Trash2, Eye, UserCheck, UserX }
 import { Input } from "@/components/ui/input"
 import { StaffTable } from "../components/StaffTable"
 import { Staff, CreateStaff } from "../types/staff.types"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/lib/toast"
 import { StaffModal } from "../components/StaffModal"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { staffService } from "../services/staffService"
@@ -27,7 +27,7 @@ export function AllStaffPage() {
   const navigate = useNavigate()
   const { roles, isLoading: isLoadingRoles } = useRoles()
   const { data: employmentTypes } = useEmploymentTypes()
-  
+
   // Fetch staff data on component mount
   useEffect(() => {
     const fetchStaffData = async () => {
@@ -61,10 +61,10 @@ export function AllStaffPage() {
         email: newStaff.email,
         phone: newStaff.phone,
         roleId: roles.find(r => r.name === newStaff.role)?.id || '1', // Find roleId from role name
-        status: newStaff.status === 'active' ? 'ACTIVE' : 
+        status: newStaff.status === 'active' ? 'ACTIVE' :
                 newStaff.status === 'inactive' ? 'INACTIVE' : 'ON_LEAVE',
         employmentStatusId: '1', // Default value, should be updated based on UI selection
-        
+
         // Find employmentTypeId by matching against formatted name (converted to kebab case)
         // This matches how we're storing the employment type value in the form
         employmentTypeId: (() => {
@@ -73,11 +73,11 @@ export function AllStaffPage() {
           const matchingType = employmentTypes?.find(
             (type) => type.name.toLowerCase().replace(/\s+/g, '-') === selectedTypeName
           );
-          
+
           return matchingType?.id || '1'; // Return ID if found, otherwise default
         })(),
       }
-      
+
       const createdStaff = await staffService.create(staffData)
       setStaffData(prevStaffData => [...prevStaffData, createdStaff])
       toast({
@@ -98,7 +98,7 @@ export function AllStaffPage() {
   const handleEditStaff = async (updatedStaff: Staff) => {
     try {
       const result = await staffService.update(updatedStaff.id, updatedStaff)
-      setStaffData(staffData.map(staff => 
+      setStaffData(staffData.map(staff =>
         staff.id === result.id ? result : staff
       ))
       toast({
@@ -234,15 +234,15 @@ export function AllStaffPage() {
             Using Mock Data (Backend Setup In Progress)
           </AlertTitle>
           <AlertDescription className="text-amber-700">
-            The system is currently using mock data while the backend is being set up. 
+            The system is currently using mock data while the backend is being set up.
             Changes you make will be temporarily stored in memory. Follow the setup instructions in
-            <code className="mx-1 p-1 bg-amber-100 rounded">BACKEND_STARTUP.md</code> 
+            <code className="mx-1 p-1 bg-amber-100 rounded">BACKEND_STARTUP.md</code>
             to connect to the database for persistent storage.
           </AlertDescription>
         </Alert>
       )}
 
-      <StaffToolbar 
+      <StaffToolbar
         groups={toolbarGroups}
         rightContent={
           <div className="relative flex-grow">
@@ -256,7 +256,7 @@ export function AllStaffPage() {
           </div>
         }
       />
-      
+
       {isLoading ? (
         <div className="flex justify-center py-8">
           <p className="text-muted-foreground">Loading staff data...</p>
@@ -267,7 +267,7 @@ export function AllStaffPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : (
-        <StaffTable 
+        <StaffTable
           data={staffData}
           searchQuery={searchQuery}
           onEdit={handleEditStaff}
@@ -289,7 +289,7 @@ export function AllStaffPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this staff member?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete {staffToDelete?.firstName} {staffToDelete?.lastName}'s 
+              This action cannot be undone. This will permanently delete {staffToDelete?.firstName} {staffToDelete?.lastName}'s
               record and remove their data from the system.
             </AlertDialogDescription>
           </AlertDialogHeader>

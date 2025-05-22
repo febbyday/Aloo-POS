@@ -1,112 +1,78 @@
-import prisma from '../lib/prisma';
+import prisma from '../prisma';
 import { Product, Prisma } from '@prisma/client';
+import { OptimizedRepository } from './base/OptimizedRepository';
+import { logger } from '../utils/logger';
 
 /**
  * Repository for Product entity
- * Handles database operations for products
+ * Handles database operations for products with optimization and caching
  */
-export class ProductRepository {
-  /**
-   * Find all products with optional filtering and pagination
-   */
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    where?: Prisma.ProductWhereInput;
-    orderBy?: Prisma.ProductOrderByWithRelationInput;
-    include?: Prisma.ProductInclude;
-  }): Promise<Product[]> {
-    const { skip, take, where, orderBy, include } = params;
-    return prisma.product.findMany({
-      skip,
-      take,
-      where,
-      orderBy,
-      include,
-    });
+export class ProductRepository extends OptimizedRepository<
+  Product,
+  Prisma.ProductWhereInput,
+  Prisma.ProductOrderByWithRelationInput,
+  Prisma.ProductInclude
+> {
+  constructor() {
+    super(prisma, 'product');
   }
 
   /**
-   * Find a product by ID
-   */
-  async findById(
-    id: string,
-    include?: Prisma.ProductInclude
-  ): Promise<Product | null> {
-    return prisma.product.findUnique({
-      where: { id },
-      include,
-    });
-  }
-
-  /**
-   * Find a product by SKU
+   * Find a product by SKU with caching
    */
   async findBySku(
     sku: string,
-    include?: Prisma.ProductInclude
+    include?: Prisma.ProductInclude,
+    options: { cacheable?: boolean; cacheTTL?: number } = {}
   ): Promise<Product | null> {
-    return prisma.product.findUnique({
-      where: { sku },
-      include,
-    });
+    const { cacheable = true, cacheTTL } = options;
+
+    try {
+      return await executeQuery<Product | null>(
+        this.modelName,
+        'findUnique:sku',
+        () => (this.prisma[this.modelName] as any).findUnique({
+          where: { sku },
+          include,
+        }),
+        { sku, include },
+        { cache: cacheable, ttl: cacheTTL }
+      );
+    } catch (error) {
+      logger.error(`Error finding product by SKU: ${sku}`, error);
+      throw handleDatabaseError(error, 'findBySku', this.modelName);
+    }
   }
 
   /**
-   * Find a product by barcode
+   * Find a product by barcode with caching
    */
   async findByBarcode(
     barcode: string,
-    include?: Prisma.ProductInclude
+    include?: Prisma.ProductInclude,
+    options: { cacheable?: boolean; cacheTTL?: number } = {}
   ): Promise<Product | null> {
-    return prisma.product.findUnique({
-      where: { barcode },
-      include,
-    });
+    const { cacheable = true, cacheTTL } = options;
+
+    try {
+      return await executeQuery<Product | null>(
+        this.modelName,
+        'findUnique:barcode',
+        () => (this.prisma[this.modelName] as any).findUnique({
+          where: { barcode },
+          include,
+        }),
+        { barcode, include },
+        { cache: cacheable, ttl: cacheTTL }
+      );
+    } catch (error) {
+      logger.error(`Error finding product by barcode: ${barcode}`, error);
+      throw handleDatabaseError(error, 'findByBarcode', this.modelName);
+    }
   }
 
   /**
-   * Create a new product
-   */
-  async create(data: Prisma.ProductCreateInput): Promise<Product> {
-    return prisma.product.create({
-      data,
-    });
-  }
-
-  /**
-   * Update an existing product
-   */
-  async update(
-    id: string,
-    data: Prisma.ProductUpdateInput
-  ): Promise<Product> {
-    return prisma.product.update({
-      where: { id },
-      data,
-    });
-  }
-
-  /**
-   * Delete a product
-   */
-  async delete(id: string): Promise<Product> {
-    return prisma.product.delete({
-      where: { id },
-    });
-  }
-
-  /**
-   * Count products with optional filter
-   */
-  async count(where?: Prisma.ProductWhereInput): Promise<number> {
-    return prisma.product.count({
-      where,
-    });
-  }
-
-  /**
-   * Find products by category ID with pagination
+   * Find products by category ID with pagination and caching
    */
   async findByCategory(
     categoryId: string,
@@ -114,21 +80,41 @@ export class ProductRepository {
       skip?: number;
       take?: number;
       include?: Prisma.ProductInclude;
-    }
+      cacheable?: boolean;
+      cacheTTL?: number;
+    } = {}
   ): Promise<Product[]> {
-    const { skip, take, include } = params;
-    return prisma.product.findMany({
-      where: {
-        categoryId,
-      },
+    const {
       skip,
       take,
       include,
-    });
+      cacheable = true,
+      cacheTTL
+    } = params;
+
+    try {
+      return await executeQuery<Product[]>(
+        this.modelName,
+        'findMany:category',
+        () => (this.prisma[this.modelName] as any).findMany({
+          where: {
+            categoryId,
+          },
+          skip,
+          take,
+          include,
+        }),
+        { categoryId, skip, take, include },
+        { cache: cacheable, ttl: cacheTTL }
+      );
+    } catch (error) {
+      logger.error(`Error finding products by category: ${categoryId}`, error);
+      throw handleDatabaseError(error, 'findByCategory', this.modelName);
+    }
   }
 
   /**
-   * Find products by supplier ID with pagination
+   * Find products by supplier ID with pagination and caching
    */
   async findBySupplier(
     supplierId: string,
@@ -136,17 +122,37 @@ export class ProductRepository {
       skip?: number;
       take?: number;
       include?: Prisma.ProductInclude;
-    }
+      cacheable?: boolean;
+      cacheTTL?: number;
+    } = {}
   ): Promise<Product[]> {
-    const { skip, take, include } = params;
-    return prisma.product.findMany({
-      where: {
-        supplierId,
-      },
+    const {
       skip,
       take,
       include,
-    });
+      cacheable = true,
+      cacheTTL
+    } = params;
+
+    try {
+      return await executeQuery<Product[]>(
+        this.modelName,
+        'findMany:supplier',
+        () => (this.prisma[this.modelName] as any).findMany({
+          where: {
+            supplierId,
+          },
+          skip,
+          take,
+          include,
+        }),
+        { supplierId, skip, take, include },
+        { cache: cacheable, ttl: cacheTTL }
+      );
+    } catch (error) {
+      logger.error(`Error finding products by supplier: ${supplierId}`, error);
+      throw handleDatabaseError(error, 'findBySupplier', this.modelName);
+    }
   }
 
   /**
@@ -177,12 +183,78 @@ export class ProductRepository {
       };
     }
 
-    return prisma.product.update({
-      where: { id },
-      data: updateData,
-    });
+    try {
+      const result = await executeQuery<Product>(
+        this.modelName,
+        'updateStock',
+        () => (this.prisma[this.modelName] as any).update({
+          where: { id },
+          data: updateData,
+        }),
+        { id, quantity, operation },
+        { cache: false }
+      );
+
+      // Invalidate cache for this entity
+      this.invalidateCache();
+
+      return result;
+    } catch (error) {
+      logger.error(`Error updating stock for product: ${id}`, error);
+      throw handleDatabaseError(error, 'updateStock', this.modelName);
+    }
+  }
+
+  /**
+   * Find products with low stock
+   */
+  async findLowStock(
+    params: {
+      skip?: number;
+      take?: number;
+      include?: Prisma.ProductInclude;
+      cacheable?: boolean;
+      cacheTTL?: number;
+    } = {}
+  ): Promise<Product[]> {
+    const {
+      skip,
+      take,
+      include,
+      cacheable = true,
+      cacheTTL = 5 * 60 * 1000 // 5 minutes
+    } = params;
+
+    try {
+      return await executeQuery<Product[]>(
+        this.modelName,
+        'findMany:lowStock',
+        () => (this.prisma[this.modelName] as any).findMany({
+          where: {
+            stock: {
+              lte: Prisma.raw('`reorderPoint`'),
+            },
+          },
+          skip,
+          take,
+          include,
+          orderBy: {
+            stock: 'asc',
+          },
+        }),
+        { skip, take, include },
+        { cache: cacheable, ttl: cacheTTL }
+      );
+    } catch (error) {
+      logger.error('Error finding products with low stock', error);
+      throw handleDatabaseError(error, 'findLowStock', this.modelName);
+    }
   }
 }
 
+// Import missing dependencies
+import { executeQuery } from '../utils/query-optimizer';
+import { handleDatabaseError } from '../utils/databaseErrorHandler';
+
 // Export singleton instance
-export const productRepository = new ProductRepository(); 
+export const productRepository = new ProductRepository();

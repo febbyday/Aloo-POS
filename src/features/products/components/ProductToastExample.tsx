@@ -1,9 +1,7 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/lib/toast';
 import { Coffee, IceCream, AlertTriangle, Check } from 'lucide-react';
 import { safeStringify } from '@/utils/errorHandling';
 import { ErrorBoundary } from '@/components/unified-error-boundary';
@@ -57,24 +55,19 @@ export const ProductToastExample: React.FC = () => {
       { id: 'opt3', name: 'Caramel Drizzle', price: 0.75 }
     ]
   };
-  
+
   // This will trigger the error (but our enhanced toast will handle it safely)
   const triggerErrorToast = () => {
-    toast({
+    toast.error({
       title: "Something went wrong",
       // This would normally cause an error, but our enhanced toast will handle it
-      description: exampleProduct,
-      variant: "destructive"
+      description: exampleProduct
     });
   };
 
   // The correct way to show a product in a toast
   const showCorrectProductToast = () => {
-    toast({
-      title: "Product Added",
-      description: `Added ${exampleProduct.name} ($${exampleProduct.price.toFixed(2)}) to cart`,
-      variant: "default"
-    });
+    toast.success("Product Added", `Added ${exampleProduct.name} ($${exampleProduct.price.toFixed(2)}) to cart`);
   };
 
   // Correct way to show product with selected options
@@ -82,12 +75,12 @@ export const ProductToastExample: React.FC = () => {
     const selectedSize = 'Medium';
     const selectedIceOption = 'Less Ice';
     const selectedAddons = [exampleProduct.options?.[0]];
-    
+
     const sizePrice = exampleProduct.sizePrices?.[selectedSize] || exampleProduct.price;
     const addonPrice = selectedAddons.reduce((total, addon) => total + (addon?.price || 0), 0);
     const totalPrice = sizePrice + addonPrice;
-    
-    toast({
+
+    toast.success({
       title: "Customized Product Added",
       description: (
         <div className="space-y-1">
@@ -99,8 +92,7 @@ export const ProductToastExample: React.FC = () => {
             </p>
           )}
         </div>
-      ),
-      variant: "default"
+      )
     });
   };
 
@@ -113,7 +105,7 @@ export const ProductToastExample: React.FC = () => {
             Toast Notification Examples
           </CardTitle>
         </CardHeader>
-        
+
         <CardContent className="space-y-4">
           <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-md text-amber-800 dark:text-amber-300 text-sm">
             <div className="flex items-start">
@@ -121,51 +113,51 @@ export const ProductToastExample: React.FC = () => {
               <div>
                 <p className="font-medium">Error Example:</p>
                 <code className="text-xs bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
-                  {'toast({ description: product })'}
+                  {'toast.error({ description: product })'}
                 </code>
                 <p className="mt-1 text-xs">Error: "Objects are not valid as a React child"</p>
               </div>
             </div>
           </div>
-          
+
           <div className="p-3 bg-green-50 dark:bg-green-950 rounded-md text-green-800 dark:text-green-300 text-sm">
             <div className="flex items-start">
               <Check className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-medium">Correct Usage:</p>
                 <code className="text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">
-                  {'toast({ description: `Added ${product.name} ($${product.price})` })'}
+                  {'toast.success("Product Added", `Added ${product.name} ($${product.price})`)}'}
                 </code>
               </div>
             </div>
           </div>
-          
+
           <div className="p-3 bg-green-50 dark:bg-green-950 rounded-md text-green-800 dark:text-green-300 text-sm">
             <div className="flex items-start">
               <Check className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-medium">Advanced Usage (JSX in toast):</p>
                 <code className="text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded whitespace-pre-wrap">
-                  {'toast({\n  description: (\n    <div>\n      <p><strong>{product.name}</strong></p>\n      <p className="text-xs">Size: {size} | Ice: {iceOption}</p>\n    </div>\n  )\n})'}
+                  {'toast.success({\n  title: "Product Added",\n  description: (\n    <div>\n      <p><strong>{product.name}</strong></p>\n      <p className="text-xs">Size: {size} | Ice: {iceOption}</p>\n    </div>\n  )\n})'}
                 </code>
               </div>
             </div>
           </div>
         </CardContent>
-        
+
         <CardFooter className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3 w-full">
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={triggerErrorToast}
               className="w-full"
             >
               <AlertTriangle className="h-4 w-4 mr-2" />
               Show Error Toast
             </Button>
-            
-            <Button 
-              variant="default" 
+
+            <Button
+              variant="default"
               onClick={showCorrectProductToast}
               className="w-full"
             >
@@ -173,9 +165,9 @@ export const ProductToastExample: React.FC = () => {
               Show Correct Toast
             </Button>
           </div>
-          
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="outline"
             onClick={showProductWithOptionsToast}
             className="w-full"
           >

@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { 
-  Plus, 
-  RefreshCw, 
-  Trash2, 
-  Pencil, 
+import {
+  Plus,
+  RefreshCw,
+  Trash2,
+  Pencil,
   Users,
   Download,
   Upload,
@@ -21,25 +21,25 @@ import {
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog'
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils';
 import {
   Card,
   CardContent,
@@ -88,15 +88,15 @@ function ActionMenu({ group, onEdit, onDelete }: ActionMenuProps) {
   );
 }
 
-function GroupCard({ 
-  group, 
-  selected, 
-  onSelect, 
-  onEdit, 
-  onDelete 
-}: { 
-  group: CustomerGroup; 
-  selected: boolean; 
+function GroupCard({
+  group,
+  selected,
+  onSelect,
+  onEdit,
+  onDelete
+}: {
+  group: CustomerGroup;
+  selected: boolean;
   onSelect: (checked: boolean) => void;
   onEdit: (group: CustomerGroup) => void;
   onDelete: (groupId: string) => void;
@@ -108,7 +108,7 @@ function GroupCard({
     if (group.discountRate >= 5) return "bg-amber-500";
     return "bg-gray-500";
   };
-  
+
   return (
     <Card className={cn(
       "transition-all hover:shadow-md overflow-hidden relative",
@@ -116,11 +116,11 @@ function GroupCard({
     )}>
       {/* Colored accent based on discount */}
       <div className={cn("absolute left-0 top-0 bottom-0 w-1", getDiscountColor())} />
-      
+
       <CardHeader className="pb-2 pt-4">
         <div className="flex justify-between items-start gap-4">
           <div className="flex items-start gap-3">
-            <Checkbox 
+            <Checkbox
               checked={selected}
               onCheckedChange={onSelect}
               aria-label={`Select ${group.name}`}
@@ -141,7 +141,7 @@ function GroupCard({
           />
         </div>
       </CardHeader>
-      
+
       <CardContent className="pb-4">
         <div className="border-t border-border pt-3 mt-1">
           {/* Discount rate visualization */}
@@ -154,13 +154,13 @@ function GroupCard({
               <span className="text-sm font-semibold">{group.discountRate}%</span>
             </div>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div 
-                className={cn("h-full rounded-full", getDiscountColor())} 
+              <div
+                className={cn("h-full rounded-full", getDiscountColor())}
                 style={{ width: `${Math.min(100, group.discountRate * 5)}%` }}
               />
             </div>
           </div>
-          
+
           {/* Member count and created date in a grid */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-muted/50 rounded-lg p-2.5">
@@ -170,7 +170,7 @@ function GroupCard({
               </div>
               <span className="text-lg font-medium">{group.memberCount}</span>
             </div>
-            
+
             <div className="bg-muted/50 rounded-lg p-2.5">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                 <Calendar className="h-3.5 w-3.5" />
@@ -214,14 +214,14 @@ export function CustomerGroupsPage() {
       createdAt: new Date(2023, 8, 10)
     }
   ])
-  
+
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<CustomerGroup | null>(null)
   const { toast } = useToast()
 
-  const filteredGroups = groups.filter(group => 
+  const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     group.description.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -292,9 +292,9 @@ export function CustomerGroupsPage() {
 
     if (editingGroup) {
       // Update existing group
-      setGroups(groups.map(group => 
-        group.id === editingGroup.id 
-          ? { ...group, name, description, discountRate } 
+      setGroups(groups.map(group =>
+        group.id === editingGroup.id
+          ? { ...group, name, description, discountRate }
           : group
       ))
       toast({
@@ -361,28 +361,28 @@ export function CustomerGroupsPage() {
   const toolbarGroups = [
     {
       buttons: [
-        { 
-          icon: RefreshCw, 
-          label: "Refresh", 
-          onClick: handleRefresh 
+        {
+          icon: RefreshCw,
+          label: "Refresh",
+          onClick: handleRefresh
         },
-        { 
-          icon: Filter, 
-          label: "Filter", 
-          onClick: handleFilter 
+        {
+          icon: Filter,
+          label: "Filter",
+          onClick: handleFilter
         }
       ]
     },
     {
       buttons: [
-        { 
-          icon: Plus, 
-          label: "New Group", 
-          onClick: handleCreateGroup 
+        {
+          icon: Plus,
+          label: "New Group",
+          onClick: handleCreateGroup
         },
-        { 
-          icon: Trash2, 
-          label: `Delete${selectedGroups.length > 0 ? ` (${selectedGroups.length})` : ''}`, 
+        {
+          icon: Trash2,
+          label: `Delete${selectedGroups.length > 0 ? ` (${selectedGroups.length})` : ''}`,
           onClick: handleDeleteGroups,
           disabled: selectedGroups.length === 0,
           title: selectedGroups.length > 0 ? `Delete ${selectedGroups.length} selected groups` : 'Select groups to delete'
@@ -391,15 +391,15 @@ export function CustomerGroupsPage() {
     },
     {
       buttons: [
-        { 
-          icon: Upload, 
-          label: "Import", 
-          onClick: handleImport 
+        {
+          icon: Upload,
+          label: "Import",
+          onClick: handleImport
         },
-        { 
-          icon: Download, 
-          label: "Export", 
-          onClick: handleExport 
+        {
+          icon: Download,
+          label: "Export",
+          onClick: handleExport
         }
       ]
     }
@@ -415,10 +415,10 @@ export function CustomerGroupsPage() {
         onChange={(e) => setSearchQuery(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
       />
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8" 
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
         onClick={handleSearch}
       >
         <Search className="h-4 w-4" />
@@ -429,7 +429,7 @@ export function CustomerGroupsPage() {
   return (
     <div className="space-y-6">
       {/* Toolbar - now using the Toolbar component */}
-      <Toolbar 
+      <Toolbar
         groups={toolbarGroups}
         rightContent={rightContent}
         variant="default"
@@ -452,9 +452,9 @@ export function CustomerGroupsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredGroups.map(group => (
-            <div 
-              key={group.id} 
-              className="cursor-pointer" 
+            <div
+              key={group.id}
+              className="cursor-pointer"
               onClick={() => toggleRowSelection(group.id)}
             >
               <GroupCard
@@ -477,48 +477,48 @@ export function CustomerGroupsPage() {
               {editingGroup ? 'Edit Customer Group' : 'Create Customer Group'}
             </DialogTitle>
             <DialogDescription>
-              {editingGroup 
-                ? 'Update the details for this customer group.' 
+              {editingGroup
+                ? 'Update the details for this customer group.'
                 : 'Create a new group to organize your customers.'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <form action={handleSaveGroup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Group Name</Label>
-              <Input 
-                id="name" 
-                name="name" 
-                placeholder="VIP Customers" 
+              <Input
+                id="name"
+                name="name"
+                placeholder="VIP Customers"
                 defaultValue={editingGroup?.name || ''}
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Input 
-                id="description" 
-                name="description" 
-                placeholder="Our most valuable customers" 
+              <Input
+                id="description"
+                name="description"
+                placeholder="Our most valuable customers"
                 defaultValue={editingGroup?.description || ''}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="discountRate">Discount Rate (%)</Label>
-              <Input 
-                id="discountRate" 
-                name="discountRate" 
-                type="number" 
-                min="0" 
-                max="100" 
-                placeholder="10" 
+              <Input
+                id="discountRate"
+                name="discountRate"
+                type="number"
+                min="0"
+                max="100"
+                placeholder="10"
                 defaultValue={editingGroup?.discountRate.toString() || '0'}
                 required
               />
             </div>
-            
+
             <DialogFooter>
               <Button type="submit">
                 {editingGroup ? 'Update Group' : 'Create Group'}

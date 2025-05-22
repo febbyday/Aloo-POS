@@ -31,7 +31,7 @@ import {
 import {
   useNavigate
 } from 'react-router-dom'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -78,7 +78,7 @@ import { DraftSalesDialog } from '../components/DraftSalesDialog'
 import { RecentTransactionsDialog } from '../components/RecentTransactionsDialog'
 import { CartItemComponent } from '../components/CartItem'
 import { CartItem, DraftSale, Transaction } from '../types'
-import { useToastManager } from '@/components/ui/toast-manager'
+import { useToast as useToastManager } from '@/lib/toast'
 import { useSalesHistory } from '../context/SalesHistoryContext'
 import { FieldHelpTooltip, InfoBox } from '@/components/ui/help-tooltip'
 import { OperationButton, ActionStatus, ActionFeedback } from '@/components/ui/action-feedback'
@@ -333,7 +333,7 @@ export function POSSalePage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const searchInputRef = useRef<HTMLInputElement>(null)
-  
+
   // Basic state
   const [searchQuery, setSearchQuery] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
@@ -341,7 +341,7 @@ export function POSSalePage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'mobile' | 'installment'>('cash')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  
+
   // Payment handling state
   const [tenderAmount, setTenderAmount] = useState<number | ''>('')
   const [changeDue, setChangeDue] = useState<number>(0)
@@ -349,21 +349,21 @@ export function POSSalePage() {
   const [splitPayment, setSplitPayment] = useState(false)
   const [splitPayments, setSplitPayments] = useState<Array<{method: 'cash' | 'card' | 'mobile' | 'installment', amount: number}>>([])
   const [remainingAmount, setRemainingAmount] = useState<number>(0)
-  
+
   // Discount state
   const [subtotalDiscount, setSubtotalDiscount] = useState<{
     type: 'percentage' | 'amount',
     value: number,
     reason?: string
   } | null>(null)
-  
+
   // Product option states
   const [selectedProduct, setSelectedProduct] = useState<typeof mockProducts[0] | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>('M')
   const [selectedIceLevel, setSelectedIceLevel] = useState<number>(50)
   const [selectedQuantity, setSelectedQuantity] = useState<number>(1)
   const [showProductOptions, setShowProductOptions] = useState(false)
-  
+
   // Dialog states
   const [showProductDialog, setShowProductDialog] = useState(false)
   const [showCustomerDialog, setShowCustomerDialog] = useState(false)
@@ -373,15 +373,15 @@ export function POSSalePage() {
   const [showRecentTransactions, setShowRecentTransactions] = useState(false)
   const [showItemDiscount, setShowItemDiscount] = useState(false)
   const [selectedItemForDiscount, setSelectedItemForDiscount] = useState<CartItem | null>(null)
-  
+
   // Draft sales state
   const [draftSales, setDraftSales] = useState<DraftSale[]>([])
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
-  
+
   // Cart calculations with discounts
   const subtotal = cart.reduce((sum, item) => {
     let itemPrice = item.price * item.quantity
-    
+
     // Apply item-level discount if any
     if (item.discount) {
       if (item.discount.type === 'percentage') {
@@ -390,14 +390,14 @@ export function POSSalePage() {
         itemPrice -= item.discount.value
       }
     }
-    
+
     return sum + itemPrice
   }, 0)
-  
+
   // Apply subtotal discount
   let discountedSubtotal = subtotal
   let discountAmount = 0
-  
+
   if (subtotalDiscount) {
     if (subtotalDiscount.type === 'percentage') {
       discountAmount = (subtotal * subtotalDiscount.value) / 100
@@ -406,16 +406,16 @@ export function POSSalePage() {
     }
     discountedSubtotal = subtotal - discountAmount
   }
-  
+
   const tax = discountedSubtotal * 0.16 // 16% VAT
   const total = discountedSubtotal + tax
 
   // Replace regular toast with our enhanced toast manager
   const showToast = useToastManager();
-  
+
   // Add sales history for undo/redo support
   const { trackAction, canUndo, undo, canRedo, redo } = useSalesHistory();
-  
+
   // Add operation status state
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [discountStatus, setDiscountStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -428,15 +428,15 @@ export function POSSalePage() {
   const handleTenderAmountChange = (value: number | '') => {
     const oldValue = tenderAmount;
     setTenderAmount(value);
-    
+
     // Track this change for potential undo
     if (value !== '' && oldValue !== '') {
       trackAction(
-        { 
-          type: 'update_sale', 
-          id: 'current-sale', 
-          before: { tenderAmount: oldValue }, 
-          after: { tenderAmount: value } 
+        {
+          type: 'update_sale',
+          id: 'current-sale',
+          before: { tenderAmount: oldValue },
+          after: { tenderAmount: value }
         },
         `Changed tender amount from ${oldValue} to ${value}`
       );
@@ -448,34 +448,34 @@ export function POSSalePage() {
       showToast.error("Invalid amount", "Please enter a valid payment amount");
       return;
     }
-    
+
     const newPayment = {
       id: `payment-${Date.now()}`,
       method: paymentMethod,
       amount: tenderAmount as number
     };
-    
+
     // Track this action for undo
     trackAction(
-      { 
-        type: 'update_sale', 
-        id: 'current-sale', 
-        before: { splitPayments: [...splitPayments] }, 
-        after: { splitPayments: [...splitPayments, newPayment] } 
+      {
+        type: 'update_sale',
+        id: 'current-sale',
+        before: { splitPayments: [...splitPayments] },
+        after: { splitPayments: [...splitPayments, newPayment] }
       },
       `Added ${paymentMethod} payment of ${tenderAmount}`
     );
-    
+
     setSplitPayments([...splitPayments, newPayment]);
-    
+
     // Calculate remaining balance
     const totalPaid = [...splitPayments, newPayment].reduce((sum, payment) => sum + payment.amount, 0);
     const remaining = total - totalPaid;
-    
+
     setTenderAmount(remaining > 0 ? remaining : 0);
-    
+
     showToast.success(
-      "Payment added", 
+      "Payment added",
       `${paymentMethod} payment of ${tenderAmount} added`
     );
   };
@@ -483,14 +483,14 @@ export function POSSalePage() {
   const handleCompleteSale = async () => {
     try {
       setPaymentStatus("loading");
-      
+
       // Validate payment
       if (paymentMethod === 'cash' && (tenderAmount as number) < total) {
         showToast.error("Insufficient payment", "The tendered amount is less than the total");
         setPaymentStatus("error");
         return;
       }
-      
+
       // Create transaction record
       const transaction: Transaction = {
         id: `TRX-${Date.now()}`,
@@ -500,8 +500,8 @@ export function POSSalePage() {
         tax,
         total,
         discount: subtotalDiscount,
-        payments: splitPayments.length > 0 
-          ? splitPayments 
+        payments: splitPayments.length > 0
+          ? splitPayments
           : [{
               id: `payment-${Date.now()}`,
               method: paymentMethod,
@@ -510,22 +510,22 @@ export function POSSalePage() {
         customer: selectedCustomer,
         status: 'completed'
       };
-      
+
       // Track this action
       trackAction(
         { type: 'complete_sale', sale: transaction },
         `Completed sale ${transaction.id}`
       );
-      
+
       // Add to transaction history
       setRecentTransactions([transaction, ...recentTransactions]);
-      
+
       // Show success message
       showToast.success(
-        "Sale completed", 
+        "Sale completed",
         `Transaction #${transaction.id} has been processed`
       );
-      
+
       // Reset the cart
       setCart([]);
       setSelectedCustomer(null);
@@ -533,9 +533,9 @@ export function POSSalePage() {
       setSplitPayments([]);
       setTenderAmount('');
       setPaymentMethod('cash');
-      
+
       setPaymentStatus("success");
-      
+
       // Automatically print receipt
       if (true) {
         setTimeout(() => {
@@ -545,7 +545,7 @@ export function POSSalePage() {
     } catch (error) {
       console.error('Error completing sale:', error);
       showToast.error(
-        "Error processing sale", 
+        "Error processing sale",
         "There was a problem completing the transaction"
       );
       setPaymentStatus("error");
@@ -563,17 +563,17 @@ export function POSSalePage() {
   const handleAddToCart = (product: typeof mockProducts[0]) => {
     // Check if product already exists in cart
     const existingItemIndex = cart.findIndex(item => item.productId === product.id);
-    
+
     if (existingItemIndex >= 0) {
       // Update quantity of existing item
       const updatedItems = [...cart];
       const oldQuantity = updatedItems[existingItemIndex].quantity;
       updatedItems[existingItemIndex].quantity += 1;
-      
+
       // Track this action
       trackAction(
-        { 
-          type: 'update_item', 
+        {
+          type: 'update_item',
           saleId: 'current-sale',
           itemId: product.id,
           before: { quantity: oldQuantity },
@@ -581,11 +581,11 @@ export function POSSalePage() {
         },
         `Increased quantity of ${product.name}`
       );
-      
+
       setCart(updatedItems);
-      
+
       showToast.info(
-        "Quantity updated", 
+        "Quantity updated",
         `${product.name} quantity increased to ${updatedItems[existingItemIndex].quantity}`
       );
     } else {
@@ -598,17 +598,17 @@ export function POSSalePage() {
         discount: null,
         options: null
       };
-      
+
       // Track this action
       trackAction(
         { type: 'add_item', saleId: 'current-sale', item: newItem },
         `Added ${product.name} to cart`
       );
-      
+
       setCart([...cart, newItem]);
-      
+
       showToast.success(
-        "Item added", 
+        "Item added",
         `${product.name} added to cart`
       );
     }
@@ -616,15 +616,15 @@ export function POSSalePage() {
 
   const handleAddProductWithOptions = () => {
     if (!selectedProduct) return
-    
+
     const productName = `${selectedProduct.name}${selectedProduct.availableSizes ? ` (${selectedSize})` : ''}${selectedProduct.availableIceLevels ? ` - Ice: ${selectedIceLevel}%` : ''}`
-    
-    const existingItemIndex = cart.findIndex(item => 
-      item.productId === selectedProduct.id && 
-      item.size === selectedSize && 
+
+    const existingItemIndex = cart.findIndex(item =>
+      item.productId === selectedProduct.id &&
+      item.size === selectedSize &&
       item.iceLevel === selectedIceLevel
     )
-    
+
     if (existingItemIndex >= 0) {
       const updatedCart = [...cart]
       updatedCart[existingItemIndex].quantity += selectedQuantity
@@ -639,12 +639,12 @@ export function POSSalePage() {
         iceLevel: selectedProduct.availableIceLevels ? selectedIceLevel : undefined
       }])
     }
-    
+
     toast({
       title: 'Product added',
       description: `${productName} has been added to cart.`
     })
-    
+
     setShowProductOptions(false)
     setSelectedProduct(null)
   }
@@ -652,22 +652,22 @@ export function POSSalePage() {
   const handleUpdateQuantity = (productId: string, quantity: number) => {
     const updatedItems = [...cart];
     const itemIndex = updatedItems.findIndex(item => item.productId === productId);
-    
+
     if (itemIndex >= 0) {
       const oldQuantity = updatedItems[itemIndex].quantity;
-      
+
       if (quantity <= 0) {
         // Remove item if quantity is 0 or negative
         handleRemoveFromCart(productId);
         return;
       }
-      
+
       updatedItems[itemIndex].quantity = quantity;
-      
+
       // Track this action
       trackAction(
-        { 
-          type: 'update_item', 
+        {
+          type: 'update_item',
           saleId: 'current-sale',
           itemId: productId,
           before: { quantity: oldQuantity },
@@ -675,30 +675,30 @@ export function POSSalePage() {
         },
         `Updated quantity of ${updatedItems[itemIndex].name} to ${quantity}`
       );
-      
+
       setCart(updatedItems);
     }
   };
 
   const handleRemoveFromCart = (productId: string) => {
     const itemToRemove = cart.find(item => item.productId === productId);
-    
+
     if (itemToRemove) {
       // Track this action
       trackAction(
-        { 
-          type: 'remove_item', 
+        {
+          type: 'remove_item',
           saleId: 'current-sale',
           itemId: productId,
           item: itemToRemove
         },
         `Removed ${itemToRemove.name} from cart`
       );
-      
+
       setCart(cart.filter(item => item.productId !== productId));
-      
+
       showToast.action(
-        "Item removed", 
+        "Item removed",
         `${itemToRemove.name} removed from cart`,
         () => {
           // Add the item back to the cart
@@ -721,7 +721,7 @@ export function POSSalePage() {
 
     // Generate a unique ID for the draft
     const draftId = `DRAFT-${Date.now().toString().slice(-6)}`
-    
+
     // Create a new draft
     const newDraft: DraftSale = {
       id: draftId,
@@ -730,23 +730,23 @@ export function POSSalePage() {
       total: subtotal,
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
-    
+
     // Add to drafts
     setDraftSales([newDraft, ...draftSales])
-    
+
     toast({
       title: 'Draft saved',
       description: `Sale saved as draft #${draftId}.`
     })
-    
+
     // Clear the cart
     setCart([])
   }
-  
+
   const handleLoadDraft = (draftId: string) => {
     const draft = draftSales.find(d => d.id === draftId)
     if (!draft) return
-    
+
     // In a real app, you would fetch the cart items for this draft from an API
     // For demo purposes, we'll create some mock items
     const mockItems: CartItem[] = Array.from({ length: draft.items }, (_, i) => ({
@@ -755,41 +755,41 @@ export function POSSalePage() {
       price: Math.round((draft.total / draft.items) * 100) / 100,
       quantity: 1
     }))
-    
+
     setCart(mockItems)
     setDraftSales(draftSales.filter(d => d.id !== draftId))
     setShowDraftSales(false)
-    
+
     toast({
       title: 'Draft loaded',
       description: `Draft #${draftId} has been loaded.`
     })
   }
-  
+
   const handleDeleteDraft = (draftId: string) => {
     setDraftSales(draftSales.filter(d => d.id !== draftId))
-    
+
     toast({
       title: 'Draft deleted',
       description: `Draft #${draftId} has been deleted.`
     })
   }
-  
+
   const handleApplyItemDiscount = (discount: ItemDiscountDetails) => {
     if (!selectedItemForDiscount) return
-    
+
     setCart(cart.map(item =>
       item.productId === selectedItemForDiscount.productId
         ? { ...item, discount: discount }
         : item
     ))
-    
+
     toast({
       title: 'Discount applied',
       description: `Discount applied to ${selectedItemForDiscount.name}.`
     })
   }
-  
+
   const handleApplySubtotalDiscount = (discount: {
     type: 'percentage' | 'amount',
     value: number,
@@ -801,7 +801,7 @@ export function POSSalePage() {
       description: `Discount applied to subtotal`
     })
   }
-  
+
   const handleRemoveSubtotalDiscount = () => {
     setSubtotalDiscount(null)
     toast({
@@ -809,7 +809,7 @@ export function POSSalePage() {
       description: 'Subtotal discount has been removed'
     })
   }
-  
+
   const handleViewTransaction = (transactionId: string) => {
     // In a real app, you would navigate to the transaction details page
     toast({
@@ -817,20 +817,20 @@ export function POSSalePage() {
       description: `Viewing details for transaction #${transactionId}.`
     })
   }
-  
+
   const handleVoidTransaction = (transactionId: string) => {
     setRecentTransactions(recentTransactions.map(transaction =>
       transaction.id === transactionId
         ? { ...transaction, status: 'voided' as const }
         : transaction
     ))
-    
+
     toast({
       title: 'Transaction voided',
       description: `Transaction #${transactionId} has been voided.`
     })
   }
-  
+
   const handlePrintReceipt = () => {
     if (cart.length === 0) {
       toast({
@@ -840,23 +840,23 @@ export function POSSalePage() {
       })
       return
     }
-    
+
     toast({
       title: 'Printing receipt',
       description: 'The receipt is being printed.'
     })
   }
-  
+
   const handleClearCart = () => {
     if (cart.length === 0) return
-    
+
     setCart([])
     toast({
       title: 'Cart cleared',
       description: 'All items have been removed from the cart.'
     })
   }
-  
+
   const handleCloseDialogs = () => {
     setShowCustomerDialog(false)
     setShowNumpad(false)
@@ -900,7 +900,7 @@ export function POSSalePage() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && canUndo) {
         e.preventDefault();
         const action = undo();
-        
+
         if (action) {
           // Handle different action types
           switch (action.type) {
@@ -934,33 +934,33 @@ export function POSSalePage() {
               break;
             // Handle other action types as needed
           }
-          
+
           showToast.info("Undo", "Previous action undone");
         }
       }
-      
+
       // Check for Ctrl+Shift+Z or Command+Shift+Z (Redo)
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey && canRedo) {
         e.preventDefault();
         const action = redo();
-        
+
         if (action) {
           // Handle different action types (similar to undo but applying 'after' state)
           // ...
-          
+
           showToast.info("Redo", "Action reapplied");
         }
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [canUndo, canRedo, undo, redo, showToast]);
 
   const filteredProducts = mockProducts.filter(product =>
-    (searchQuery ? 
+    (searchQuery ?
       (product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       product.barcode.includes(searchQuery)) 
+       product.barcode.includes(searchQuery))
       : true) &&
     (selectedCategory ? product.category === selectedCategory : true)
   )
@@ -972,7 +972,7 @@ export function POSSalePage() {
       { id: 'TRX-002', total: 89.99, time: '11:15 AM', status: 'completed' },
       { id: 'TRX-003', total: 245.50, time: '12:00 PM', status: 'pending' },
     ])
-    
+
     // In a real app, fetch saved drafts from API or local storage
     setDraftSales([
       { id: 'DRAFT-001', name: 'Morning Sale', items: 3, total: 78.50, createdAt: '9:15 AM' },
@@ -997,9 +997,9 @@ export function POSSalePage() {
               <span className="text-xs text-muted-foreground ml-1">(F1)</span>
             </div>
           </Button>
-          
+
           <Separator orientation="vertical" className="h-8 mx-2" />
-          
+
           <Button
             variant="ghost"
             size="default"
@@ -1012,9 +1012,9 @@ export function POSSalePage() {
               <span className="text-xs text-muted-foreground ml-1">(F7)</span>
             </div>
           </Button>
-          
+
           <Separator orientation="vertical" className="h-8 mx-2" />
-          
+
           <Button
             variant="ghost"
             size="default"
@@ -1028,7 +1028,7 @@ export function POSSalePage() {
             </div>
           </Button>
         </div>
-        
+
         <div className="flex items-center">
           <Button
             variant="ghost"
@@ -1043,9 +1043,9 @@ export function POSSalePage() {
               <span className="text-xs text-muted-foreground ml-1">(F9)</span>
             </div>
           </Button>
-          
+
           <Separator orientation="vertical" className="h-8 mx-2" />
-          
+
           <Button
             variant="ghost"
             size="default"
@@ -1102,7 +1102,7 @@ export function POSSalePage() {
                       ? 'bg-primary/10 border-primary'
                       : 'bg-background hover:bg-accent/50 border-border'
                   }`}
-                  onClick={() => 
+                  onClick={() =>
                     setSelectedCategory(selectedCategory === category.name ? null : category.name)
                   }
                 >
@@ -1121,15 +1121,15 @@ export function POSSalePage() {
             <div className="mt-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">
-                  {selectedCategory || 'All Products'} 
+                  {selectedCategory || 'All Products'}
                   <span className="text-sm font-normal text-muted-foreground ml-2">
                     ({filteredProducts.length} items)
                   </span>
                 </h2>
                 {selectedCategory && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setSelectedCategory(null)}
                   >
                     View All
@@ -1140,23 +1140,23 @@ export function POSSalePage() {
               {viewMode === 'grid' ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {filteredProducts.map((product) => (
-                    <Card 
-                      key={product.id} 
+                    <Card
+                      key={product.id}
                       className="cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden"
                       onClick={() => handleAddToCart(product)}
                     >
                       <div className="h-[170px] bg-muted flex items-center justify-center relative">
                         {product.image ? (
-                          <img 
-                            src={product.image} 
-                            alt={product.name} 
+                          <img
+                            src={product.image}
+                            alt={product.name}
                             className="object-cover w-full h-full"
                           />
                         ) : (
                           <Image className="h-12 w-12 text-muted-foreground" />
                         )}
-                        <Badge 
-                          variant="secondary" 
+                        <Badge
+                          variant="secondary"
                           className="absolute top-2 right-2"
                         >
                           ${product.price.toFixed(2)}
@@ -1234,9 +1234,9 @@ export function POSSalePage() {
         <div className="w-[400px] flex flex-col border-l bg-muted/50">
           {/* Customer Selection */}
           <div className="p-4 border-b bg-background">
-            <Button 
-              variant="outline" 
-              className="w-full" 
+            <Button
+              variant="outline"
+              className="w-full"
               onClick={() => setShowCustomerDialog(true)}
             >
               <User className="h-4 w-4 mr-2" />
@@ -1276,14 +1276,14 @@ export function POSSalePage() {
                 <span>Subtotal</span>
                 <span>${subtotal.toFixed(2)}</span>
               </div>
-              
+
               {subtotalDiscount && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span className="flex items-center">
                     Discount {subtotalDiscount.type === 'percentage' ? `(${subtotalDiscount.value}%)` : ''}
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-4 w-4 ml-1 text-red-500"
                       onClick={handleRemoveSubtotalDiscount}
                     >
@@ -1293,12 +1293,12 @@ export function POSSalePage() {
                   <span>-${discountAmount.toFixed(2)}</span>
                 </div>
               )}
-              
+
               {!subtotalDiscount && (
                 <div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="w-full text-xs"
                     onClick={() => {
                       setSelectedItemForDiscount(null);
@@ -1309,7 +1309,7 @@ export function POSSalePage() {
                   </Button>
                 </div>
               )}
-              
+
               <div className="flex justify-between text-sm">
                 <span>VAT (16%)</span>
                 <span>${tax.toFixed(2)}</span>
@@ -1355,9 +1355,9 @@ export function POSSalePage() {
                 </Button>
               </div>
 
-              <Button 
-                className="w-full" 
-                size="lg" 
+              <Button
+                className="w-full"
+                size="lg"
                 onClick={handleStartPayment}
                 disabled={cart.length === 0}
               >
@@ -1422,13 +1422,13 @@ export function POSSalePage() {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Hotkeys Help Dialog */}
       <HotkeysHelp
         open={showHotkeysHelp}
         onOpenChange={setShowHotkeysHelp}
       />
-      
+
       {/* Item Discount Dialog */}
       <ItemDiscountDialog
         open={showItemDiscount}
@@ -1443,7 +1443,7 @@ export function POSSalePage() {
           }
         }}
       />
-      
+
       {/* Draft Sales Dialog */}
       <DraftSalesDialog
         open={showDraftSales}
@@ -1452,7 +1452,7 @@ export function POSSalePage() {
         onLoadDraft={handleLoadDraft}
         onDeleteDraft={handleDeleteDraft}
       />
-      
+
       {/* Recent Transactions Dialog */}
       <RecentTransactionsDialog
         open={showRecentTransactions}
@@ -1461,7 +1461,7 @@ export function POSSalePage() {
         onViewTransaction={handleViewTransaction}
         onVoidTransaction={handleVoidTransaction}
       />
-      
+
       {/* Product Options Dialog */}
       <Dialog open={showProductOptions} onOpenChange={setShowProductOptions}>
         <DialogContent className="sm:max-w-[425px]">
@@ -1489,7 +1489,7 @@ export function POSSalePage() {
                 </div>
               </div>
             )}
-            
+
             {selectedProduct?.availableIceLevels && (
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Ice Level</label>
@@ -1507,7 +1507,7 @@ export function POSSalePage() {
                 </div>
               </div>
             )}
-            
+
             <div className="grid gap-2">
               <label className="text-sm font-medium">Amount</label>
               <div className="flex items-center space-x-2">
@@ -1528,7 +1528,7 @@ export function POSSalePage() {
                 </Button>
               </div>
             </div>
-            
+
             <div className="flex justify-between items-center mt-4">
               <div className="text-lg font-bold">
                 Total: ${selectedProduct ? (selectedProduct.price * selectedQuantity).toFixed(2) : '0.00'}
@@ -1540,7 +1540,7 @@ export function POSSalePage() {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Payment Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent>
@@ -1550,20 +1550,20 @@ export function POSSalePage() {
               Enter payment details to complete the sale
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 pt-4">
             <div className="flex justify-between font-semibold">
               <span>Total Amount:</span>
               <span>${total.toFixed(2)}</span>
             </div>
-            
+
             {splitPayment && remainingAmount > 0 && (
               <div className="flex justify-between text-amber-500 font-semibold">
                 <span>Remaining:</span>
                 <span>${remainingAmount.toFixed(2)}</span>
               </div>
             )}
-            
+
             <div className="grid grid-cols-4 gap-2">
               <Button
                 variant={paymentMethod === 'cash' ? 'default' : 'outline'}
@@ -1598,7 +1598,7 @@ export function POSSalePage() {
                 Install
               </Button>
             </div>
-            
+
             {(paymentMethod === 'cash' || splitPayment) && (
               <div className="space-y-2">
                 <Label htmlFor="tenderAmount">Amount {splitPayment ? 'Paid' : 'Tendered'}</Label>
@@ -1611,14 +1611,14 @@ export function POSSalePage() {
                 />
               </div>
             )}
-            
+
             {paymentMethod === 'cash' && !splitPayment && typeof tenderAmount === 'number' && tenderAmount >= total && (
               <div className="flex justify-between text-green-600 font-semibold">
                 <span>Change Due:</span>
                 <span>${changeDue.toFixed(2)}</span>
               </div>
             )}
-            
+
             {splitPayment && splitPayments.length > 0 && (
               <div className="space-y-2 border rounded-md p-2">
                 <Label>Payment Breakdown</Label>
@@ -1630,15 +1630,15 @@ export function POSSalePage() {
                 ))}
               </div>
             )}
-            
+
             <div className="flex justify-between space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setSplitPayment(!splitPayment)}
               >
                 {splitPayment ? 'Single Payment' : 'Split Payment'}
               </Button>
-              
+
               {splitPayment && remainingAmount > 0 ? (
                 <Button onClick={handleAddSplitPayment}>
                   Add Payment

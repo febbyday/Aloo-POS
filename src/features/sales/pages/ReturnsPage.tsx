@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  RotateCcw, 
-  Search, 
+import {
+  RotateCcw,
+  Search,
   Filter,
   Plus,
   FileDown,
@@ -32,7 +32,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
+import {
   Card,
   CardContent,
   CardHeader,
@@ -59,7 +59,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
 import { format } from 'date-fns'
 import { ReturnsToolbar } from '../components/toolbars'
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 import {
   AreaChart,
   Area,
@@ -136,48 +136,48 @@ interface SortConfig {
 
 // Define columns for the table
 const columns = [
-  { 
-    id: 'id', 
+  {
+    id: 'id',
     label: 'Return ID',
     icon: Receipt
   },
-  { 
-    id: 'saleId', 
+  {
+    id: 'saleId',
     label: 'Sale ID',
     icon: Receipt
   },
-  { 
-    id: 'date', 
+  {
+    id: 'date',
     label: 'Date',
     icon: Calendar
   },
-  { 
-    id: 'customer', 
+  {
+    id: 'customer',
     label: 'Customer',
     icon: User
   },
-  { 
-    id: 'items', 
+  {
+    id: 'items',
     label: 'Items',
     icon: Package
   },
-  { 
-    id: 'total', 
+  {
+    id: 'total',
     label: 'Total',
     icon: DollarSign
   },
-  { 
-    id: 'reason', 
+  {
+    id: 'reason',
     label: 'Reason',
     icon: CheckCircle
   },
-  { 
-    id: 'status', 
+  {
+    id: 'status',
     label: 'Status',
     icon: CheckCircle
   },
-  { 
-    id: 'processedBy', 
+  {
+    id: 'processedBy',
     label: 'Processed By',
     icon: User
   }
@@ -233,10 +233,10 @@ export function ReturnsPage() {
 
   const sortedReturns = [...filteredReturns].sort((a, b) => {
     if (!sortConfig) return 0
-    
+
     const aValue = a[sortConfig.column as keyof typeof a]
     const bValue = b[sortConfig.column as keyof typeof b]
-    
+
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
     return 0
@@ -246,8 +246,8 @@ export function ReturnsPage() {
   const paginatedReturns = sortedReturns.slice(startIndex, startIndex + itemsPerPage)
 
   const handleViewReturn = (ret: typeof mockReturns[0]) => {
-    setViewReturn(ret)
-    setReturnItems(getMockReturnItems(ret.id))
+    // Navigate to the return details page
+    navigate(`/sales/returns/${ret.id.split('-')[1]}`)
   }
 
   return (
@@ -387,13 +387,13 @@ export function ReturnsPage() {
                   />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                     {statusChartData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
+                      <Cell
+                        key={`cell-${index}`}
                         fill={
                           entry.name === 'Pending' ? CHART_COLORS.pending :
                           entry.name === 'Approved' ? CHART_COLORS.approved :
                           CHART_COLORS.rejected
-                        } 
+                        }
                       />
                     ))}
                   </Bar>
@@ -461,7 +461,7 @@ export function ReturnsPage() {
             </TableHeader>
             <TableBody>
               {paginatedReturns.map((ret) => (
-                <TableRow 
+                <TableRow
                   key={ret.id}
                   className={cn(
                     "border-b border-border transition-colors hover:bg-muted/50 cursor-pointer",
@@ -501,7 +501,7 @@ export function ReturnsPage() {
                   <TableCell className="px-4 py-3">${ret.total.toFixed(2)}</TableCell>
                   <TableCell className="px-4 py-3">{ret.reason}</TableCell>
                   <TableCell className="px-4 py-3">
-                    <Badge 
+                    <Badge
                       variant={
                         ret.status === 'approved' ? 'default' :
                         ret.status === 'pending' ? 'secondary' : 'destructive'
@@ -568,7 +568,7 @@ export function ReturnsPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <Badge 
+                  <Badge
                     variant={
                       viewReturn.status === 'approved' ? 'default' :
                       viewReturn.status === 'pending' ? 'secondary' : 'destructive'
@@ -731,4 +731,4 @@ export function ReturnsPage() {
       )}
     </div>
   )
-} 
+}

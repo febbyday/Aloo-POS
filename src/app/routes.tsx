@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { ProductDetailsPage } from '@/features/products/pages/ProductDetailsPage';
@@ -192,6 +190,40 @@ const router = createBrowserRouter([
               </ErrorBoundary>
             ),
           },
+          // Make sure all specific routes are defined before the dynamic :productId route
+          {
+            path: 'history',
+            element: (
+              <ErrorBoundary fallback={ErrorFallback}>
+                <div>Product History Page</div>
+              </ErrorBoundary>
+            ),
+          },
+          {
+            path: 'transfers',
+            element: (
+              <ErrorBoundary fallback={ErrorFallback}>
+                <div>Stock Transfer Page</div>
+              </ErrorBoundary>
+            ),
+          },
+          {
+            path: 'pricing',
+            element: (
+              <ErrorBoundary fallback={ErrorFallback}>
+                <EnhancedPricingPage />
+              </ErrorBoundary>
+            ),
+          },
+          {
+            path: 'labels',
+            element: (
+              <ErrorBoundary fallback={ErrorFallback}>
+                <div>Print Labels Page</div>
+              </ErrorBoundary>
+            ),
+          },
+          // The dynamic routes should be last to avoid conflicts with static routes
           {
             path: ':productId',
             element: <ProductDetailsPage />,

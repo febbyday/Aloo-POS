@@ -1,5 +1,5 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
+import { Suspense } from 'react';
 import DevLoginPage from '@/features/auth/pages/DevLoginPage';
 import SpecialRouteWrapper from '@/features/auth/components/SpecialRouteWrapper';
 
@@ -21,18 +21,46 @@ import {
   MARKETS_ROUTES
 } from '@/features/markets';
 
+// Sales Module
+import { SalesPage } from '@/features/sales/pages/SalesPage';
+import { ReturnsPage } from '@/features/sales/pages/ReturnsPage';
+
 // User Management
-import UserManagementPage from '@/features/auth/pages/UserManagementPage';
+import { UserManagementPage } from '@/features/auth/pages/UserManagementPage';
 
 // Role Management
-import RoleManagementPage from '@/features/staff/pages/RoleManagementPage';
-import PermissionsManagementPage from '@/features/staff/pages/PermissionsManagementPage';
+import RoleManagementPage from '@/features/users/pages/RoleManagementPage';
+import PermissionsManagementPage from '@/features/users/pages/PermissionsManagementPage';
+import { PermissionsListPage } from '@/features/users/pages/PermissionsListPage';
 
-// Lazy-loaded routes
-const Products = lazy(() => import('@/features/products/pages/Products'));
-const Customers = lazy(() => import('@/features/customers/pages/Customers'));
-const Reports = lazy(() => import('@/features/reports/pages/Reports'));
-const Settings = lazy(() => import('@/features/settings/pages/Settings'));
+// Placeholder components for modules that might not exist
+const ProductsPlaceholder = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold mb-4">Products Module</h1>
+    <p>This module is not yet implemented or is under development.</p>
+  </div>
+);
+
+const CustomersPlaceholder = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold mb-4">Customers Module</h1>
+    <p>This module is not yet implemented or is under development.</p>
+  </div>
+);
+
+const ReportsPlaceholder = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold mb-4">Reports Module</h1>
+    <p>This module is not yet implemented or is under development.</p>
+  </div>
+);
+
+const SettingsPlaceholder = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold mb-4">Settings Module</h1>
+    <p>This module is not yet implemented or is under development.</p>
+  </div>
+);
 
 // Determine which login page to use based on environment
 const LoginPageComponent = import.meta.env.DEV ? DevLoginPage : LoginPage;
@@ -88,34 +116,36 @@ const router = createBrowserRouter([
       // User Management
       {
         path: 'users',
-        element: import.meta.env.DEV ? (
+        element: (
           <SpecialRouteWrapper>
             <UserManagementPage />
           </SpecialRouteWrapper>
-        ) : (
-          <UserManagementPage />
         ),
       },
 
       // Role Management
       {
         path: 'roles',
-        element: import.meta.env.DEV ? (
+        element: (
           <SpecialRouteWrapper>
             <RoleManagementPage />
           </SpecialRouteWrapper>
-        ) : (
-          <RoleManagementPage />
+        ),
+      },
+      {
+        path: 'permissions',
+        element: (
+          <SpecialRouteWrapper>
+            <PermissionsListPage />
+          </SpecialRouteWrapper>
         ),
       },
       {
         path: 'permissions/:roleId',
-        element: import.meta.env.DEV ? (
+        element: (
           <SpecialRouteWrapper>
             <PermissionsManagementPage />
           </SpecialRouteWrapper>
-        ) : (
-          <PermissionsManagementPage />
         ),
       },
 
@@ -124,7 +154,7 @@ const router = createBrowserRouter([
         path: 'products',
         element: (
           <Suspense fallback={<LoadingScreen />}>
-            <Products />
+            <ProductsPlaceholder />
           </Suspense>
         ),
       },
@@ -132,15 +162,33 @@ const router = createBrowserRouter([
         path: 'customers',
         element: (
           <Suspense fallback={<LoadingScreen />}>
-            <Customers />
+            <CustomersPlaceholder />
           </Suspense>
         ),
+      },
+      {
+        path: 'sales',
+        element: (
+          <Suspense fallback={<LoadingScreen />}>
+            <Outlet />
+          </Suspense>
+        ),
+        children: [
+          {
+            index: true,
+            element: <SalesPage />
+          },
+          {
+            path: 'returns',
+            element: <ReturnsPage />
+          }
+        ]
       },
       {
         path: 'reports',
         element: (
           <Suspense fallback={<LoadingScreen />}>
-            <Reports />
+            <ReportsPlaceholder />
           </Suspense>
         ),
       },
@@ -148,7 +196,7 @@ const router = createBrowserRouter([
         path: 'settings',
         element: (
           <Suspense fallback={<LoadingScreen />}>
-            <Settings />
+            <SettingsPlaceholder />
           </Suspense>
         ),
       },

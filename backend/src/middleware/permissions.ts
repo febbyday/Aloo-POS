@@ -1,6 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma';
 import { logger } from '../utils/logger';
+import { AccessLevel } from '../../shared/schemas/accessLevel';
+import { Permissions } from '../../shared/schemas/permissions';
+import {
+  hasPermission as checkPermissionUtil,
+  hasAnyPermission as checkAnyPermissionUtil,
+  stringArrayToPermissions,
+  permissionsToStringArray,
+  convertLegacyPermissions
+} from '../utils/permissionUtils';
 
 /**
  * Extended Request interface with authenticated user information
@@ -11,7 +20,7 @@ export interface AuthRequest extends Request {
     username: string;
     email: string;
     roles?: string[];
-    permissions?: Record<string, any>;
+    permissions?: Permissions | string[] | Record<string, any>;
   };
 }
 
@@ -29,11 +38,11 @@ export const checkPermission = (resource: string, action: string) => {
 
       // For now, assume basic authorization check
       // This should be replaced with actual permission logic based on your system
-      
+
       // Example implementation:
       // 1. Get user's roles
       const userRoleIds = req.user.roles || [];
-      
+
       // 2. Check if user has permission through any of their roles
       if (userRoleIds.length > 0) {
         const roles = await prisma.role.findMany({
@@ -49,8 +58,22 @@ export const checkPermission = (resource: string, action: string) => {
 
         // Check if any role has the required permission
         const hasPermission = roles.some(role => {
-          const permissions = role.permissions as Record<string, any>;
-          return permissions?.[resource]?.[action] !== 'none';
+          // Convert permissions to standardized format if needed
+          let standardizedPermissions: Permissions;
+
+          if (Array.isArray(role.permissions)) {
+            // If permissions are in string array format, convert to object format
+            standardizedPermissions = stringArrayToPermissions(role.permissions);
+          } else if (typeof role.permissions === 'object' &&
+                    (role.permissions.administrator || role.permissions.manager)) {
+            // If permissions are in legacy format, convert to standardized format
+            standardizedPermissions = convertLegacyPermissions(role.permissions);
+          } else {
+            // Otherwise, assume it's already in the standardized format
+            standardizedPermissions = role.permissions as Permissions;
+          }
+
+          return checkPermissionUtil(standardizedPermissions, resource, action, AccessLevel.SELF);
         });
 
         if (hasPermission) {
@@ -80,7 +103,7 @@ export const checkAnyPermission = (permissions: Array<{ resource: string, action
 
       // Get user's roles
       const userRoleIds = req.user.roles || [];
-      
+
       if (userRoleIds.length > 0) {
         const roles = await prisma.role.findMany({
           where: {
@@ -95,12 +118,26 @@ export const checkAnyPermission = (permissions: Array<{ resource: string, action
 
         // Check if any role has any of the required permissions
         for (const role of roles) {
-          const rolePermissions = role.permissions as Record<string, any>;
-          
-          for (const { resource, action } of permissions) {
-            if (rolePermissions?.[resource]?.[action] !== 'none') {
-              return next();
-            }
+          // Convert permissions to standardized format if needed
+          let standardizedPermissions: Permissions;
+
+          if (Array.isArray(role.permissions)) {
+            // If permissions are in string array format, convert to object format
+            standardizedPermissions = stringArrayToPermissions(role.permissions);
+          } else if (typeof role.permissions === 'object' &&
+                    (role.permissions.administrator || role.permissions.manager)) {
+            // If permissions are in legacy format, convert to standardized format
+            standardizedPermissions = convertLegacyPermissions(role.permissions);
+          } else {
+            // Otherwise, assume it's already in the standardized format
+            standardizedPermissions = role.permissions as Permissions;
+          }
+
+          // Convert to format expected by checkAnyPermissionUtil
+          const requiredPermissions = permissions.map(p => [p.resource, p.action, AccessLevel.SELF] as [string, string, AccessLevel]);
+
+          if (checkAnyPermissionUtil(standardizedPermissions, requiredPermissions)) {
+            return next();
           }
         }
       }
@@ -115,7 +152,7 @@ export const checkAnyPermission = (permissions: Array<{ resource: string, action
 
 /**
  * Permission caching middleware
- * 
+ *
  * This middleware loads a user's permissions and caches them in the request
  * object for faster access in subsequent permission checks.
  */
@@ -131,10 +168,25 @@ export const loadUserPermissions = async (req: AuthRequest, res: Response, next:
     });
 
     if (role) {
-      // Extend the request object with the permissions
-      (req as any).permissions = role.permissions;
+      // Convert permissions to standardized format if needed
+      let standardizedPermissions: Permissions;
+
+      if (Array.isArray(role.permissions)) {
+        // If permissions are in string array format, convert to object format
+        standardizedPermissions = stringArrayToPermissions(role.permissions);
+      } else if (typeof role.permissions === 'object' &&
+                (role.permissions.administrator || role.permissions.manager)) {
+        // If permissions are in legacy format, convert to standardized format
+        standardizedPermissions = convertLegacyPermissions(role.permissions);
+      } else {
+        // Otherwise, assume it's already in the standardized format
+        standardizedPermissions = role.permissions as Permissions;
+      }
+
+      // Extend the request object with the standardized permissions
+      (req as any).permissions = standardizedPermissions;
     }
-    
+
     next();
   } catch (error) {
     console.error('Error loading user permissions:', error);
@@ -162,7 +214,7 @@ export const hasPermission = async (
     }
 
     const userRoleIds = user.roles as string[];
-    
+
     if (userRoleIds.length > 0) {
       const roles = await prisma.role.findMany({
         where: {
@@ -177,8 +229,22 @@ export const hasPermission = async (
 
       // Check if any role has the required permission
       return roles.some(role => {
-        const permissions = role.permissions as Record<string, any>;
-        return permissions?.[resource]?.[action] !== 'none';
+        // Convert permissions to standardized format if needed
+        let standardizedPermissions: Permissions;
+
+        if (Array.isArray(role.permissions)) {
+          // If permissions are in string array format, convert to object format
+          standardizedPermissions = stringArrayToPermissions(role.permissions);
+        } else if (typeof role.permissions === 'object' &&
+                  (role.permissions.administrator || role.permissions.manager)) {
+          // If permissions are in legacy format, convert to standardized format
+          standardizedPermissions = convertLegacyPermissions(role.permissions);
+        } else {
+          // Otherwise, assume it's already in the standardized format
+          standardizedPermissions = role.permissions as Permissions;
+        }
+
+        return checkPermissionUtil(standardizedPermissions, resource, action, AccessLevel.SELF);
       });
     }
 
@@ -187,4 +253,4 @@ export const hasPermission = async (
     logger.error('Error checking permissions:', error);
     return false;
   }
-}; 
+};

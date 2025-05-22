@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { 
+import {
   Search,
   RefreshCw,
   UserPlus,
@@ -19,8 +19,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import CustomersTable from '../components/CustomersTable'
 import { CustomerDialog } from '../components/CustomerDialog'
-import { useToast } from '@/components/ui/use-toast'
-import { 
+import { useToast } from '@/lib/toast'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -32,7 +32,7 @@ import { LoyaltyProgramPage } from './LoyaltyProgramPage'
 import { CustomerImportExportDialog } from '../components/CustomerImportExportDialog'
 import { exportCustomersToCSV, exportCustomersToExcel, exportCustomersToPDF, validateAndProcessCustomerImport } from '../utils/exportUtils'
 import * as XLSX from 'xlsx'
-import { generateId } from '@/lib/utils'
+import { generateId } from '@/lib/utils';
 import { useCustomers } from '../hooks/useCustomers'
 import { apiClient } from '@/lib/api/api-config'
 import { LoadingState } from '@/components/ui/loading-state'
@@ -118,16 +118,16 @@ function mapUiToApiCustomer(uiCustomer: Customer): ExtendedApiCustomer {
   // Helper to safely convert Date to string
   const dateToString = (date: Date | string | null | undefined): string | undefined => {
     if (!date) return undefined;
-    
+
     try {
       // If it's already a string, return it
       if (typeof date === 'string') return date;
-      
+
       // Check if date is valid before converting
       if (date instanceof Date && !isNaN(date.getTime())) {
         return date.toISOString();
       }
-      
+
       return undefined;
     } catch (error) {
       console.error('Error converting date to string:', error);
@@ -181,23 +181,23 @@ export function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const { toast } = useToast()
   const navigate = useNavigate();
-  
+
   // Use the customers hook for real API data
-  const { 
-    customers, 
-    loading, 
-    error, 
-    fetchCustomers, 
-    createCustomer, 
-    updateCustomer, 
-    deleteCustomer 
+  const {
+    customers,
+    loading,
+    error,
+    fetchCustomers,
+    createCustomer,
+    updateCustomer,
+    deleteCustomer
   } = useCustomers({ autoLoad: true });
-  
+
   // Simplified API initialization - just load the data
   useEffect(() => {
     // Initial load of customer data
     fetchCustomers();
-    
+
     // Log any error for debugging
     if (error) {
       console.error('Error loading customers:', error);
@@ -264,7 +264,7 @@ export function CustomersPage() {
           });
           return;
       }
-      
+
       toast({
         title: "Export Successful",
         description: `Customers exported successfully as ${format.toUpperCase()}.`
@@ -291,7 +291,7 @@ export function CustomersPage() {
     try {
       // Read the file
       const reader = new FileReader();
-      
+
       reader.onload = async (e) => {
         try {
           const data = e.target?.result;
@@ -299,10 +299,10 @@ export function CustomersPage() {
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(sheet);
-          
+
           // Validate and process the data
           const { validData, errors } = validateAndProcessCustomerImport(jsonData);
-          
+
           if (errors.length > 0) {
             toast({
               title: "Import Errors",
@@ -311,7 +311,7 @@ export function CustomersPage() {
             });
             console.error('Import errors:', errors);
           }
-          
+
           if (validData.length > 0) {
             // Use the API service to create multiple customers
             for (const customerData of validData) {
@@ -326,13 +326,13 @@ export function CustomersPage() {
                 loyaltyPoints: customerData.loyaltyPoints || 0,
                 isActive: customerData.isActive !== undefined ? customerData.isActive : true
               };
-              
+
               await createCustomer(apiCustomer);
             }
-            
+
             // Refresh the customers list
             fetchCustomers();
-            
+
             toast({
               title: "Import Successful",
               description: `${validData.length} customers imported successfully.`
@@ -353,7 +353,7 @@ export function CustomersPage() {
           });
         }
       };
-      
+
       reader.onerror = () => {
         toast({
           title: "Import Failed",
@@ -361,7 +361,7 @@ export function CustomersPage() {
           variant: "destructive"
         });
       };
-      
+
       reader.readAsBinaryString(file);
     } catch (error) {
       console.error('Import error:', error);
@@ -426,19 +426,19 @@ export function CustomersPage() {
 
   // Map API customers to UI format
   const uiCustomers = customers.map(mapApiToUiCustomer);
-  
+
   // Render loading state
   if (loading && customers.length === 0) {
     return (
-      <LoadingState 
-        isLoading={true} 
-        loadingText="Loading customers..." 
-        size="lg" 
+      <LoadingState
+        isLoading={true}
+        loadingText="Loading customers..."
+        size="lg"
         center
       />
     );
   }
-  
+
   // Render error state
   if (error && !loading && customers.length === 0) {
     return (
@@ -454,42 +454,42 @@ export function CustomersPage() {
   const toolbarGroups = [
     {
       buttons: [
-        { 
-          icon: RefreshCw, 
-          label: "Refresh", 
-          onClick: handleRefresh 
+        {
+          icon: RefreshCw,
+          label: "Refresh",
+          onClick: handleRefresh
         },
-        { 
-          icon: Filter, 
-          label: "Filter", 
-          onClick: handleFilter 
+        {
+          icon: Filter,
+          label: "Filter",
+          onClick: handleFilter
         }
       ]
     },
     {
       buttons: [
-        { 
-          icon: UserPlus, 
-          label: "Add Customer", 
-          onClick: handleNewCustomer 
+        {
+          icon: UserPlus,
+          label: "Add Customer",
+          onClick: handleNewCustomer
         },
-        { 
-          icon: Eye, 
-          label: "View Details", 
+        {
+          icon: Eye,
+          label: "View Details",
           onClick: handleViewSelectedCustomer,
           disabled: selectedCustomers.length !== 1,
           title: selectedCustomers.length === 1 ? 'View customer details' : 'Select a customer to view details'
         },
-        { 
-          icon: Edit, 
-          label: "Edit Customer", 
+        {
+          icon: Edit,
+          label: "Edit Customer",
           onClick: handleEditSelectedCustomer,
           disabled: selectedCustomers.length !== 1,
           title: selectedCustomers.length === 1 ? 'Edit customer' : 'Select a customer to edit'
         },
-        { 
-          icon: UserX, 
-          label: `Delete${selectedCustomers.length > 0 ? ` (${selectedCustomers.length})` : ''}`, 
+        {
+          icon: UserX,
+          label: `Delete${selectedCustomers.length > 0 ? ` (${selectedCustomers.length})` : ''}`,
           onClick: () => {
             toast({
               title: "Delete Selected",
@@ -503,15 +503,15 @@ export function CustomersPage() {
     },
     {
       buttons: [
-        { 
-          icon: Upload, 
-          label: "Import", 
-          onClick: () => setImportExportDialogOpen(true) 
+        {
+          icon: Upload,
+          label: "Import",
+          onClick: () => setImportExportDialogOpen(true)
         },
-        { 
-          icon: Download, 
-          label: "Export", 
-          onClick: () => setImportExportDialogOpen(true) 
+        {
+          icon: Download,
+          label: "Export",
+          onClick: () => setImportExportDialogOpen(true)
         }
       ]
     }
@@ -527,10 +527,10 @@ export function CustomersPage() {
         onChange={(e) => setSearchQuery(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
       />
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8" 
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
         onClick={handleSearch}
       >
         <Search className="h-4 w-4" />
@@ -541,7 +541,7 @@ export function CustomersPage() {
   return (
     <div className="space-y-6">
       {/* Toolbar - using the Toolbar component */}
-      <Toolbar 
+      <Toolbar
         groups={toolbarGroups}
         rightContent={rightContent}
         variant="default"
@@ -549,11 +549,31 @@ export function CustomersPage() {
       />
 
       <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="all">All Customers</TabsTrigger>
+          <TabsTrigger value="loyalty" onClick={(e) => {
+            e.preventDefault(); // Prevent the tab from being selected
+            navigate('/customers/loyalty'); // Navigate to the loyalty page
+          }}>Loyalty Program</TabsTrigger>
+          <TabsTrigger value="history" onClick={(e) => {
+            e.preventDefault(); // Prevent the tab from being selected
+            navigate('/customers/history'); // Navigate to the history page
+          }}>History</TabsTrigger>
+          <TabsTrigger value="analytics" onClick={(e) => {
+            e.preventDefault(); // Prevent the tab from being selected
+            navigate('/customers/analytics'); // Navigate to the analytics page
+          }}>Analytics</TabsTrigger>
+          <TabsTrigger value="reports" onClick={(e) => {
+            e.preventDefault(); // Prevent the tab from being selected
+            navigate('/customers/reports'); // Navigate to the reports page
+          }}>Reports</TabsTrigger>
+        </TabsList>
+
         <TabsContent value="all" className="p-0">
           <div className="grid grid-cols-1 gap-4">
             {/* Customer Table */}
-            <CustomersTable 
-              filters={filters} 
+            <CustomersTable
+              filters={filters}
               customers={uiCustomers}
               onEdit={handleEditCustomer}
               isLoading={loading}
@@ -561,31 +581,27 @@ export function CustomersPage() {
             />
           </div>
         </TabsContent>
-
-        <TabsContent value="loyalty" className="p-0">
-          <LoyaltyProgramPage />
-        </TabsContent>
       </Tabs>
 
       {/* Customer Dialog */}
-      <CustomerDialog 
-        open={dialogOpen} 
+      <CustomerDialog
+        open={dialogOpen}
         onOpenChange={setDialogOpen}
         customer={selectedCustomer}
         onCustomerAdded={(customer) => {
           console.log('CustomerDialog onCustomerAdded called with:', customer);
-          
+
           // Convert UI customer to API format
           const apiCustomer = mapUiToApiCustomer(customer);
           console.log('Mapped to API format:', apiCustomer);
-          
+
           // If editing an existing customer
           if (customer.id && selectedCustomer?.id) {
             console.log('Updating existing customer');
             updateCustomer(customer.id, apiCustomer)
               .then(result => console.log('Customer update result:', result))
               .catch(err => console.error('Customer update error:', err));
-          } 
+          }
           // If creating a new customer
           else {
             console.log('Creating new customer');

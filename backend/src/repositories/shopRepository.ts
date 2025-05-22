@@ -79,6 +79,15 @@ export class ShopRepository {
       where,
     });
   }
+
+  /**
+   * Find a shop by code
+   */
+  async findByCode(code: string): Promise<Shop | null> {
+    return prisma.shop.findUnique({
+      where: { code },
+    });
+  }
 }
 
 // Export singleton instance

@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React from "react";
 import {
   Tooltip,
@@ -8,7 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { HelpCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils/cn';
 
 interface HelpTooltipProps {
   content: React.ReactNode;
@@ -23,7 +21,7 @@ interface HelpTooltipProps {
 
 /**
  * HelpTooltip - A reusable component for providing contextual help
- * 
+ *
  * This component displays a help icon that, when hovered, shows a tooltip with help content.
  * It can be used alongside form fields to provide guidance on what information should be provided.
  */
@@ -44,20 +42,25 @@ export function HelpTooltip({
     lg: "h-6 w-6",
   };
 
+  // Create the trigger element first
+  const triggerElement = (
+    <div className="inline-flex items-center cursor-help">
+      {children}
+      <HelpCircle
+        className={cn(
+          "ml-1 text-muted-foreground hover:text-foreground transition-colors",
+          iconDimensions[iconSize],
+          iconClassName
+        )}
+      />
+    </div>
+  );
+
   return (
     <TooltipProvider>
       <Tooltip delayDuration={200}>
-        <TooltipTrigger asChild>
-          <div className="inline-flex items-center cursor-help">
-            {children}
-            <HelpCircle
-              className={cn(
-                "ml-1 text-muted-foreground hover:text-foreground transition-colors",
-                iconDimensions[iconSize],
-                iconClassName
-              )}
-            />
-          </div>
+        <TooltipTrigger>
+          {triggerElement}
         </TooltipTrigger>
         <TooltipContent
           side={side}
@@ -74,7 +77,7 @@ export function HelpTooltip({
 
 /**
  * FieldHelpTooltip - A specialized help tooltip for form fields
- * 
+ *
  * This component is specifically designed to be used with form fields.
  * It takes a label and shows a help icon beside it, which when hovered,
  * displays the provided help content.
@@ -102,7 +105,7 @@ export function FieldHelpTooltip({
 
 /**
  * InfoBox - A component for displaying more prominent help information
- * 
+ *
  * This component renders a highlighted box with an info icon and content.
  * Useful for displaying important notes, tips, or warnings within forms.
  */
@@ -132,4 +135,4 @@ export function InfoBox({
       <div>{children}</div>
     </div>
   );
-} 
+}

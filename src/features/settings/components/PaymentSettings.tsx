@@ -1,22 +1,22 @@
-import { useState } from "react";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Save, 
-  CreditCard, 
-  Calendar, 
-  DollarSign, 
-  Plus, 
+import {
+  Save,
+  CreditCard,
+  Calendar,
+  DollarSign,
+  Plus,
   Trash2,
   Banknote,
   Smartphone,
@@ -24,19 +24,20 @@ import {
   Lock,
   Settings,
   Edit,
-  CheckCircle2
+  CheckCircle2,
+  RotateCcw,
+  Loader2
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
-import { PaymentSettings, PaymentMethod } from "../types/settings.types";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -48,17 +49,21 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-interface PaymentSettingsPanelProps {
-  settings: PaymentSettings;
-  onUpdate: (newSettings: PaymentSettings) => void;
-}
+import { useToast } from "@/components/ui/use-toast";
+import { SettingsService } from '../services/payment.service';
+import { PaymentSettings, PaymentMethod } from '../schemas/payment-settings.schema';
 
 const paymentMethodSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, "Payment method name is required"),
   icon: z.string().min(1, "Icon name is required"),
   enabled: z.boolean().default(true),
-  systemDefined: z.boolean().default(false)
+  isDefault: z.boolean().default(false),
+  requiresApproval: z.boolean().default(false),
+  allowPartialPayment: z.boolean().default(true),
+  allowRefund: z.boolean().default(true),
+  processingFee: z.number().min(0).default(0),
+  processingFeeType: z.enum(['fixed', 'percentage']).default('percentage'),
 });
 
 type PaymentMethodFormValues = z.infer<typeof paymentMethodSchema>;
@@ -72,21 +77,34 @@ const iconOptions = [
   { value: "dollar", label: "Dollar", icon: DollarSign },
 ];
 
-export function PaymentSettingsPanel({ settings, onUpdate }: PaymentSettingsPanelProps) {
-  const [formData, setFormData] = useState<PaymentSettings>(settings);
+export function PaymentSettingsPanel() {
+  const { toast } = useToast();
+  const [settings, setSettings] = useState<PaymentSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [isAddingPaymentMethod, setIsAddingPaymentMethod] = useState(false);
   const [editingPaymentMethod, setEditingPaymentMethod] = useState<string | null>(null);
-  const [newInstallmentPlan, setNewInstallmentPlan] = useState({
-    period: {
-      frequency: 1,
-      unit: 'month' as const
-    },
-    priceRange: {
-      min: "0",
-      max: "0"
-    },
-    numberOfInstallments: "1"
-  });
+
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await SettingsService.getSettings();
+        setSettings(data);
+      } catch (error) {
+        console.error("Error loading payment settings:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load payment settings",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [toast]);
 
   const paymentMethodForm = useForm<PaymentMethodFormValues>({
     resolver: zodResolver(paymentMethodSchema),
@@ -94,59 +112,102 @@ export function PaymentSettingsPanel({ settings, onUpdate }: PaymentSettingsPane
       name: "",
       icon: "credit-card",
       enabled: true,
-      systemDefined: false
+      isDefault: false,
+      requiresApproval: false,
+      allowPartialPayment: true,
+      allowRefund: true,
+      processingFee: 0,
+      processingFeeType: 'percentage',
     }
   });
 
-  const handlePaymentMethodChange = (methodId: string, enabled: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      methods: {
-        ...prev.methods,
-        [methodId]: {
-          ...prev.methods[methodId],
-          enabled
-        }
-      }
-    }));
+  // Save settings
+  const handleSave = async () => {
+    if (!settings) return;
+
+    setSaving(true);
+    try {
+      await SettingsService.saveSettings(settings);
+      toast({
+        title: "Success",
+        description: "Payment settings saved successfully",
+      });
+    } catch (error) {
+      console.error("Error saving payment settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save payment settings",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleMethodSettingChange = (methodId: string, setting: string, value: string | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      methods: {
-        ...prev.methods,
-        [methodId]: {
-          ...prev.methods[methodId],
-          settings: {
-            ...prev.methods[methodId].settings,
-            [setting]: value
-          }
-        }
-      }
-    }));
+  // Reset settings to defaults
+  const handleReset = async () => {
+    setSaving(true);
+    try {
+      const defaults = await SettingsService.resetSettings();
+      setSettings(defaults);
+      toast({
+        title: "Success",
+        description: "Payment settings reset to defaults",
+      });
+    } catch (error) {
+      console.error("Error resetting payment settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reset payment settings",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePaymentMethodChange = (methodId: string, field: keyof PaymentMethod, value: any) => {
+    if (!settings) return;
+
+    setSettings({
+      ...settings,
+      methods: settings.methods.map(method =>
+        method.id === methodId ? { ...method, [field]: value } : method
+      )
+    });
   };
 
   const handleAddPaymentMethod = (values: PaymentMethodFormValues) => {
-    const methodId = editingPaymentMethod || `method_${Date.now()}`;
-    const newMethod = {
-      id: methodId,
+    if (!settings) return;
+
+    const newMethod: PaymentMethod = {
+      id: editingPaymentMethod || `method_${Date.now()}`,
       name: values.name,
       icon: values.icon,
       enabled: values.enabled,
-      systemDefined: values.systemDefined,
-      settings: {}
+      isDefault: values.isDefault,
+      requiresApproval: values.requiresApproval,
+      allowPartialPayment: values.allowPartialPayment,
+      allowRefund: values.allowRefund,
+      processingFee: values.processingFee,
+      processingFeeType: values.processingFeeType,
     };
 
-    setFormData(prev => ({
-      ...prev,
-      methods: {
-        ...prev.methods,
-        [methodId]: editingPaymentMethod ? 
-          { ...prev.methods[methodId], ...newMethod } : 
-          newMethod
-      }
-    }));
+    if (editingPaymentMethod) {
+      // Update existing method
+      setSettings({
+        ...settings,
+        methods: settings.methods.map(method =>
+          method.id === editingPaymentMethod ? newMethod : method
+        )
+      });
+    } else {
+      // Add new method
+      setSettings({
+        ...settings,
+        methods: [...settings.methods, newMethod]
+      });
+    }
 
     setIsAddingPaymentMethod(false);
     setEditingPaymentMethod(null);
@@ -154,106 +215,43 @@ export function PaymentSettingsPanel({ settings, onUpdate }: PaymentSettingsPane
   };
 
   const handleDeletePaymentMethod = (methodId: string) => {
-    if (formData.methods[methodId].systemDefined) {
-      return; // Cannot delete system-defined methods
-    }
+    if (!settings) return;
 
-    const updatedMethods = { ...formData.methods };
-    delete updatedMethods[methodId];
-
-    setFormData(prev => ({
-      ...prev,
-      methods: updatedMethods
-    }));
+    setSettings({
+      ...settings,
+      methods: settings.methods.filter(method => method.id !== methodId)
+    });
   };
 
   const handleEditPaymentMethod = (methodId: string) => {
-    const method = formData.methods[methodId];
+    if (!settings) return;
+
+    const method = settings.methods.find(m => m.id === methodId);
+    if (!method) return;
+
     paymentMethodForm.reset({
+      id: method.id,
       name: method.name,
       icon: method.icon,
       enabled: method.enabled,
-      systemDefined: method.systemDefined
+      isDefault: method.isDefault,
+      requiresApproval: method.requiresApproval,
+      allowPartialPayment: method.allowPartialPayment,
+      allowRefund: method.allowRefund,
+      processingFee: method.processingFee,
+      processingFeeType: method.processingFeeType,
     });
+
     setEditingPaymentMethod(methodId);
     setIsAddingPaymentMethod(true);
   };
 
-  const handleInstallmentChange = (field: string, value: string | number) => {
-    if (field.startsWith('period.')) {
-      const periodField = field.split('.')[1];
-      setNewInstallmentPlan(prev => ({
-        ...prev,
-        period: {
-          ...prev.period,
-          [periodField]: value
-        }
-      }));
-    } else if (field.startsWith('priceRange.')) {
-      const priceField = field.split('.')[1];
-      setNewInstallmentPlan(prev => ({
-        ...prev,
-        priceRange: {
-          ...prev.priceRange,
-          [priceField]: value
-        }
-      }));
-    } else {
-      setNewInstallmentPlan(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
-  };
-
-  const addInstallmentPlan = () => {
-    const newPlan = {
-      id: `plan_${Date.now()}`,
-      period: {
-        frequency: parseInt(String(newInstallmentPlan.period.frequency)),
-        unit: newInstallmentPlan.period.unit
-      },
-      priceRange: {
-        min: parseFloat(newInstallmentPlan.priceRange.min),
-        max: parseFloat(newInstallmentPlan.priceRange.max)
-      },
-      numberOfInstallments: parseInt(newInstallmentPlan.numberOfInstallments)
-    };
-
-    setFormData(prev => ({
-      ...prev,
-      installment: {
-        ...prev.installment,
-        plans: [...prev.installment.plans, newPlan]
-      }
-    }));
-
-    // Reset form
-    setNewInstallmentPlan({
-      period: {
-        frequency: 1,
-        unit: 'month'
-      },
-      priceRange: {
-        min: "0",
-        max: "0"
-      },
-      numberOfInstallments: "1"
-    });
-  };
-
-  const removeInstallmentPlan = (planId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      installment: {
-        ...prev.installment,
-        plans: prev.installment.plans.filter(plan => plan.id !== planId)
-      }
-    }));
-  };
-
-  const handleSave = () => {
-    onUpdate(formData);
+  const updateSetting = <K extends keyof PaymentSettings>(
+    key: K,
+    value: PaymentSettings[K]
+  ) => {
+    if (!settings) return;
+    setSettings({ ...settings, [key]: value });
   };
 
   // Helper function to render icon component based on string name
@@ -267,19 +265,50 @@ export function PaymentSettingsPanel({ settings, onUpdate }: PaymentSettingsPane
     return <CreditCard className="h-5 w-5 mr-2 text-muted-foreground" />;
   };
 
+  if (loading || !settings) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading payment settings...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Payment Settings</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Payment Settings</h2>
           <p className="text-muted-foreground">
-            Configure payment methods and installment options.
+            Configure payment methods and options
           </p>
         </div>
-        <Button onClick={handleSave}>
-          <Save className="mr-2 h-4 w-4" />
-          Save Changes
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleReset}
+            disabled={saving}
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Reset to Defaults
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="methods" className="space-y-4">
@@ -306,8 +335,8 @@ export function PaymentSettingsPanel({ settings, onUpdate }: PaymentSettingsPane
                 </div>
                 <Dialog open={isAddingPaymentMethod} onOpenChange={setIsAddingPaymentMethod}>
                   <DialogTrigger asChild>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       onClick={() => {
                         setEditingPaymentMethod(null);
                         paymentMethodForm.reset({
@@ -350,7 +379,7 @@ export function PaymentSettingsPanel({ settings, onUpdate }: PaymentSettingsPane
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Icon</FormLabel>
-                              <Select 
+                              <Select
                                 onValueChange={field.onChange}
                                 defaultValue={field.value}
                               >
@@ -361,8 +390,8 @@ export function PaymentSettingsPanel({ settings, onUpdate }: PaymentSettingsPane
                                 </FormControl>
                                 <SelectContent>
                                   {iconOptions.map(option => (
-                                    <SelectItem 
-                                      key={option.value} 
+                                    <SelectItem
+                                      key={option.value}
                                       value={option.value}
                                       className="flex items-center gap-2"
                                     >
@@ -455,8 +484,8 @@ export function PaymentSettingsPanel({ settings, onUpdate }: PaymentSettingsPane
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Switch 
-                                checked={method.enabled} 
+                              <Switch
+                                checked={method.enabled}
                                 onCheckedChange={(checked) => handlePaymentMethodChange(methodId, checked)}
                               />
                             </TableCell>

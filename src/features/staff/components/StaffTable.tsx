@@ -9,17 +9,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { 
-  UserCircle, 
-  Mail, 
-  Phone, 
-  BadgeCheck, 
+import {
+  UserCircle,
+  Mail,
+  Phone,
+  BadgeCheck,
   Calendar,
 } from "lucide-react"
 import { Staff } from "../types/staff.types"
 import { StaffModal } from "./StaffModal"
-import { cn } from "@/lib/utils"
-import { toast } from "@/components/ui/use-toast"
+import { cn } from '@/lib/utils';
+import { toast } from "@/lib/toast"
 
 interface StaffTableProps {
   data: Staff[]
@@ -40,12 +40,9 @@ export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionCha
 
   const handleView = (staff: Staff) => {
     setActiveRowId(staff.id)
-    
-    toast({
-      title: "Opening Staff Details",
-      description: `Viewing details for ${staff.firstName} ${staff.lastName}`,
-    })
-    
+
+    toast.info("Opening Staff Details", `Viewing details for ${staff.firstName} ${staff.lastName}`)
+
     setTimeout(() => {
       navigate(`/staff/${staff.id}`)
     }, 300)
@@ -54,13 +51,13 @@ export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionCha
   const handleRowClick = (staff: Staff) => {
     const staffId = staff.id!
     let newSelectedRows: string[]
-    
+
     if (selectedRows.includes(staffId)) {
       newSelectedRows = selectedRows.filter(id => id !== staffId)
     } else {
       newSelectedRows = [...selectedRows, staffId]
     }
-    
+
     setSelectedRows(newSelectedRows)
     if (onSelectionChange) {
       onSelectionChange(newSelectedRows)
@@ -107,7 +104,7 @@ export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionCha
           </TableHeader>
           <TableBody>
             {data.map((staff) => (
-              <TableRow 
+              <TableRow
                 key={staff.id}
                 className={cn(
                   "py-2 cursor-pointer transition-colors",
@@ -147,12 +144,12 @@ export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionCha
                 </TableCell>
                 <TableCell className="py-2">
                   {typeof staff.employmentType === 'object' && staff.employmentType && 'name' in staff.employmentType ? (
-                    <Badge 
+                    <Badge
                       className="bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 border-blue-500/10"
-                      style={{ 
+                      style={{
                         backgroundColor: `${staff.employmentType.color}20`,
                         color: staff.employmentType.color,
-                        borderColor: `${staff.employmentType.color}10` 
+                        borderColor: `${staff.employmentType.color}10`
                       }}
                     >
                       {staff.employmentType.name}
@@ -190,7 +187,7 @@ export function StaffTable({ data, searchQuery, onEdit, onDelete, onSelectionCha
           </TableBody>
         </Table>
       </div>
-      
+
       {data.length > 0 && (
         <div className="mt-4 text-xs text-muted-foreground text-center italic">
           <p>Tip: Click to select a staff member. Double-click to view their full details.</p>

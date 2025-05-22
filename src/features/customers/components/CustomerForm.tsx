@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Customer } from '../types';
-import { useToastManager } from '@/components/ui/toast-manager';
+import { useToast } from '@/lib/toast';
 import { useCustomerHistory } from '../context/CustomerHistoryContext';
 import { FieldHelpTooltip, InfoBox } from '@/components/ui/help-tooltip';
 import { OperationButton } from '@/components/ui/action-feedback';

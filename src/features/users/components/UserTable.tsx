@@ -1,35 +1,41 @@
 import { useState } from 'react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  MoreVertical, 
-  Edit, 
-  Trash, 
-  Eye, 
+import {
+  User as UserIcon,
+  Mail,
+  Shield,
+  Activity,
+  Clock,
+  MoreVertical,
+  Edit,
+  Trash,
+  Eye,
   Lock,
   Check,
   X
 } from 'lucide-react';
-import { User, UserRole } from '../types/user.types';
+import { User } from '../types/user.types';
+import { UserRole } from '@/features/auth/schemas/auth.schemas';
 
 interface UserTableProps {
   users: User[];
@@ -95,18 +101,48 @@ export function UserTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last Login</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="py-3">
+                <span className="flex items-center gap-1">
+                  <UserIcon className="h-4 w-4 text-muted-foreground" aria-label="User" />
+                  User
+                </span>
+              </TableHead>
+              <TableHead className="py-3">
+                <span className="flex items-center gap-1">
+                  <Mail className="h-4 w-4 text-muted-foreground" aria-label="Email" />
+                  Email
+                </span>
+              </TableHead>
+              <TableHead className="py-3">
+                <span className="flex items-center gap-1">
+                  <Shield className="h-4 w-4 text-muted-foreground" aria-label="Role" />
+                  Role
+                </span>
+              </TableHead>
+              <TableHead className="py-3">
+                <span className="flex items-center gap-1">
+                  <Activity className="h-4 w-4 text-muted-foreground" aria-label="Status" />
+                  Status
+                </span>
+              </TableHead>
+              <TableHead className="py-3">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" aria-label="Last Login" />
+                  Last Login
+                </span>
+              </TableHead>
+              <TableHead className="text-right py-3">
+                <span className="flex items-center gap-1 justify-end">
+                  <MoreVertical className="h-4 w-4 text-muted-foreground" aria-label="Actions" />
+                  Actions
+                </span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {Array.from({ length: 5 }).map((_, index) => (
               <TableRow key={index}>
-                <TableCell>
+                <TableCell className="py-3">
                   <div className="flex items-center gap-3">
                     <Skeleton className="h-10 w-10 rounded-full" />
                     <div>
@@ -115,11 +151,11 @@ export function UserTable({
                     </div>
                   </div>
                 </TableCell>
-                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                <TableCell className="py-3"><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
+                <TableCell className="py-3"><Skeleton className="h-4 w-16" /></TableCell>
+                <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell className="py-3 text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -133,25 +169,55 @@ export function UserTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>User</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Last Login</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="py-3">
+              <span className="flex items-center gap-1">
+                <UserIcon className="h-4 w-4 text-muted-foreground" aria-label="User" />
+                User
+              </span>
+            </TableHead>
+            <TableHead className="py-3">
+              <span className="flex items-center gap-1">
+                <Mail className="h-4 w-4 text-muted-foreground" aria-label="Email" />
+                Email
+              </span>
+            </TableHead>
+            <TableHead className="py-3">
+              <span className="flex items-center gap-1">
+                <Shield className="h-4 w-4 text-muted-foreground" aria-label="Role" />
+                Role
+              </span>
+            </TableHead>
+            <TableHead className="py-3">
+              <span className="flex items-center gap-1">
+                <Activity className="h-4 w-4 text-muted-foreground" aria-label="Status" />
+                Status
+              </span>
+            </TableHead>
+            <TableHead className="py-3">
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4 text-muted-foreground" aria-label="Last Login" />
+                Last Login
+              </span>
+            </TableHead>
+            <TableHead className="text-right py-3">
+              <span className="flex items-center gap-1 justify-end">
+                <MoreVertical className="h-4 w-4 text-muted-foreground" aria-label="Actions" />
+                Actions
+              </span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground py-3">
                 No users found
               </TableCell>
             </TableRow>
           ) : (
             users.map((user) => (
               <TableRow key={user.id}>
-                <TableCell>
+                <TableCell className="py-3">
                   <div className="flex items-center gap-3">
                     <Avatar>
                       {user.avatar ? (
@@ -165,13 +231,13 @@ export function UserTable({
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>
+                <TableCell className="py-3">{user.email}</TableCell>
+                <TableCell className="py-3">
                   <Badge className={getRoleBadgeColor(user.role)}>
                     {user.role}
                   </Badge>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-3">
                   {user.isActive ? (
                     <div className="flex items-center">
                       <Check className="h-4 w-4 text-green-500 mr-1" />
@@ -184,8 +250,8 @@ export function UserTable({
                     </div>
                   )}
                 </TableCell>
-                <TableCell>{formatDate(user.lastLogin)}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="py-3">{formatDate(user.lastLogin)}</TableCell>
+                <TableCell className="py-3 text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -209,7 +275,7 @@ export function UserTable({
                         Reset Password
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => onDelete(user)}
                         className="text-red-600 focus:text-red-600"
                       >

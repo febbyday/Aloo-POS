@@ -1,1 +1,10 @@
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api/v1';
+import { API_CONSTANTS } from '../lib/api/config';
+
+/**
+ * Application constants
+ *
+ * This file uses the centralized API configuration from src/lib/api/config.ts
+ */
+
+// Export API constants using the centralized configuration
+export const API_BASE_URL = API_CONSTANTS.FULL_URL;

@@ -1,6 +1,6 @@
 /**
  * Sales Pages
- * 
+ *
  * This module exports page components for the sales feature.
  */
 
@@ -12,4 +12,5 @@ export { TransactionBrowserPage } from './TransactionBrowserPage'
 export { ReturnsPage } from './ReturnsPage'
 export { ProcessReturnPage } from './ProcessReturnPage'
 export { ReturnHistoryPage } from './ReturnHistoryPage'
+export { ReturnDetailsPage } from './ReturnDetailsPage'
 export { RefundManagementPage } from './RefundManagementPage'

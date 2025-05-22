@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { staffService } from '@/features/staff/services/staffService';
 import { Staff } from '@/features/staff/types/staff';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 
 export interface StaffReportData {
   name: string;
@@ -24,11 +24,11 @@ export function useStaffReports() {
   const fetchStaffReports = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Fetch staff from the API
       const staffMembers = await staffService.fetchAll();
-      
+
       // Transform staff data into report data
       const transformedData: StaffReportData[] = staffMembers.map((staff: Staff) => {
         // Generate realistic looking mock data based on real staff info
@@ -38,7 +38,7 @@ export function useStaffReports() {
         const hoursWorked = staff.employmentType === 'full-time' ? 160 : 80;
         const performance = Math.floor(Math.random() * 30) + 70; // 70-100
         const commissions = sales * 0.05; // 5% commission
-        
+
         return {
           name: `${staff.firstName} ${staff.lastName}`,
           role: staff.role || 'Staff Member',
@@ -51,7 +51,7 @@ export function useStaffReports() {
           commissions
         };
       });
-      
+
       setReportData(transformedData);
     } catch (err) {
       console.error('Error fetching staff report data:', err);
@@ -77,4 +77,4 @@ export function useStaffReports() {
     error,
     refetch: fetchStaffReports
   };
-} 
+}

@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { useState, useEffect } from 'react';
 import { PageHeader, OperationButton } from '@/components';
 import {
@@ -20,7 +18,7 @@ import {
   Grid,
   Tag
 } from 'lucide-react';
-import { useToastManager } from '@/components/ui/toast-manager';
+import { useToast } from '@/lib/toast';
 import { useProducts } from '../context/ProductContext';
 import { ProductAttribute } from '../types/unified-product.types';
 import AttributesManager from '../components/AttributesManager';

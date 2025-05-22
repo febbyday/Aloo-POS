@@ -2,19 +2,19 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { 
-  Table, TableBody, TableCell, TableHead, 
-  TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead,
+  TableHeader, TableRow
 } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { 
-  AlertTriangle, Search, Package, Barcode, Hash, 
-  CircleDot, FolderClosed, AlertCircle, History 
+import {
+  AlertTriangle, Search, Package, Barcode, Hash,
+  CircleDot, FolderClosed, AlertCircle, History
 } from "lucide-react"
 import { ProductsToolbar } from '../components/ProductsToolbar'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 import { StockAlert } from '../services/stockAlerts'
 import { useStockAlerts } from '../hooks/useStockAlerts'
 
@@ -22,20 +22,20 @@ export function LowStockAlertsPage() {
   const { toast } = useToast()
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'warning'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
-  const { 
-    alerts, 
-    loading, 
+  const {
+    alerts,
+    loading,
     error,
     totalCount,
     criticalCount,
     warningCount,
     fetchAlerts,
-    createRestockOrder 
+    createRestockOrder
   } = useStockAlerts()
 
   useEffect(() => {
@@ -122,8 +122,8 @@ export function LowStockAlertsPage() {
 
   return (
     <div className="space-y-4">
-      <ProductsToolbar 
-        groups={toolbarGroups} 
+      <ProductsToolbar
+        groups={toolbarGroups}
         rightContent={
           <div className="flex gap-2">
             <Badge variant="destructive">
@@ -135,7 +135,7 @@ export function LowStockAlertsPage() {
           </div>
         }
       />
-      
+
       <Card className="border-none">
         <CardContent className="p-0">
           <div className="flex justify-between gap-4 pb-4">
@@ -149,8 +149,8 @@ export function LowStockAlertsPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Select 
-                value={statusFilter} 
+              <Select
+                value={statusFilter}
                 onValueChange={(value: 'all' | 'critical' | 'warning') => setStatusFilter(value)}
               >
                 <SelectTrigger className="w-[180px]">
@@ -170,7 +170,7 @@ export function LowStockAlertsPage() {
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[50px] h-12">
-                    <Checkbox 
+                    <Checkbox
                       checked={selectedItems.size === alerts.length}
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all items"
@@ -241,12 +241,12 @@ export function LowStockAlertsPage() {
                   </TableRow>
                 ) : (
                   alerts.map((item) => (
-                    <TableRow 
+                    <TableRow
                       key={item.id}
                       className="border-b transition-colors hover:bg-muted/5"
                     >
                       <TableCell className="h-[50px] py-3">
-                        <Checkbox 
+                        <Checkbox
                           checked={selectedItems.has(item.id)}
                           onCheckedChange={(checked) => handleSelectItem(item.id, checked)}
                           aria-label={`Select ${item.name}`}
@@ -258,7 +258,7 @@ export function LowStockAlertsPage() {
                       <TableCell className="h-[50px] py-3">{item.minThreshold}</TableCell>
                       <TableCell className="h-[50px] py-3">{item.category}</TableCell>
                       <TableCell className="h-[50px] py-3">
-                        <Badge 
+                        <Badge
                           variant={item.status === 'critical' ? 'destructive' : 'warning'}
                           className="capitalize"
                         >
@@ -292,9 +292,10 @@ export function LowStockAlertsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="15">15 per page</SelectItem>
+                    <SelectItem value="25">25 per page</SelectItem>
+                    <SelectItem value="50">50 per page</SelectItem>
+                    <SelectItem value="100">100 per page</SelectItem>
                   </SelectContent>
                 </Select>
                 <span className="text-sm text-muted-foreground">entries</span>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle, AlertTriangle, Info, XCircle, RefreshCw } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 import { Button } from './button';
 
 /**

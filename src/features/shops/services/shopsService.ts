@@ -1,12 +1,13 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 /**
  * Shops Service
- * 
+ *
  * This service handles API calls and data operations for the shops feature.
+ * Uses the enhanced API client and endpoint registry for improved error handling and consistency.
  */
 
 import { z } from 'zod';
+import { enhancedApiClient } from '@/lib/api/enhanced-api-client';
+import { getApiUrl } from '@/lib/api/enhanced-config';
 
 // Import types from the shared schema
 import {
@@ -17,10 +18,6 @@ import {
   CreateShopInput as SharedCreateShopInput,
   UpdateShopInput as SharedUpdateShopInput
 } from '../types';
-import { getApiEndpoint } from '@/lib/api/config';
-
-// API base URL - update to match the backend endpoint structure
-const API_BASE_URL = `${getApiEndpoint('shops')}`;
 
 // Request trackers for cancellation
 const requestControllers: { [key: string]: AbortController } = {};
@@ -29,103 +26,9 @@ const requestControllers: { [key: string]: AbortController } = {};
 const shopSchemaTyped = shopSchema as z.ZodType<Shop>;
 const shopSchemaArrayTyped = shopSchema.array() as z.ZodType<Shop[]>;
 
-// Schema for paginated shop response from backend
-const ShopPaginatedResponseSchema = z.object({
-  shops: z.array(shopSchema),
-  total: z.number(),
-  page: z.number(),
-  limit: z.number()
-});
-
 // Type aliases for compatibility with existing code
 export type CreateShopInput = SharedCreateShopInput;
 export type UpdateShopInput = SharedUpdateShopInput;
-
-/**
- * Helper function to handle API responses
- * Validates response data against a schema if provided
- */
-const handleResponse = async <T>(response: Response, schema?: z.ZodType<T>): Promise<T> => {
-  if (!response.ok) {
-    let errorData: any = {};
-    
-    try {
-      errorData = await response.json();
-    } catch (e) {
-      // If parsing as JSON fails, use the status text
-      throw new Error(response.statusText || 'An error occurred with the request');
-    }
-    
-    // Extract error message from the backend response format
-    const errorMessage = errorData.details 
-      ? `${errorData.error}: ${errorData.details.map((d: any) => d.message).join(', ')}`
-      : errorData.error || errorData.message || 'Unknown error occurred';
-      
-    throw new Error(errorMessage);
-  }
-  
-  // Parse the response JSON
-  const jsonData = await response.json();
-  
-  // Extract the data property if it exists, otherwise use the entire response
-  const data = jsonData.data !== undefined ? jsonData.data : jsonData;
-  
-  // If a schema is provided, validate the data
-  if (schema) {
-    try {
-      // For debugging - log the data we're trying to validate
-      // console.log('Validating data:', JSON.stringify(data));
-      
-      // Attempt to parse with the schema, but apply fixes for common issues first
-      let processedData = data;
-      
-      // Handle single shop with empty/missing required fields
-      if (processedData && typeof processedData === 'object' && !Array.isArray(processedData)) {
-        // Apply default values for missing fields to prevent validation errors
-        processedData = {
-          ...processedData,
-          name: processedData.name || 'Untitled Shop',
-          location: processedData.location || 'Unknown Location'
-        };
-      }
-      
-      // Handle shop arrays with empty/missing required fields
-      if (Array.isArray(processedData?.shops)) {
-        processedData.shops = processedData.shops.map((shop: any) => ({
-          ...shop,
-          name: shop.name || 'Untitled Shop',
-          location: shop.location || 'Unknown Location'
-        }));
-      }
-      
-      // Apply the same fix to direct shop arrays
-      if (Array.isArray(processedData)) {
-        processedData = processedData.map((shop: any) => ({
-          ...shop,
-          name: shop.name || 'Untitled Shop',
-          location: shop.location || 'Unknown Location'
-        }));
-      }
-      
-      return schema.parse(processedData);
-    } catch (error) {
-      // Log validation errors with detailed information
-      console.error('Data validation error:', error);
-      console.log('Invalid data:', data);
-      
-      // If the data is a shop or shop array with empty values, try to fix and return it as usable data
-      if (data) {
-        // Apply fallback values and add warning to console
-        console.warn('Returning data with defaults for required fields');
-        return data as T;
-      }
-      
-      throw new Error('Invalid data received from server');
-    }
-  }
-  
-  return data as T;
-};
 
 // Cancel any ongoing request with the same ID
 const cancelExistingRequest = (requestId: string) => {
@@ -139,7 +42,7 @@ export const shopsService = {
   /**
    * Get the API URL for shops (for debugging)
    */
-  getApiUrl: () => API_BASE_URL,
+  getApiUrl: () => getApiUrl('shops', 'LIST'),
 
   /**
    * Fetch all shops
@@ -147,38 +50,53 @@ export const shopsService = {
   fetchAll: async (requestId: string = 'fetchAll'): Promise<Shop[]> => {
     // Cancel any existing request with the same ID
     cancelExistingRequest(requestId);
-    
+
     // Create a new controller for this request
     const controller = new AbortController();
     requestControllers[requestId] = controller;
-    
+
     try {
-      console.log(`Fetching shops from ${API_BASE_URL}`);
-      
-      const response = await fetch(`${API_BASE_URL}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
+      const apiUrl = getApiUrl('shops', 'LIST');
+      console.log(`Fetching shops from ${apiUrl}`);
+
+      // Use the enhanced API client
+      const response = await enhancedApiClient.get('shops/LIST', undefined, {
+        signal: controller.signal
       });
-      
-      // First parse the paginated response
-      const paginatedData = await handleResponse(response, ShopPaginatedResponseSchema);
-      
-      // Then validate the shops array with our shop schema
-      const shops = shopSchemaArrayTyped.parse(paginatedData.shops);
-      
+
+      // If the response is already in the expected format
+      if (response && response.shops) {
+        // Then validate the shops array with our shop schema
+        const shops = shopSchemaArrayTyped.parse(response.shops);
+
+        // Request completed successfully, remove the controller
+        delete requestControllers[requestId];
+
+        return shops;
+      }
+
+      // If the response is just an array of shops
+      if (Array.isArray(response)) {
+        const shops = shopSchemaArrayTyped.parse(response);
+
+        // Request completed successfully, remove the controller
+        delete requestControllers[requestId];
+
+        return shops;
+      }
+
       // Request completed successfully, remove the controller
       delete requestControllers[requestId];
-      
-      return shops;
+
+      // Fallback case - return empty array
+      console.warn('Unexpected response format from shops API:', response);
+      return [];
     } catch (error) {
       // If the error is an AbortError, it's intentional, so rethrow
       if (error instanceof Error && error.name === 'AbortError') {
         throw error;
       }
-      
+
       console.error('Error fetching shops:', error);
       throw error;
     }
@@ -190,31 +108,40 @@ export const shopsService = {
   fetchById: async (id: string, requestId: string = `fetchById_${id}`): Promise<Shop | null> => {
     // Cancel any existing request with the same ID
     cancelExistingRequest(requestId);
-    
+
     // Create a new controller for this request
     const controller = new AbortController();
     requestControllers[requestId] = controller;
-    
+
     try {
-      const response = await fetch(`${API_BASE_URL}/${id}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-      });
-      
-      if (response.status === 404) {
+      // Use the enhanced API client with the DETAIL endpoint
+      const [response, error] = await enhancedApiClient.safe(() =>
+        enhancedApiClient.get('shops/DETAIL', { id }, {
+          signal: controller.signal
+        })
+      );
+
+      // Handle 404 or other errors
+      if (error || !response) {
+        if (error && error.message.includes('404')) {
+          return null;
+        }
+
+        if (error) {
+          throw error;
+        }
+
         return null;
       }
-      
-      const result = await handleResponse<Shop>(response, shopSchemaTyped);
-      
+
+      // Validate the response with our schema
+      const result = shopSchemaTyped.parse(response);
+
       // Request completed successfully, remove the controller
       if (requestControllers[requestId] === controller) {
         delete requestControllers[requestId];
       }
-      
+
       return result;
     } catch (error) {
       // If the error is an AbortError and it's due to navigation, we should silently ignore it
@@ -223,7 +150,7 @@ export const shopsService = {
         console.log(`Request for shop ${id} was aborted, likely due to navigation.`);
         throw new Error('Request was canceled during navigation.');
       }
-      
+
       console.error(`Error fetching shop with ID ${id}:`, error);
       throw error;
     } finally {
@@ -237,57 +164,39 @@ export const shopsService = {
   /**
    * Create a new shop
    */
-  create: async (data: CreateShopInput, requestId: string = 'createShop'): Promise<Shop> => {
+  create: async (data: CreateShopInput): Promise<Shop> => {
     // Generate a unique requestId for each shop creation to prevent conflicts
-    const uniqueRequestId = `createShop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const uniqueRequestId = `createShop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     cancelExistingRequest(uniqueRequestId);
-    
+
     const controller = new AbortController();
     requestControllers[uniqueRequestId] = controller;
-    
+
     try {
       // Validate the input data with the createShopSchema
       const validatedData = createShopSchema.parse(data);
-      
+
       console.log(`Creating shop "${data.name}" with unique requestId: ${uniqueRequestId}`);
-      
-      const response = await fetch(`${API_BASE_URL}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(validatedData),
-        signal: controller.signal,
+
+      // Use the enhanced API client with the CREATE endpoint
+      const response = await enhancedApiClient.post('shops/CREATE', validatedData, undefined, {
+        signal: controller.signal
       });
-      
-      // Log the raw response for debugging
-      const responseText = await response.text();
-      console.log("Create shop response:", responseText);
-      
-      // Parse the response text back to JSON
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        throw new Error(`Invalid JSON response: ${responseText}`);
-      }
-      
-      // Check if the response contains a data property (API wrapper)
-      const shopData = responseData.data || responseData;
-      
+
+      console.log("Create shop response:", response);
+
       // Validate with schema
-      return shopSchemaTyped.parse(shopData);
+      return shopSchemaTyped.parse(response);
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw error;
       }
-      
+
       if (error instanceof z.ZodError) {
         console.error("Validation error:", error.errors);
         throw new Error(`Validation error: ${error.errors.map(e => e.message).join(', ')}`);
       }
-      
+
       console.error('Error creating shop:', error);
       throw error;
     } finally {
@@ -302,53 +211,35 @@ export const shopsService = {
    */
   update: async (id: string, data: UpdateShopInput, requestId: string = `updateShop_${id}`): Promise<Shop> => {
     cancelExistingRequest(requestId);
-    
+
     const controller = new AbortController();
     requestControllers[requestId] = controller;
-    
+
     try {
       // Validate update data if provided
       const validatedData = updateShopSchema.parse(data);
-      
+
       console.log(`Updating shop ${id} with data:`, JSON.stringify(validatedData, null, 2));
-      
-      const response = await fetch(`${API_BASE_URL}/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(validatedData),
-        signal: controller.signal,
+
+      // Use the enhanced API client with the UPDATE endpoint
+      const response = await enhancedApiClient.patch('shops/UPDATE', validatedData, { id }, {
+        signal: controller.signal
       });
-      
-      // Log the raw response for debugging
-      const responseText = await response.text();
-      console.log("Update shop response:", responseText);
-      
-      // Parse the response text back to JSON
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        throw new Error(`Invalid JSON response: ${responseText}`);
-      }
-      
-      // Check if the response contains a data property (API wrapper)
-      const shopData = responseData.data || responseData;
-      
+
+      console.log("Update shop response:", response);
+
       // Validate with schema
-      return shopSchemaTyped.parse(shopData);
+      return shopSchemaTyped.parse(response);
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw error;
       }
-      
+
       if (error instanceof z.ZodError) {
         console.error("Validation error:", error.errors);
         throw new Error(`Validation error: ${error.errors.map(e => e.message).join(', ')}`);
       }
-      
+
       console.error(`Error updating shop ${id}:`, error);
       throw error;
     } finally {
@@ -363,39 +254,23 @@ export const shopsService = {
    */
   delete: async (id: string, requestId: string = `deleteShop_${id}`): Promise<boolean> => {
     cancelExistingRequest(requestId);
-    
+
     const controller = new AbortController();
     requestControllers[requestId] = controller;
-    
+
     try {
-      const response = await fetch(`${API_BASE_URL}/${id}`, {
-        method: 'DELETE',
-        signal: controller.signal,
+      // Use the enhanced API client with the DELETE endpoint
+      await enhancedApiClient.delete('shops/DELETE', { id }, {
+        signal: controller.signal
       });
-      
-      // For delete operations, we just care if it was successful
-      if (response.ok) {
-        return true;
-      }
-      
-      // Handle error response
-      const errorMessage = response.statusText || 'Failed to delete shop';
-      
-      try {
-        const errorData = await response.json();
-        if (errorData && typeof errorData === 'object' && 'message' in errorData) {
-          throw new Error(errorData.message);
-        }
-        throw new Error(errorMessage);
-      } catch (e) {
-        // If we can't parse the response as JSON, just use the status text
-        throw new Error(errorMessage);
-      }
+
+      // If no error was thrown, the operation was successful
+      return true;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw error;
       }
-      
+
       console.error(`Error deleting shop with ID ${id}:`, error);
       throw error;
     } finally {

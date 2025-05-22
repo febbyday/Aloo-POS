@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import jwt from 'jsonwebtoken';
 import { Response, Request } from 'express';
 import { User, UserRole } from '@prisma/client';
@@ -25,7 +23,7 @@ const rolePermissions: Record<UserRole, string[]> = {
   ],
   MANAGER: [
     'user:read',
-    'product:read', 'product:write', 
+    'product:read', 'product:write',
     'order:read', 'order:write', 'order:delete',
     'report:read', 'report:write',
     'setting:read'
@@ -43,7 +41,7 @@ const rolePermissions: Record<UserRole, string[]> = {
 
 /**
  * Generate tokens for a user
- * 
+ *
  * @param user User object
  * @returns Tokens and expiry
  */
@@ -78,7 +76,7 @@ export const generateTokens = async (user: User): Promise<{ token: string; refre
 
 /**
  * Verify JWT token
- * 
+ *
  * @param token JWT token
  * @returns Decoded token payload
  */
@@ -92,7 +90,7 @@ export const verifyToken = (token: string): any => {
 
 /**
  * Verify refresh token
- * 
+ *
  * @param refreshToken Refresh token
  * @returns Decoded token payload
  */
@@ -106,12 +104,12 @@ export const verifyRefreshToken = (refreshToken: string): any => {
 
 /**
  * Add token to blacklist
- * 
+ *
  * @param token Token to blacklist
  */
 export const addToBlacklist = (token: string): void => {
   tokenBlacklist.add(token);
-  
+
   // In a production environment, you would set an expiry time based on the token's expiry
   setTimeout(() => {
     tokenBlacklist.delete(token);
@@ -120,7 +118,7 @@ export const addToBlacklist = (token: string): void => {
 
 /**
  * Check if token is blacklisted
- * 
+ *
  * @param token Token to check
  * @returns True if blacklisted
  */
@@ -130,78 +128,106 @@ export const isBlacklisted = (token: string): boolean => {
 
 /**
  * Set authentication cookies
- * 
+ *
  * @param res Express response object
  * @param token JWT token
  * @param refreshToken Refresh token
  * @param sessionId Session ID
+ * @param expiresIn Token expiry in milliseconds
  */
 export const setCookies = (
-  res: Response, 
-  token: string, 
+  res: Response,
+  token: string,
   refreshToken: string,
-  sessionId: string
+  sessionId: string,
+  expiresIn: number = 3600000 // Default 1 hour
 ): void => {
   const isProduction = process.env.NODE_ENV === 'production';
-  
+  const domain = process.env.COOKIE_DOMAIN || undefined; // Use domain if specified
+  const path = '/';
+
+  // Common cookie options
+  const commonOptions = {
+    httpOnly: true,
+    secure: isProduction, // Only use secure in production
+    sameSite: isProduction ? 'strict' : 'lax', // Strict in production for better security
+    domain,
+    path
+  };
+
   // Set token cookie - short-lived, HttpOnly for XSS protection
   res.cookie('auth_token', token, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 3600000 // 1 hour in milliseconds
+    ...commonOptions,
+    maxAge: expiresIn // Use the token's actual expiry time
   });
-  
+
   // Set refresh token cookie - longer lived, HttpOnly
+  // Path-restricted to the refresh endpoint for added security
   res.cookie('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    ...commonOptions,
+    path: '/api/v1/auth/refresh-token', // Restrict to refresh endpoint
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
   });
-  
+
   // Set session cookie
   res.cookie('session_id', sessionId, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    ...commonOptions,
     maxAge: 12 * 60 * 60 * 1000 // 12 hours in milliseconds
+  });
+
+  // Set a non-HttpOnly cookie to let the frontend know the user is authenticated
+  // This doesn't contain any sensitive information, just a flag
+  res.cookie('is_authenticated', 'true', {
+    httpOnly: false, // Accessible to JavaScript
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
+    domain,
+    path,
+    maxAge: expiresIn
   });
 };
 
 /**
  * Clear authentication cookies
- * 
+ *
  * @param res Express response object
  */
 export const clearCookies = (res: Response): void => {
   const isProduction = process.env.NODE_ENV === 'production';
-  
+  const domain = process.env.COOKIE_DOMAIN || undefined;
+  const path = '/';
+
+  // Common cookie options
+  const commonOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
+    domain,
+    path
+  };
+
   // Clear token cookie
-  res.clearCookie('auth_token', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax'
-  });
-  
-  // Clear refresh token cookie
+  res.clearCookie('auth_token', commonOptions);
+
+  // Clear refresh token cookie - must match the path used when setting
   res.clearCookie('refresh_token', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax'
+    ...commonOptions,
+    path: '/api/v1/auth/refresh-token'
   });
-  
+
   // Clear session cookie
-  res.clearCookie('session_id', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax'
+  res.clearCookie('session_id', commonOptions);
+
+  // Clear the non-HttpOnly authentication flag cookie
+  res.clearCookie('is_authenticated', {
+    ...commonOptions,
+    httpOnly: false
   });
 };
 
 /**
  * Get permissions for a user role
- * 
+ *
  * @param role User role
  * @returns Array of permissions
  */
@@ -211,7 +237,7 @@ export const getUserPermissions = (role: UserRole): string[] => {
 
 /**
  * Check if user has a specific permission
- * 
+ *
  * @param userRole User role
  * @param requiredPermission Required permission
  * @returns True if user has the permission
@@ -223,7 +249,7 @@ export const hasPermission = (userRole: UserRole, requiredPermission: string): b
 
 /**
  * Get token from request cookies or authorization header
- * 
+ *
  * @param req Express request object
  * @returns Token or undefined
  */
@@ -232,12 +258,12 @@ export const getTokenFromCookies = (req: Request): string | undefined => {
   if (req.cookies && req.cookies.auth_token) {
     return req.cookies.auth_token;
   }
-  
+
   // Then try to get from authorization header
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.split(' ')[1];
   }
-  
+
   return undefined;
 };

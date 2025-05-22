@@ -59,7 +59,7 @@ import { ProductProvider, useProductContext } from './context/ProductContext';
 import { ProductCategoryProvider, useProductCategoryContext } from './context/CategoryContext';
 
 // Re-export service interfaces
-import { productService } from './services/productService';
+import productService from './services/factory-product-service';
 import { categoryService } from './services/categoryService';
 
 // Re-export public components (only those meant to be used outside the module)

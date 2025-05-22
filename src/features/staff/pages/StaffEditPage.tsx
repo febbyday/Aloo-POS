@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Save, ArrowLeft, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useToast } from '@/components/ui/use-toast';
-import { useToastManager } from "@/components/ui/toast-manager";
+import { useToast } from '@/lib/toast';
 import { OperationButton } from "@/components/ui/action-feedback";
 import { StaffModal } from '../components/StaffModal';
 import { useStaffHistory } from '../context/StaffHistoryContext';
@@ -26,7 +25,7 @@ export function StaffEditPage() {
   const { toast } = useToast();
   const showToast = useToastManager();
   const { trackAction } = useStaffHistory();
-  
+
   const [staff, setStaff] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(true);
@@ -58,12 +57,12 @@ export function StaffEditPage() {
 
   const handleSubmit = (data: StaffFormData) => {
     if (!staffId || !staff) return;
-    
+
     try {
       // Track this action for history
       trackAction(
-        { 
-          type: 'update_staff', 
+        {
+          type: 'update_staff',
           id: staffId,
           before: staff,
           after: data as any
@@ -81,12 +80,12 @@ export function StaffEditPage() {
 
   const handleDelete = () => {
     if (!staffId || !staff) return;
-    
+
     try {
       // Track this action for history
       trackAction(
-        { 
-          type: 'delete_staff', 
+        {
+          type: 'delete_staff',
           staff: staff
         },
         `Deleted staff member ${staff.firstName} ${staff.lastName}`

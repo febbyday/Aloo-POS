@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRealShopContext } from '../context/RealShopContext';
@@ -7,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SHOP_STATUS, Shop } from '../types';
-import { MapPinIcon, PhoneIcon, MailIcon, PlusIcon, StoreIcon, Trash2Icon, AlertCircleIcon, Edit } from 'lucide-react';
+import { MapPinIcon, PhoneIcon, MailIcon, PlusIcon, StoreIcon, Trash2Icon, AlertCircleIcon } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,23 +16,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
+import { LoadingState } from '@/components/ui/loading-state';
 
 export function ShopsPage() {
   const { shops, isLoading, error, fetchShops, deleteShop } = useRealShopContext();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [shopToDelete, setShopToDelete] = useState<Shop | null>(null);
+  const [initialLoad, setInitialLoad] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     // Fetch shops when component mounts
-    fetchShops();
-    
+    fetchShops().finally(() => {
+      // Set initialLoad to false after the first load completes
+      setInitialLoad(false);
+    });
+
     // Set up a refresh interval to periodically check for new shops
     const refreshInterval = setInterval(() => {
       fetchShops();
     }, 30000); // Refresh every 30 seconds
-    
+
     return () => clearInterval(refreshInterval);
   }, [fetchShops]);
 
@@ -45,8 +48,8 @@ export function ShopsPage() {
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
           <h2 className="text-red-800 text-lg font-semibold">Error loading shops</h2>
           <p className="text-red-700">
-            {error instanceof Error 
-              ? error.message 
+            {error instanceof Error
+              ? error.message
               : typeof error === 'string'
                 ? error
                 : 'An unexpected error occurred'}
@@ -98,11 +101,27 @@ export function ShopsPage() {
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        {/* Loading state - show during initial load or when refreshing */}
+        {(initialLoad || isLoading) && (
+          <LoadingState
+            isLoading={true}
+            loadingText="Loading shops..."
+            size="lg"
+            center
+          />
+        )}
+
+        {/* Error state */}
+        {error && !isLoading && shops.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+            <div className="text-destructive text-xl">Error loading shops</div>
+            <p>{error.message}</p>
+            <Button onClick={() => fetchShops()}>Try Again</Button>
           </div>
-        ) : shops.length === 0 ? (
+        )}
+
+        {/* Empty state - only show when not in initial load, not loading, no error, and no shops */}
+        {!initialLoad && !isLoading && !error && shops.length === 0 && (
           <div className="text-center p-12 border border-dashed rounded-md">
             <StoreIcon className="mx-auto h-12 w-12 text-muted-foreground" />
             <h2 className="mt-4 text-xl font-semibold">No Shops Found</h2>
@@ -116,10 +135,13 @@ export function ShopsPage() {
               </Link>
             </Button>
           </div>
-        ) : (
+        )}
+
+        {/* Shop list - only show when not in initial load, not loading, and shops exist */}
+        {!initialLoad && !isLoading && shops.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {shops.map((shop) => (
-              <Card key={shop.id} className="overflow-hidden border hover:shadow-md transition-all">
+              <Card key={shop.id} className="overflow-hidden border hover:shadow-md transition-all flex flex-col h-full">
                 <CardHeader className="pb-3 border-b">
                   <div className="flex justify-between items-start">
                     <Link to={`/shops/${shop.id}`} className="hover:text-primary transition-colors group">
@@ -134,8 +156,8 @@ export function ShopsPage() {
                     <span className="font-medium text-muted-foreground">ID:</span> {shop.code}
                   </CardDescription>
                 </CardHeader>
-                
-                <CardContent className="p-4">
+
+                <CardContent className="p-4 flex-grow">
                   <div className="space-y-3">
                     <Link to={`/shops/${shop.id}`} className="block hover:bg-muted/50 p-2 rounded-md transition-colors group">
                       <div className="flex items-start">
@@ -143,12 +165,14 @@ export function ShopsPage() {
                         <div>
                           <span className="font-medium text-sm block text-muted-foreground mb-0.5">Address</span>
                           <span className="text-sm">
-                            {shop.address.street}, {shop.address.city}, {shop.address.state} {shop.address.postalCode}
+                            {shop.address ?
+                              `${shop.address.street || ''}, ${shop.address.city || ''}, ${shop.address.state || ''} ${shop.address.postalCode || ''}`
+                              : 'No address available'}
                           </span>
                         </div>
                       </div>
                     </Link>
-                    
+
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex items-start p-2 rounded-md hover:bg-muted/50 transition-colors group">
                         <PhoneIcon className="h-5 w-5 mr-2 mt-0.5 text-primary/70 group-hover:text-primary" />
@@ -157,7 +181,7 @@ export function ShopsPage() {
                           <span className="text-sm">{shop.phone}</span>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-start p-2 rounded-md hover:bg-muted/50 transition-colors group">
                         <MailIcon className="h-5 w-5 mr-2 mt-0.5 text-primary/70 group-hover:text-primary" />
                         <div>
@@ -168,28 +192,18 @@ export function ShopsPage() {
                     </div>
                   </div>
                 </CardContent>
-                
-                <CardFooter className="flex justify-between pt-3 pb-3 bg-muted/20 border-t">
+
+                <CardFooter className="flex justify-between pt-3 pb-3 bg-muted/20 border-t mt-auto">
                   <Button variant="outline" asChild className="shadow-sm">
                     <Link to={`/shops/${shop.id}`}>
                       <StoreIcon className="h-4 w-4 mr-2" />
                       View Details
                     </Link>
                   </Button>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      className="shadow-sm hover:bg-primary/10"
-                      asChild
-                    >
-                      <Link to={`/shops/${shop.id}/edit`}>
-                        <Edit className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button 
-                      variant="destructive" 
+
+                  <div>
+                    <Button
+                      variant="destructive"
                       size="icon"
                       className="shadow-sm"
                       onClick={() => {
@@ -216,7 +230,7 @@ export function ShopsPage() {
               Confirm Shop Deletion
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <span className="font-semibold">{shopToDelete?.name}</span>? 
+              Are you sure you want to delete <span className="font-semibold">{shopToDelete?.name}</span>?
               This action cannot be undone and will permanently remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>

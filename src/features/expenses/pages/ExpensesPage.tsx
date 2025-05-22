@@ -1,18 +1,18 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ExpensesTable } from '../components/ExpensesTable'
 import { ExpenseDialog } from '../components/ExpenseDialog'
 import { Plus, Download, Filter, RefreshCw } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 
 // Mock data for expenses
 const mockExpenses = [
@@ -78,9 +78,9 @@ export function ExpensesPage() {
   const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          expense.category.toLowerCase().includes(searchQuery.toLowerCase())
-    
+
     const matchesStatus = selectedStatus === 'all' || expense.status.toLowerCase() === selectedStatus.toLowerCase()
-    
+
     return matchesSearch && matchesStatus
   })
 
@@ -214,10 +214,10 @@ export function ExpensesPage() {
       <ExpensesTable expenses={filteredExpenses} />
 
       {/* Add Expense Dialog */}
-      <ExpenseDialog 
-        open={isDialogOpen} 
-        onOpenChange={setIsDialogOpen} 
-        onSave={handleAddExpense} 
+      <ExpenseDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onSave={handleAddExpense}
       />
     </div>
   )

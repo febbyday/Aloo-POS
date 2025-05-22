@@ -1,4 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
 import { useState } from 'react';
 import {
   DialogFooter,
@@ -32,7 +31,7 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Truck, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 import type { Product } from '../../types';
 
 interface ReorderStockDialogProps {

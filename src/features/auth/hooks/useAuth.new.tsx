@@ -28,12 +28,12 @@ export function useAuth() {
   const navigateToLogin = useCallback((returnUrl?: string) => {
     const currentPath = location.pathname + location.search;
     const redirectPath = returnUrl || currentPath;
-    
+
     // Only add returnUrl if it's not the login page itself
-    const loginPath = redirectPath && !redirectPath.includes('/login') 
+    const loginPath = redirectPath && !redirectPath.includes('/login')
       ? `/login?returnUrl=${encodeURIComponent(redirectPath)}`
       : '/login';
-    
+
     navigate(loginPath);
   }, [navigate, location]);
 
@@ -41,15 +41,31 @@ export function useAuth() {
   const navigateAfterLogin = useCallback(() => {
     const params = new URLSearchParams(location.search);
     const returnUrl = params.get('returnUrl');
-    
+
+    // Check if we should prevent dashboard redirect (for special routes)
+    const preventDashboardRedirect = sessionStorage.getItem('prevent_dashboard_redirect') === 'true';
+
+    // Check if we're on a special route that should not redirect
+    const isSpecialRoute =
+      location.pathname === '/roles' ||
+      location.pathname === '/permissions' ||
+      location.pathname.startsWith('/permissions/');
+
     if (returnUrl) {
       // Decode the return URL and navigate to it
       navigate(decodeURIComponent(returnUrl));
+    } else if (preventDashboardRedirect || isSpecialRoute) {
+      // Don't redirect if we're on a special route or have the prevent flag
+      console.log('[AUTH] Preventing dashboard redirect for special route:', location.pathname);
+      // Clear the flag after using it
+      if (preventDashboardRedirect) {
+        sessionStorage.removeItem('prevent_dashboard_redirect');
+      }
     } else {
       // Default navigation to dashboard
       navigate('/dashboard');
     }
-  }, [navigate, location.search]);
+  }, [navigate, location]);
 
   // Handle unauthorized events
   useEffect(() => {
@@ -60,11 +76,11 @@ export function useAuth() {
         navigateToLogin();
       }
     };
-    
+
     // Add event listener
     window.addEventListener(AUTH_EVENTS.UNAUTHORIZED, handleUnauthorized);
     window.addEventListener(AUTH_EVENTS.SESSION_EXPIRED, handleUnauthorized);
-    
+
     // Cleanup event listener on unmount
     return () => {
       window.removeEventListener(AUTH_EVENTS.UNAUTHORIZED, handleUnauthorized);
@@ -82,7 +98,7 @@ export function useAuth() {
         if (authData && typeof authData.isAuthenticated === 'boolean') {
           console.log('[AUTH] Restoring auth state from session storage');
           context.restoreAuth(authData);
-          
+
           // Also refresh auth in the background to ensure it's still valid
           setTimeout(() => {
             context.refreshAuth().catch(error => {

@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, AlertCircle, Bell, BellOff, CheckCircle, Clock, Settings } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { ToastService } from '@/lib/toast';
 
 export interface StockAlert {
   id: string;
@@ -43,7 +43,6 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
   onViewProduct,
   onCreatePurchaseOrder,
 }) => {
-  const { toast } = useToast();
   const [selectedAlerts, setSelectedAlerts] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -74,11 +73,10 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
 
   const handleCreatePurchaseOrder = async () => {
     if (selectedAlerts.size === 0) {
-      toast({
-        title: "No Products Selected",
-        description: "Please select at least one product to create a purchase order.",
-        variant: "destructive",
-      });
+      ToastService.error(
+        "No Products Selected",
+        "Please select at least one product to create a purchase order."
+      );
       return;
     }
 
@@ -87,22 +85,21 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
       const selectedProductIds = Array.from(selectedAlerts).map(
         alertId => alerts.find(a => a.id === alertId)?.productId
       ).filter(Boolean) as string[];
-      
+
       await onCreatePurchaseOrder(selectedProductIds);
-      
-      toast({
-        title: "Purchase Order Created",
-        description: `Successfully created purchase order for ${selectedProductIds.length} products.`,
-      });
-      
+
+      ToastService.success(
+        "Purchase Order Created",
+        `Successfully created purchase order for ${selectedProductIds.length} products.`
+      );
+
       setSelectedAlerts(new Set());
     } catch (error) {
       console.error('Failed to create purchase order:', error);
-      toast({
-        title: "Failed to Create Purchase Order",
-        description: "An error occurred while creating the purchase order. Please try again.",
-        variant: "destructive",
-      });
+      ToastService.error(
+        "Failed to Create Purchase Order",
+        "An error occurred while creating the purchase order. Please try again."
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -110,12 +107,12 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
 
   const handleToggleNotifications = (enabled: boolean) => {
     setNotificationsEnabled(enabled);
-    toast({
-      title: enabled ? "Notifications Enabled" : "Notifications Disabled",
-      description: enabled 
-        ? "You will now receive stock alert notifications." 
-        : "Stock alert notifications have been disabled.",
-    });
+    ToastService.info(
+      enabled ? "Notifications Enabled" : "Notifications Disabled",
+      enabled
+        ? "You will now receive stock alert notifications."
+        : "Stock alert notifications have been disabled."
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -125,13 +122,13 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
 
   const renderAlertItem = (alert: StockAlert) => {
     const isSelected = selectedAlerts.has(alert.id);
-    
+
     return (
-      <div 
-        key={alert.id} 
+      <div
+        key={alert.id}
         className={`p-4 border-l-4 ${
-          alert.status === 'critical' 
-            ? 'border-l-red-500' 
+          alert.status === 'critical'
+            ? 'border-l-red-500'
             : 'border-l-amber-500'
         } ${
           isSelected ? 'bg-muted/50' : ''
@@ -142,8 +139,8 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
         <div className="flex items-start justify-between">
           <div className="flex items-start space-x-2">
             <div className="mt-0.5">
-              {alert.status === 'critical' 
-                ? <AlertTriangle className="h-5 w-5 text-red-500" /> 
+              {alert.status === 'critical'
+                ? <AlertTriangle className="h-5 w-5 text-red-500" />
                 : <AlertCircle className="h-5 w-5 text-amber-500" />
               }
             </div>
@@ -172,25 +169,25 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
           </div>
         </div>
         <div className="flex items-center justify-end mt-2 space-x-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onViewProduct(alert.productId)}
           >
             View Product
           </Button>
           {!alert.isRead && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => onMarkAsRead(alert.id)}
             >
               Mark as Read
             </Button>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onDismiss(alert.id)}
           >
             Dismiss
@@ -253,7 +250,7 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
               Warning ({warningAlerts.length})
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="all">
             {alerts.length > 0 ? (
               <ScrollArea className="h-[400px] pr-4 mt-2">
@@ -268,7 +265,7 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="critical">
             {criticalAlerts.length > 0 ? (
               <ScrollArea className="h-[400px] pr-4 mt-2">
@@ -283,7 +280,7 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="warning">
             {warningAlerts.length > 0 ? (
               <ScrollArea className="h-[400px] pr-4 mt-2">
@@ -315,8 +312,8 @@ export const AlertNotificationCenter: React.FC<AlertNotificationCenterProps> = (
             {selectedAlerts.size} selected
           </Badge>
         </div>
-        <Button 
-          onClick={handleCreatePurchaseOrder} 
+        <Button
+          onClick={handleCreatePurchaseOrder}
           disabled={selectedAlerts.size === 0 || isProcessing}
         >
           {isProcessing ? 'Processing...' : 'Create Purchase Order'}

@@ -1,4 +1,5 @@
 @import "./styles/print.css";
+@import "./styles/responsive-utils.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -30,7 +31,7 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    
+
     /* Theme transition duration */
     --theme-transition-duration: 0.3s;
   }
@@ -61,20 +62,20 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
-  
+
   /* Theme transition for smooth theme switching */
   html, body, * {
     transition-property: background-color, border-color, color, fill, stroke;
     transition-duration: var(--theme-transition-duration);
     transition-timing-function: ease-in-out;
   }
-  
+
   /* Exclude certain elements from transitions */
   .no-theme-transition,
   .no-theme-transition * {
     transition: none !important;
   }
-  
+
   /* Disable transitions for users who prefer reduced motion */
   @media (prefers-reduced-motion: reduce) {
     html, body, * {
@@ -90,20 +91,20 @@
   body {
     @apply bg-background text-foreground;
   }
-  
+
   /* Custom styles for the inventory table */
   .inventory-table {
     @apply text-xs;
   }
-  
+
   .inventory-table th {
     @apply bg-muted text-muted-foreground font-medium px-2 py-1;
   }
-  
+
   .inventory-table td {
     @apply px-2 py-1;
   }
-  
+
   .inventory-table tr:hover td {
     @apply bg-muted/50;
   }
@@ -115,25 +116,25 @@
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground)) transparent;
   }
-  
+
   .dark-mode-scrollbar::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
-  
+
   .dark-mode-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .dark-mode-scrollbar::-webkit-scrollbar-thumb {
     background-color: hsl(var(--muted-foreground)/0.3);
     border-radius: 20px;
   }
-  
+
   .dark-mode-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: hsl(var(--muted-foreground)/0.5);
   }
-  
+
   /* Firefox */
   .dark-mode-scrollbar {
     scrollbar-width: thin;

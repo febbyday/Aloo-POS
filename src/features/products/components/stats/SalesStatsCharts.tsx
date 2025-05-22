@@ -18,7 +18,7 @@ import {
   Area
 } from "recharts";
 import { BarChart2, DollarSign, ShoppingCart, TrendingUp } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils/formatters';
 import type { Product } from '../../types';
 
 interface SalesStatsChartsProps {

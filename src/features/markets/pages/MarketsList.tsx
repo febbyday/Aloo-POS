@@ -46,20 +46,20 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PageHeader from '@/components/layout/PageHeader';
 import { useMarketContext } from '../context/MarketContext';
-import { 
-  MARKET_STATUS, 
-  MarketFilter, 
+import {
+  MARKET_STATUS,
+  MarketFilter,
 } from '../types';
-import { 
-  MARKETS_FULL_ROUTES, 
-  getMarketEditRoute, 
-  getMarketStockRoute, 
-  getMarketStaffRoute, 
-  getMarketPerformanceRoute 
+import {
+  MARKETS_FULL_ROUTES,
+  getMarketEditRoute,
+  getMarketStockRoute,
+  getMarketStaffRoute,
+  getMarketPerformanceRoute
 } from '@/routes/marketRoutes';
 
 const StatusBadgeMap = {
@@ -73,15 +73,15 @@ const StatusBadgeMap = {
 const MarketsList = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { 
-    markets, 
-    isLoading, 
-    filters, 
-    setFilters, 
+  const {
+    markets,
+    isLoading,
+    filters,
+    setFilters,
     fetchMarkets,
-    deleteMarket 
+    deleteMarket
   } = useMarketContext();
-  
+
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
@@ -90,7 +90,7 @@ const MarketsList = () => {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-    
+
     setFilters({
       ...filters,
       searchTerm: value,
@@ -110,11 +110,11 @@ const MarketsList = () => {
   // Handle market deletion
   const handleDeleteMarket = async () => {
     if (!confirmDelete) return;
-    
+
     setIsDeleting(true);
     try {
       const success = await deleteMarket(confirmDelete);
-      
+
       if (success) {
         toast({
           title: "Market deleted",
@@ -223,7 +223,7 @@ const MarketsList = () => {
                   </TableRow>
                 ) : (
                   markets.map((market) => (
-                    <TableRow key={market.id} 
+                    <TableRow key={market.id}
                       onClick={() => navigate(`/markets/${market.id}`)}
                       className="cursor-pointer hover:bg-muted/50"
                     >
@@ -294,7 +294,7 @@ const MarketsList = () => {
                               Performance
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -341,4 +341,4 @@ const MarketsList = () => {
   );
 };
 
-export default MarketsList; 
+export default MarketsList;

@@ -1,20 +1,21 @@
 /**
  * User Routes
- * 
+ *
  * API routes for user management
  */
 
 import express from 'express';
-import { 
-  getAllUsers, 
-  getUserById, 
-  createUser, 
-  updateUser, 
+import {
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
   deleteUser,
   changePassword,
   resetPassword
 } from '../controllers/userController';
 import { authenticateJWT, authorizeRoles } from '../middleware/auth';
+import userRolesRoutes from './userRolesRoutes';
 
 const router = express.Router();
 
@@ -39,5 +40,7 @@ router.post('/:id/change-password', authenticateJWT, changePassword);
 // Reset user password (admin only) - requires authentication and admin role
 router.post('/:id/reset-password', authenticateJWT, authorizeRoles(['ADMIN']), resetPassword);
 
-export default router;
+// Mount user roles routes
+router.use('/roles', userRolesRoutes);
 
+export default router;

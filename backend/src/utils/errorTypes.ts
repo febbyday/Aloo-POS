@@ -1,5 +1,3 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 /**
  * Error codes for authentication errors
  */
@@ -14,6 +12,10 @@ export enum AuthErrorCode {
   USER_NOT_FOUND = 'USER_NOT_FOUND',
   INSUFFICIENT_PERMISSIONS = 'INSUFFICIENT_PERMISSIONS',
   ACCOUNT_LOCKED = 'ACCOUNT_LOCKED',
+  PIN_NOT_ENABLED = 'PIN_NOT_ENABLED',
+  PIN_LOCKED = 'PIN_LOCKED',
+  PIN_ATTEMPTS_EXCEEDED = 'PIN_ATTEMPTS_EXCEEDED',
+  PIN_INVALID = 'PIN_INVALID',
   REFRESH_TOKEN_EXPIRED = 'REFRESH_TOKEN_EXPIRED',
   REFRESH_TOKEN_INVALID = 'REFRESH_TOKEN_INVALID',
   REGISTRATION_FAILED = 'REGISTRATION_FAILED',

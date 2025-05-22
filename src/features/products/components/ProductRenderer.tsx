@@ -1,10 +1,8 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/lib/toast';
 import { useSafeRender } from '@/hooks/useSafeRender';
 import { ErrorBoundary } from '@/components/unified-error-boundary';
 import { Coffee, IceCream, AlertCircle, Check } from 'lucide-react';
@@ -37,7 +35,7 @@ interface Product {
  */
 export const ProductRenderer: React.FC = () => {
   const { renderSafely, renderObjectProperty } = useSafeRender();
-  
+
   // Example product with customization options
   const exampleProduct: Product = {
     id: '123',
@@ -60,7 +58,7 @@ export const ProductRenderer: React.FC = () => {
       { id: 'opt3', name: 'Caramel Drizzle', price: 0.75 }
     ]
   };
-  
+
   // Function to demonstrate the error
   const showErrorExample = () => {
     toast({
@@ -69,7 +67,7 @@ export const ProductRenderer: React.FC = () => {
       description: "Objects are not valid as a React child (found: object with keys {id, name, description}). If you meant to render a collection of children, use an array instead.",
     });
   };
-  
+
   // Function to demonstrate the correct way
   const showCorrectExample = () => {
     toast({
@@ -89,7 +87,7 @@ export const ProductRenderer: React.FC = () => {
               How to safely render product objects with customization options
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
               <Coffee className="h-5 w-5 text-primary" />
@@ -98,11 +96,11 @@ export const ProductRenderer: React.FC = () => {
                 {renderObjectProperty(exampleProduct, 'category')}
               </Badge>
             </div>
-            
+
             <p className="text-sm text-muted-foreground">
               {renderObjectProperty(exampleProduct, 'description')}
             </p>
-            
+
             <div className="flex justify-between items-center">
               <div className="text-lg font-semibold">
                 ${renderObjectProperty(exampleProduct, 'price')}
@@ -111,7 +109,7 @@ export const ProductRenderer: React.FC = () => {
                 {exampleProduct.stockQuantity && exampleProduct.stockQuantity > 0 ? "In Stock" : "Out of Stock"}
               </Badge>
             </div>
-            
+
             {/* Size Options - Safely Rendered */}
             {exampleProduct.sizeOptions && exampleProduct.sizeOptions.length > 0 && (
               <div>
@@ -125,7 +123,7 @@ export const ProductRenderer: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Ice Options - Safely Rendered */}
             {exampleProduct.iceOptions && exampleProduct.iceOptions.length > 0 && (
               <div>
@@ -140,7 +138,7 @@ export const ProductRenderer: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Product Options - Safely Rendered */}
             {exampleProduct.options && exampleProduct.options.length > 0 && (
               <div>
@@ -156,7 +154,7 @@ export const ProductRenderer: React.FC = () => {
               </div>
             )}
           </CardContent>
-          
+
           <CardFooter className="flex flex-col gap-4">
             <div className="w-full p-3 bg-amber-50 dark:bg-amber-950 rounded-md text-amber-800 dark:text-amber-300 text-sm">
               <div className="flex items-start">
@@ -169,7 +167,7 @@ export const ProductRenderer: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="w-full p-3 bg-green-50 dark:bg-green-950 rounded-md text-green-800 dark:text-green-300 text-sm">
               <div className="flex items-start">
                 <Check className="h-4 w-4 mr-2 mt-0.5" />
@@ -181,7 +179,7 @@ export const ProductRenderer: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-between w-full mt-2">
               <Button variant="destructive" size="sm" onClick={showErrorExample}>
                 Show Error Toast

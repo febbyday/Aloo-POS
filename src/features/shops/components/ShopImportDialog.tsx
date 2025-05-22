@@ -1,11 +1,9 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/lib/toast";
 import { parseShopImportCsv, downloadShopImportTemplate, ShopImportData } from '../services/shopImportService';
 
 interface ShopImportDialogProps {
@@ -19,7 +17,7 @@ export function ShopImportDialog({ isOpen, onClose, onImport }: ShopImportDialog
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFormatting, setShowFormatting] = useState(false);
-  const { toast } = useToast();
+  const toast = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -40,41 +38,40 @@ export function ShopImportDialog({ isOpen, onClose, onImport }: ShopImportDialog
     try {
       // Read file content
       const fileContent = await file.text();
-      
+
       // Set up event listener for validation warnings
       const originalWarn = console.warn;
       console.warn = (...args) => {
         originalWarn(...args);
-        
+
         // Check if this is our specific validation warning message
         const message = args[0];
         if (typeof message === 'string' && message.includes('rows had validation errors and were skipped')) {
           // Show toast with warning
           setTimeout(() => {
-            toast({
-              title: "Import completed with warnings",
-              description: message,
-              variant: "warning",
-            });
+            toast.warning(
+              "Import completed with warnings",
+              message
+            );
           }, 500);
         }
       };
-      
+
       // Parse CSV file
       const importData = await parseShopImportCsv(fileContent);
-      
+
       // Restore original console.warn
       console.warn = originalWarn;
-      
+
       // Show success message with import count
-      toast({
-        title: "Import Successful",
-        description: `Successfully imported ${importData.length} shops.`,
-      });
-      
+      toast.success(
+        "Import Successful",
+        `Successfully imported ${importData.length} shops.`
+      );
+
       // Pass data to parent component
       onImport(importData);
-      
+
       // Reset and close
       setFile(null);
       onClose();
@@ -96,7 +93,7 @@ export function ShopImportDialog({ isOpen, onClose, onImport }: ShopImportDialog
         <DialogHeader>
           <DialogTitle>Import Shops</DialogTitle>
         </DialogHeader>
-        
+
         <Alert className="my-4">
           <Info className="h-4 w-4" />
           <AlertTitle>Import Format</AlertTitle>
@@ -109,14 +106,14 @@ export function ShopImportDialog({ isOpen, onClose, onImport }: ShopImportDialog
               <li>Double-check type & status values</li>
               <li>Watch for extra quotes or commas</li>
             </ul>
-            <Button 
-              variant="link" 
-              className="text-xs p-0 h-auto mt-1" 
+            <Button
+              variant="link"
+              className="text-xs p-0 h-auto mt-1"
               onClick={() => setShowFormatting(!showFormatting)}
             >
               {showFormatting ? "Hide formatting details" : "Show formatting details"}
             </Button>
-            
+
             {showFormatting && (
               <div className="mt-2 border rounded-md p-2 bg-muted/20 text-xs">
                 <p className="font-bold">Required columns:</p>
@@ -145,19 +142,19 @@ export function ShopImportDialog({ isOpen, onClose, onImport }: ShopImportDialog
             )}
           </AlertDescription>
         </Alert>
-        
+
         <div className="my-4">
           <div className="flex justify-between items-center mb-2">
             <p className="text-sm font-medium">Upload CSV File</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleDownloadTemplate}
             >
               Download Template
             </Button>
           </div>
-          
+
           <input
             type="file"
             accept=".csv"
@@ -173,13 +170,13 @@ export function ShopImportDialog({ isOpen, onClose, onImport }: ShopImportDialog
             </div>
           )}
         </div>
-        
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleImport} 
+          <Button
+            onClick={handleImport}
             disabled={!file || isLoading}
           >
             {isLoading ? "Importing..." : "Import"}

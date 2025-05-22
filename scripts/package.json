@@ -1,0 +1,15 @@
+{
+  "name": "formatter-migration-scripts",
+  "version": "1.0.0",
+  "description": "Scripts to migrate formatter utilities",
+  "type": "module",
+  "dependencies": {
+    "glob": "^10.4.5"
+  },
+  "scripts": {
+    "update-imports": "node update-formatter-imports.js",
+    "dry-run": "node update-formatter-imports.js --dry-run",
+    "verbose": "node update-formatter-imports.js --verbose",
+    "dry-run-verbose": "node update-formatter-imports.js --dry-run --verbose"
+  }
+}

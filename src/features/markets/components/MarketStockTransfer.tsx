@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { 
+import {
   Package,
   RefreshCw,
   ArrowRight,
@@ -11,7 +11,7 @@ import { Market } from '../pages/MarketsPage'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/lib/toast'
 
 interface MarketStockTransferProps {
   market: Market
@@ -81,8 +81,8 @@ export function MarketStockTransfer({ market, onClose }: MarketStockTransferProp
             <Package className="h-5 w-5" />
             Stock Management
           </h3>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
             onClick={onClose}
           >
@@ -128,7 +128,7 @@ export function MarketStockTransfer({ market, onClose }: MarketStockTransferProp
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              This will return all unsold products back to the main inventory. 
+              This will return all unsold products back to the main inventory.
               Are you sure you want to continue?
             </p>
           </div>

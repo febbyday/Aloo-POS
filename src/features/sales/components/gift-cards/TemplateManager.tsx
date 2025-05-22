@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { 
-  Copy, 
-  CreditCard, 
-  Edit, 
-  Plus, 
-  Star, 
-  StarOff, 
-  Trash2, 
+import {
+  Copy,
+  CreditCard,
+  Edit,
+  Plus,
+  Star,
+  StarOff,
+  Trash2,
   CheckCircle,
   FilterIcon,
   SearchIcon,
@@ -16,15 +16,15 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardDescription
 } from '@/components/ui/card';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -32,7 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -50,19 +50,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 
 import { useTemplates } from '../../hooks/gift-cards/useTemplates';
 import { DesignTemplate } from '../../types/gift-cards';
 
 export function TemplateManager() {
-  const { toast } = useToast();
+  const toast = useToast();
   const {
     templates,
     filteredTemplates,
@@ -123,7 +123,7 @@ export function TemplateManager() {
   // Handle duplicate template
   const handleDuplicateTemplate = async () => {
     if (!selectedTemplate) return;
-    
+
     try {
       await duplicateTemplate(selectedTemplate.id, newTemplateName || `${selectedTemplate.name} (Copy)`);
       setShowDuplicateDialog(false);
@@ -145,7 +145,7 @@ export function TemplateManager() {
   // Handle delete template
   const handleDeleteTemplate = async () => {
     if (!selectedTemplate) return;
-    
+
     try {
       if (selectedTemplate.isDefault) {
         toast({
@@ -155,7 +155,7 @@ export function TemplateManager() {
         });
         return;
       }
-      
+
       await deleteTemplate(selectedTemplate.id);
       setShowDeleteDialog(false);
       setShowDetailsDialog(false);
@@ -180,7 +180,7 @@ export function TemplateManager() {
       await updateTemplate(template.id, {
         isActive: !template.isActive,
       });
-      
+
       toast({
         title: template.isActive ? 'Template Deactivated' : 'Template Activated',
         description: `"${template.name}" is now ${template.isActive ? 'inactive' : 'active'}`,
@@ -226,7 +226,7 @@ export function TemplateManager() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -256,25 +256,25 @@ export function TemplateManager() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           <div className="relative">
             <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              type="search" 
-              placeholder="Search templates..." 
+            <Input
+              type="search"
+              placeholder="Search templates..."
               className="pl-8 h-9 w-[200px]"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
         </div>
-        
+
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
           New Template
         </Button>
       </div>
-      
+
       {/* Templates Grid */}
       <div className="space-y-8">
         {loading ? (
@@ -291,8 +291,8 @@ export function TemplateManager() {
               <h3 className="text-lg font-medium capitalize">{category}</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {templates.map((template) => (
-                  <Card 
-                    key={template.id} 
+                  <Card
+                    key={template.id}
                     className={`overflow-hidden ${!template.isActive ? 'opacity-60' : ''}`}
                   >
                     <CardHeader className="p-4 pb-2">
@@ -307,16 +307,16 @@ export function TemplateManager() {
                         {template.description || 'No description'}
                       </CardDescription>
                     </CardHeader>
-                    <div 
+                    <div
                       className="aspect-[2/1] relative cursor-pointer"
                       onClick={() => handleSelectTemplate(template)}
                     >
-                      <div 
+                      <div
                         className="w-full h-full bg-cover bg-center"
-                        style={{ 
+                        style={{
                           backgroundColor: template.styles.backgroundColor,
-                          backgroundImage: template.styles.backgroundImage ? 
-                            `url(${template.styles.backgroundImage})` : 
+                          backgroundImage: template.styles.backgroundImage ?
+                            `url(${template.styles.backgroundImage})` :
                             undefined
                         }}
                       >
@@ -352,7 +352,7 @@ export function TemplateManager() {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => {
                               selectTemplate(template);
                               setShowDuplicateDialog(true);
@@ -381,7 +381,7 @@ export function TemplateManager() {
                             )}
                           </DropdownMenuItem>
                           {!template.isDefault && (
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => {
                                 selectTemplate(template);
                                 setShowDeleteDialog(true);
@@ -402,7 +402,7 @@ export function TemplateManager() {
           ))
         )}
       </div>
-      
+
       {/* Template Details Dialog */}
       {selectedTemplate && (
         <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
@@ -413,21 +413,21 @@ export function TemplateManager() {
                 {selectedTemplate.description || 'No description provided'}
               </DialogDescription>
             </DialogHeader>
-            
+
             <Tabs defaultValue="preview" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="preview">Preview</TabsTrigger>
                 <TabsTrigger value="details">Details</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="preview" className="space-y-4 py-4">
                 <div className="aspect-[2/1] relative rounded-md overflow-hidden">
-                  <div 
+                  <div
                     className="w-full h-full bg-cover bg-center"
-                    style={{ 
+                    style={{
                       backgroundColor: selectedTemplate.styles.backgroundColor,
-                      backgroundImage: selectedTemplate.styles.backgroundImage ? 
-                        `url(${selectedTemplate.styles.backgroundImage})` : 
+                      backgroundImage: selectedTemplate.styles.backgroundImage ?
+                        `url(${selectedTemplate.styles.backgroundImage})` :
                         undefined
                     }}
                   >
@@ -437,7 +437,7 @@ export function TemplateManager() {
                         <CreditCard className="h-24 w-24 text-muted-foreground/40" />
                       </div>
                     )}
-                    
+
                     {/* Sample content */}
                     <div className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center p-4">
                       <div className="font-bold text-center text-3xl mb-2">$50.00</div>
@@ -449,7 +449,7 @@ export function TemplateManager() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-4">
                   <div className="flex-1">
                     <p className="text-sm text-muted-foreground">
@@ -457,7 +457,7 @@ export function TemplateManager() {
                       The actual gift card will include the value, code, and any custom message.
                     </p>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     {selectedTemplate.isDefault ? (
                       <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
@@ -469,11 +469,11 @@ export function TemplateManager() {
                         Set as Default
                       </Button>
                     )}
-                    
-                    <Badge 
-                      variant="outline" 
-                      className={selectedTemplate.isActive ? 
-                        "bg-green-50 text-green-700 border-green-200" : 
+
+                    <Badge
+                      variant="outline"
+                      className={selectedTemplate.isActive ?
+                        "bg-green-50 text-green-700 border-green-200" :
                         "bg-gray-50 text-gray-700 border-gray-200"}
                     >
                       {selectedTemplate.isActive ? 'Active' : 'Inactive'}
@@ -481,59 +481,59 @@ export function TemplateManager() {
                   </div>
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="details" className="space-y-6 py-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label>Category</Label>
                     <div className="mt-1 text-sm capitalize">{selectedTemplate.category}</div>
                   </div>
-                  
+
                   {selectedTemplate.occasion && (
                     <div>
                       <Label>Occasion</Label>
                       <div className="mt-1 text-sm capitalize">{selectedTemplate.occasion}</div>
                     </div>
                   )}
-                  
+
                   {selectedTemplate.season && (
                     <div>
                       <Label>Season</Label>
                       <div className="mt-1 text-sm capitalize">{selectedTemplate.season}</div>
                     </div>
                   )}
-                  
+
                   <div>
                     <Label>Created</Label>
                     <div className="mt-1 text-sm">
                       {new Date(selectedTemplate.createdAt).toLocaleDateString()}
                     </div>
                   </div>
-                  
+
                   <div>
                     <Label>Last Updated</Label>
                     <div className="mt-1 text-sm">
                       {new Date(selectedTemplate.updatedAt).toLocaleDateString()}
                     </div>
                   </div>
-                  
+
                   <div>
                     <Label>Version</Label>
                     <div className="mt-1 text-sm">{selectedTemplate.version}</div>
                   </div>
-                  
+
                   <div>
                     <Label>Status</Label>
                     <div className="mt-1 flex items-center space-x-2">
-                      <Badge 
-                        variant="outline" 
-                        className={selectedTemplate.isActive ? 
-                          "bg-green-50 text-green-700 border-green-200" : 
+                      <Badge
+                        variant="outline"
+                        className={selectedTemplate.isActive ?
+                          "bg-green-50 text-green-700 border-green-200" :
                           "bg-gray-50 text-gray-700 border-gray-200"}
                       >
                         {selectedTemplate.isActive ? 'Active' : 'Inactive'}
                       </Badge>
-                      
+
                       {selectedTemplate.isDefault && (
                         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                           Default
@@ -542,25 +542,25 @@ export function TemplateManager() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <Label>Background Color</Label>
                   <div className="mt-2 flex items-center space-x-2">
-                    <div 
-                      className="w-8 h-8 rounded-full border" 
+                    <div
+                      className="w-8 h-8 rounded-full border"
                       style={{ backgroundColor: selectedTemplate.styles.backgroundColor }}
                     />
                     <div className="text-sm">{selectedTemplate.styles.backgroundColor}</div>
                   </div>
                 </div>
-                
+
                 <div>
                   <Label>Dimensions</Label>
                   <div className="mt-1 text-sm">
                     {selectedTemplate.styles.width} × {selectedTemplate.styles.height} pixels
                   </div>
                 </div>
-                
+
                 {/* Element count */}
                 <div>
                   <Label>Elements</Label>
@@ -570,12 +570,12 @@ export function TemplateManager() {
                 </div>
               </TabsContent>
             </Tabs>
-            
+
             <DialogFooter className="flex justify-between">
               <div className="flex space-x-2">
                 {!selectedTemplate.isDefault && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => {
                       setShowDetailsDialog(false);
@@ -588,7 +588,7 @@ export function TemplateManager() {
                   </Button>
                 )}
               </div>
-              
+
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
@@ -601,7 +601,7 @@ export function TemplateManager() {
                   <Copy className="h-4 w-4 mr-2" />
                   Duplicate
                 </Button>
-                
+
                 <Button
                   size="sm"
                 >
@@ -613,7 +613,7 @@ export function TemplateManager() {
           </DialogContent>
         </Dialog>
       )}
-      
+
       {/* Delete Confirmation Dialog */}
       {selectedTemplate && (
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -621,11 +621,11 @@ export function TemplateManager() {
             <DialogHeader>
               <DialogTitle>Delete Template</DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete the template "{selectedTemplate.name}"? 
+                Are you sure you want to delete the template "{selectedTemplate.name}"?
                 This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
-            
+
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
                 variant="outline"
@@ -643,7 +643,7 @@ export function TemplateManager() {
           </DialogContent>
         </Dialog>
       )}
-      
+
       {/* Duplicate Dialog */}
       {selectedTemplate && (
         <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
@@ -654,7 +654,7 @@ export function TemplateManager() {
                 Create a copy of the template "{selectedTemplate.name}" with a new name.
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="py-4">
               <Label htmlFor="newTemplateName">New Template Name</Label>
               <Input
@@ -665,7 +665,7 @@ export function TemplateManager() {
                 className="mt-2"
               />
             </div>
-            
+
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
                 variant="outline"
@@ -687,4 +687,4 @@ export function TemplateManager() {
       )}
     </div>
   );
-} 
+}

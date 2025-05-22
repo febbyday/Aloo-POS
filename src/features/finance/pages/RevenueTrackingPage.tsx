@@ -86,7 +86,7 @@ export const RevenueTrackingPage: React.FC = () => {
             status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
             'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
           }`}>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+            {status && status.charAt(0).toUpperCase() + status.slice(1) || "Unknown"}
           </div>
         );
       },

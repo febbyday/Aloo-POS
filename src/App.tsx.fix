@@ -1,0 +1,149 @@
+// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
+
+import { RootLayout } from '@/layouts/RootLayout';
+import { POSLayout } from '@/layouts/POSLayout';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import UnifiedErrorBoundary from './components/unified-error-boundary';
+import { ThemeProvider } from '@/components/theme-provider';
+import { ScrollbarProvider } from '@/components/scrollbar-provider';
+
+import { ToastProvider } from '@/lib/toast';
+import { EnhancedToaster } from '@/lib/toast/enhanced-toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { BatchStoreProvider } from './features/store/context/BatchStoreProvider';
+import { BatchCompanyProvider } from './features/store/context/BatchCompanyProvider';
+import { ProductProvider } from './features/products/context/ProductContext';
+import { PricingSettingsProvider } from './features/products/context/PricingSettingsContext';
+import { CategoryProvider } from './features/products/context/CategoryContext';
+import { BatchBrandProvider } from './features/products/context/BatchBrandProvider';
+import { BatchVariationTemplateProvider } from './features/products/context/BatchVariationTemplateProvider';
+import { AuthProvider } from './features/auth/context/AuthContext';
+
+// Import all of your existing components and context providers...
+// [Keep all your imports here]
+
+function App() {
+  return (
+    <UnifiedErrorBoundary
+      title="Application Error"
+      showToast={true}
+      fallback={(error, reset) => (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
+          <div className="w-full max-w-md p-6 space-y-4 bg-card rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-center">Something went wrong</h2>
+            <p className="text-muted-foreground text-center">
+              The application encountered an unexpected error. Please try again.
+            </p>
+            {process.env.NODE_ENV === 'development' && (
+              <div className="p-2 bg-muted rounded text-sm overflow-auto max-h-[200px]">
+                <pre>{error.message}</pre>
+                <pre>{error.stack}</pre>
+              </div>
+            )}
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={reset}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    >
+      <Router>
+        <ThemeProvider defaultTheme="light" storageKey="pos-theme">
+          <Helmet>
+            <title>Aloo POS | Point of Sale System</title>
+            <meta name="description" content="Aloo POS - Modern Point of Sale System" />
+          </Helmet>
+          <ScrollbarProvider>
+            <AuthProvider>
+              <NotificationProvider>
+                <BatchStoreProvider>
+                  <BatchCompanyProvider>
+                    <CategoryProvider>
+                      <BatchBrandProvider>
+                        <BatchVariationTemplateProvider>
+                          <ProductProvider>
+                            <ProductHistoryProvider>
+                              <CustomerHistoryProvider>
+                                <SalesHistoryProvider>
+                                  <InventoryHistoryProvider>
+                                    <StaffHistoryProvider>
+                                      <RoleHistoryProvider>
+                                        <SupplierHistoryProvider>
+                                          <PurchaseOrderHistoryProvider>
+                                            <RepairHistoryProvider>
+                                              <LocationHistoryProvider>
+                                                <ExpenseHistoryProvider>
+                                                  <SettingsHistoryProvider>
+                                                    <ReportHistoryProvider>
+                                                      <PricingSettingsProvider>
+                                                        <RealShopProvider>
+
+                                                          <TooltipProvider>
+                                                            <Routes>
+                                                              {/* Authentication Routes */}
+                                                              <Route path="/login" element={<LoginPage />} />
+                                                              <Route path="/quick-login" element={<QuickLoginPage />} />
+
+                                                              {/* Protected Routes */}
+                                                              <Route path="/" element={
+                                                                <ProtectedRoute>
+                                                                  <RootLayout />
+                                                                </ProtectedRoute>
+                                                              }>
+                                                                {/* All of your existing routes */}
+                                                                {/* Copy your routes from the original file */}
+                                                              </Route>
+
+                                                              {/* POS Sale Route */}
+                                                              <Route path="/pos" element={
+                                                                <ProtectedRoute>
+                                                                  <POSLayout />
+                                                                </ProtectedRoute>
+                                                              }>
+                                                                <Route index element={<POSSalePage />} />
+                                                              </Route>
+
+                                                              {/* Redirect to dashboard if no match instead of login */}
+                                                              <Route path="*" element={<Navigate to="/" replace />} />
+                                                            </Routes>
+                                                            <ToastProvider>
+                                                              <EnhancedToaster />
+                                                            </ToastProvider>
+                                                          </TooltipProvider>
+                                                        </RealShopProvider>
+                                                      </PricingSettingsProvider>
+                                                    </ReportHistoryProvider>
+                                                  </SettingsHistoryProvider>
+                                                </ExpenseHistoryProvider>
+                                              </LocationHistoryProvider>
+                                            </RepairHistoryProvider>
+                                          </PurchaseOrderHistoryProvider>
+                                        </SupplierHistoryProvider>
+                                      </RoleHistoryProvider>
+                                    </StaffHistoryProvider>
+                                  </InventoryHistoryProvider>
+                                </SalesHistoryProvider>
+                              </CustomerHistoryProvider>
+                            </ProductHistoryProvider>
+                          </ProductProvider>
+                        </BatchVariationTemplateProvider>
+                      </BatchBrandProvider>
+                    </CategoryProvider>
+                  </BatchCompanyProvider>
+                </BatchStoreProvider>
+              </NotificationProvider>
+            </AuthProvider>
+          </ScrollbarProvider>
+        </ThemeProvider>
+      </Router>
+    </UnifiedErrorBoundary>
+  );
+}
+
+export default App;

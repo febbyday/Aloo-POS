@@ -31,7 +31,7 @@ import {
   ChevronsUpDown
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils/cn';
 
 export type DataTableColumn<TData, TValue = unknown> = ColumnDef<TData, TValue>
 export type DataTableRow<TData> = Row<TData>

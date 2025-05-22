@@ -1,141 +1,15 @@
-import React, { createContext, useContext, useState } from 'react';
-import type { Product, Category, PriceHistory, SpecialPrice, CustomerGroup, BulkPriceUpdate } from '../types';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { Product, PriceHistory, SpecialPrice, CustomerGroup, BulkPriceUpdate } from '../types';
+import { Category } from '../types/category';
 import { ProductAttribute } from '../types/unified-product.types';
-import { getSampleProductImages } from '../data/sampleProductImages';
+import { apiClient } from '@/lib/api/api-client';
+import { formatErrorMessage } from '@/lib/api/utils/api-helpers';
+import { categoryService } from '../services/categoryService';
 
-// Mock data - replace with actual API call
-const initialProducts: Product[] = [
-  {
-    id: '1',
-    name: 'CURVED WOOD ONE (45) - MAN',
-    category: 'Audio',
-    description: 'Professional curved wood audio console',
-    sku: 'AUD-CURV-45M',
-    barcode: '200123456789',
-    costPrice: 55.00,
-    retailPrice: 75.00,
-    supplier: {
-      id: 'sup1',
-      name: 'Audio Supplies Co.'
-    },
-    minStock: 5,
-    maxStock: 20,
-    locations: [
-      {
-        locationId: 'loc1',
-        stock: 10,
-        minStock: 5,
-        maxStock: 15
-      }
-    ],
-    variants: [],
-    createdAt: '2024-01-15',
-    updatedAt: '2024-02-17',
-    images: getSampleProductImages('electronics', 4),
-    status: 'active'
-  },
-  {
-    id: '2',
-    name: 'CURVED WOOD TWO FACE MAN',
-    category: 'Audio',
-    description: 'Dual-sided curved wood audio console',
-    sku: 'AUD-CURV-2FM',
-    barcode: '200987654321',
-    costPrice: 45.00,
-    retailPrice: 65.00,
-    supplier: {
-      id: 'sup1',
-      name: 'Audio Supplies Co.'
-    },
-    minStock: 5,
-    maxStock: 15,
-    locations: [
-      {
-        locationId: 'loc1',
-        stock: 5,
-        minStock: 5,
-        maxStock: 10
-      }
-    ],
-    variants: [],
-    createdAt: '2024-01-20',
-    updatedAt: '2024-02-17',
-    images: getSampleProductImages('electronics', 3),
-    status: 'active'
-  },
-  {
-    id: '3',
-    name: 'PREMIUM HEADPHONES',
-    category: 'Audio',
-    description: 'High-end professional headphones',
-    sku: 'AUD-HEAD-PRE',
-    barcode: '200987654322',
-    costPrice: 85.00,
-    retailPrice: 129.99,
-    supplier: {
-      id: 'sup1',
-      name: 'Audio Supplies Co.'
-    },
-    minStock: 10,
-    maxStock: 30,
-    locations: [
-      {
-        locationId: 'loc1',
-        stock: 3,
-        minStock: 10,
-        maxStock: 20
-      }
-    ],
-    variants: [],
-    createdAt: '2024-01-25',
-    updatedAt: '2024-02-17',
-    images: getSampleProductImages('electronics', 2),
-    status: 'active'
-  }
-];
-
-const initialCategories: Category[] = [
-  {
-    id: '1',
-    name: 'Audio',
-    description: 'Audio equipment and accessories'
-  },
-  {
-    id: '2',
-    name: 'Video',
-    description: 'Video equipment and accessories'
-  },
-  {
-    id: '3',
-    name: 'Lighting',
-    description: 'Lighting equipment and accessories'
-  }
-];
-
-// Initial global attributes
-const initialAttributes: ProductAttribute[] = [
-  {
-    name: 'Size',
-    values: ['Small', 'Medium', 'Large', 'X-Large'],
-    isVisibleOnProductPage: true,
-    isUsedForVariations: true,
-    displayOrder: 0
-  },
-  {
-    name: 'Color',
-    values: ['Red', 'Blue', 'Green', 'Black', 'White'],
-    isVisibleOnProductPage: true,
-    isUsedForVariations: true,
-    displayOrder: 1
-  },
-  {
-    name: 'Material',
-    values: ['Cotton', 'Polyester', 'Wool', 'Silk', 'Leather'],
-    isVisibleOnProductPage: true,
-    isUsedForVariations: true,
-    displayOrder: 2
-  }
-];
+// API endpoints
+// Using relative paths that will be handled by the API client's prefix handling
+const PRODUCTS_API_ENDPOINT = '/products';
+const ATTRIBUTES_API_ENDPOINT = '/products/attributes';
 
 interface ProductContextType {
   products: Product[];
@@ -162,13 +36,51 @@ interface ProductContextType {
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export function ProductProvider({ children }: { children: React.ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [specialPrices, setSpecialPrices] = useState<SpecialPrice[]>([]);
   const [customerGroups, setCustomerGroups] = useState<CustomerGroup[]>([]);
-  const [attributes, setAttributes] = useState<ProductAttribute[]>(initialAttributes);
-  const [loading, setLoading] = useState(false);
+  const [attributes, setAttributes] = useState<ProductAttribute[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch products using apiClient
+        const productsResponse = await apiClient.get(PRODUCTS_API_ENDPOINT);
+        if (productsResponse.success) {
+          setProducts(productsResponse.data || []);
+        }
+
+        // Fetch categories using dedicated categoryService
+        try {
+          const categoriesData = await categoryService.fetchAll();
+          setCategories(categoriesData);
+        } catch (categoryError) {
+          console.error('Error fetching categories:', categoryError);
+          // Continue with empty categories array rather than failing entirely
+          setCategories([]);
+        }
+
+        // Fetch attributes using apiClient
+        const attributesResponse = await apiClient.get(ATTRIBUTES_API_ENDPOINT);
+        if (attributesResponse.success) {
+          setAttributes(attributesResponse.data || []);
+        }
+      } catch (error) {
+        const errorMessage = formatErrorMessage(error);
+        console.error('Error fetching product data:', errorMessage, error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const addProduct = (product: Product) => {
     setProducts(prev => [...prev, product]);
@@ -209,7 +121,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
           productId: product.id,
           price: newPrice,
           date: new Date().toISOString(),
-          reason: update.reason,
+          reason: update.reason || 'Bulk price update', // Provide default reason if undefined
           userId: 'current-user-id' // Replace with actual user ID
         };
         setPriceHistory(prev => [...prev, historyEntry]);
@@ -271,11 +183,17 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   const saveAttributes = async (newAttributes: ProductAttribute[]) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Call the API to save attributes using apiClient
+      const response = await apiClient.post(ATTRIBUTES_API_ENDPOINT, newAttributes);
+
+      if (!response.success) {
+        throw new Error(`Failed to save attributes: ${response.error}`);
+      }
+
       setAttributes(newAttributes);
       return Promise.resolve();
     } catch (error) {
+      console.error('Error saving attributes:', error);
       return Promise.reject(error);
     } finally {
       setLoading(false);

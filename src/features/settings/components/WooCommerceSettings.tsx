@@ -1,5 +1,4 @@
-import { useState } from "react"
-import { z } from "zod"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
@@ -10,73 +9,129 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { CheckCircle2, XCircle } from "lucide-react"
-
-const wooCommerceSchema = z.object({
-  enabled: z.boolean(),
-  storeUrl: z.string().url("Please enter a valid URL"),
-  consumerKey: z.string().min(1, "Consumer Key is required"),
-  consumerSecret: z.string().min(1, "Consumer Secret is required"),
-  sync: z.object({
-    products: z.boolean(),
-    inventory: z.boolean(),
-    orders: z.boolean(),
-    customers: z.boolean(),
-    frequency: z.enum(["realtime", "hourly", "daily", "manual"]),
-  }),
-  products: z.object({
-    overridePrices: z.boolean(),
-    syncImages: z.boolean(),
-    syncCategories: z.boolean(),
-    attributeMapping: z.boolean(),
-  }),
-  orders: z.object({
-    defaultStatus: z.enum(["pending", "processing", "completed"]),
-    autoComplete: z.boolean(),
-    notifications: z.boolean(),
-    customWorkflow: z.boolean(),
-  }),
-})
-
-type WooCommerceSettings = z.infer<typeof wooCommerceSchema>
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { SettingsService, wooCommerceService } from "../services/woocommerce.service"
+import { wooCommerceSettingsSchema, WooCommerceSettings } from "../schemas/woocommerce-settings.schema"
 
 export function WooCommerceSettingsPanel() {
+  const { toast } = useToast()
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "testing">("disconnected")
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
   const form = useForm<WooCommerceSettings>({
-    resolver: zodResolver(wooCommerceSchema),
+    resolver: zodResolver(wooCommerceSettingsSchema),
     defaultValues: {
       enabled: false,
       storeUrl: "",
       consumerKey: "",
       consumerSecret: "",
       sync: {
-        products: true,
-        inventory: true,
-        orders: true,
-        customers: true,
-        frequency: "hourly",
+        products: {
+          enabled: true,
+          frequency: "hourly",
+          importImages: true,
+          importCategories: true,
+          importAttributes: true,
+        },
+        inventory: {
+          enabled: true,
+          syncBidirectional: false,
+          threshold: 5,
+        },
+        orders: {
+          import: true,
+          defaultStatus: "processing",
+          autoComplete: false,
+          notifications: true,
+        },
+        customers: {
+          sync: true,
+          importExisting: false,
+        },
       },
-      products: {
-        overridePrices: false,
-        syncImages: true,
-        syncCategories: true,
-        attributeMapping: true,
-      },
-      orders: {
-        defaultStatus: "processing",
-        autoComplete: false,
-        notifications: true,
-        customWorkflow: false,
+      prices: {
+        allowOverride: false,
+        useWooCommercePricing: false,
       },
     },
   })
 
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await SettingsService.getSettings()
+        form.reset(settings)
+
+        // If the store URL and credentials are set, assume connection was successful
+        if (settings.enabled && settings.storeUrl && settings.consumerKey && settings.consumerSecret) {
+          setConnectionStatus("connected")
+        }
+      } catch (error) {
+        console.error("Error loading WooCommerce settings:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load WooCommerce settings",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadSettings()
+  }, [])
+
   const testConnection = async () => {
-    setConnectionStatus("testing")
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setConnectionStatus("connected")
+    try {
+      setConnectionStatus("testing")
+
+      const formValues = form.getValues()
+      const result = await wooCommerceService.testConnection(formValues)
+
+      if (result.success) {
+        setConnectionStatus("connected")
+        toast({
+          title: "Connection Successful",
+          description: result.message,
+        })
+      } else {
+        setConnectionStatus("disconnected")
+        toast({
+          title: "Connection Failed",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      setConnectionStatus("disconnected")
+      toast({
+        title: "Connection Error",
+        description: error instanceof Error ? error.message : "Failed to test connection",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const onSubmit = async (data: WooCommerceSettings) => {
+    try {
+      setIsSaving(true)
+      await SettingsService.saveSettings(data)
+      toast({
+        title: "Settings Saved",
+        description: "WooCommerce settings have been saved successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save WooCommerce settings",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -90,29 +145,38 @@ export function WooCommerceSettingsPanel() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <FormLabel>Enable WooCommerce Integration</FormLabel>
-                  <FormDescription>
-                    Connect your POS system with WooCommerce
-                  </FormDescription>
+            <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+              {isLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2">Loading settings...</span>
                 </div>
-                <FormField
-                  control={form.control}
-                  name="enabled"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <FormLabel>Enable WooCommerce Integration</FormLabel>
+                      <FormDescription>
+                        Connect your POS system with WooCommerce
+                      </FormDescription>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="enabled"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
 
               {form.watch("enabled") && (
                 <>
@@ -481,10 +545,27 @@ export function WooCommerceSettingsPanel() {
                   </div>
 
                   <div className="flex justify-end space-x-4">
-                    <Button variant="outline" type="reset">
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={() => form.reset()}
+                      disabled={isSaving}
+                    >
                       Reset
                     </Button>
-                    <Button type="submit">Save Changes</Button>
+                    <Button
+                      type="submit"
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Changes'
+                      )}
+                    </Button>
                   </div>
                 </>
               )}

@@ -15,7 +15,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils/formatters"
 
 export function PricingDashboard() {
   const { products, priceHistory, specialPrices } = useProducts()

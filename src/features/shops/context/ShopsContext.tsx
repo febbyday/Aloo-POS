@@ -1,13 +1,13 @@
 /**
  * Shops Context
- * 
+ *
  * This context provides state management for the shops feature.
  */
 
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { Shop } from '../types/shops.types';
 import { shopsService } from '../services/shopsService';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 
 interface ShopsContextValue {
   items: Shop[];
@@ -35,11 +35,11 @@ export function ShopsProvider({ children, autoLoad = true }: ShopsProviderProps)
   const refresh = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Add a small delay to ensure backend has time to process all new data
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const data = await shopsService.fetchAll();
       console.log('Fetched shops after refresh:', data.length);
       setItems(data);
@@ -47,7 +47,7 @@ export function ShopsProvider({ children, autoLoad = true }: ShopsProviderProps)
       console.error('Error fetching shops:', err);
       const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching shops';
       setError(err instanceof Error ? err : new Error(errorMessage));
-      
+
       toast({
         title: "Error fetching shops",
         description: errorMessage,
@@ -66,14 +66,14 @@ export function ShopsProvider({ children, autoLoad = true }: ShopsProviderProps)
   }, [autoLoad]);
 
   return (
-    <ShopsContext.Provider 
-      value={{ 
-        items, 
-        selectedItem, 
-        loading, 
-        error, 
-        setSelectedItem, 
-        refresh 
+    <ShopsContext.Provider
+      value={{
+        items,
+        selectedItem,
+        loading,
+        error,
+        setSelectedItem,
+        refresh
       }}
     >
       {children}
@@ -83,10 +83,10 @@ export function ShopsProvider({ children, autoLoad = true }: ShopsProviderProps)
 
 export function useShopsContext() {
   const context = useContext(ShopsContext);
-  
+
   if (context === undefined) {
     throw new Error('useShopsContext must be used within a ShopsProvider');
   }
-  
+
   return context;
 }

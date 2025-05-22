@@ -17,45 +17,9 @@ interface Product {
   quantity?: number
 }
 
-// Mock data for development
-const mockCategories: Category[] = [
-  { id: "1", name: "Category A" },
-  { id: "2", name: "Category B" },
-  { id: "3", name: "Category C" },
-]
-
-const mockProducts: Product[] = [
-  {
-    id: "1",
-    name: "Product 1",
-    sku: "SKU001",
-    categoryId: "1",
-    price: 9.99,
-    stock: 15,
-    reorderPoint: 10,
-    image: "https://via.placeholder.com/50",
-  },
-  {
-    id: "2",
-    name: "Product 2",
-    sku: "SKU002",
-    categoryId: "2",
-    price: 19.99,
-    stock: 5,
-    reorderPoint: 10,
-    image: "https://via.placeholder.com/50",
-  },
-  {
-    id: "3",
-    name: "Product 3",
-    sku: "SKU003",
-    categoryId: "1",
-    price: 29.99,
-    stock: 0,
-    reorderPoint: 10,
-    image: "https://via.placeholder.com/50",
-  },
-]
+// API endpoints - removing /api/v1 prefix as it's added by the API client
+const PRODUCTS_API_ENDPOINT = '/products';
+const CATEGORIES_API_ENDPOINT = '/categories';
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([])
@@ -64,21 +28,34 @@ export function useProducts() {
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true)
-        // TODO: Replace with actual API call
-        // For now, using mock data
-        setProducts(mockProducts)
-        setCategories(mockCategories)
+
+        // Fetch products from API
+        const productsResponse = await fetch(PRODUCTS_API_ENDPOINT)
+        if (!productsResponse.ok) {
+          throw new Error(`Failed to fetch products: ${productsResponse.statusText}`)
+        }
+        const productsData = await productsResponse.json()
+        setProducts(productsData.data || [])
+
+        // Fetch categories from API
+        const categoriesResponse = await fetch(CATEGORIES_API_ENDPOINT)
+        if (!categoriesResponse.ok) {
+          throw new Error(`Failed to fetch categories: ${categoriesResponse.statusText}`)
+        }
+        const categoriesData = await categoriesResponse.json()
+        setCategories(categoriesData.data || [])
       } catch (err) {
+        console.error('Error fetching products data:', err)
         setError(err instanceof Error ? err : new Error("Failed to fetch products"))
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchProducts()
+    fetchData()
   }, [])
 
   return {
@@ -87,4 +64,4 @@ export function useProducts() {
     isLoading,
     error,
   }
-} 
+}

@@ -1,7 +1,7 @@
-import { 
-  RefreshCw, 
-  Filter, 
-  ArrowUpDown, 
+import {
+  RefreshCw,
+  Filter,
+  ArrowUpDown,
   SlidersHorizontal,
   FileText,
   FileDown,
@@ -10,12 +10,13 @@ import {
 import { DateRange } from "react-day-picker"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { ProductsToolbar } from "../ProductsToolbar"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/lib/toast"
 import { format } from "date-fns"
 import { useState } from "react"
 import { FilterDialog } from "../FilterDialog"
 import { SortDialog } from "../SortDialog"
 import { ColumnVisibilityDialog } from "../ColumnVisibilityDialog"
+import { formatDate } from "@/lib/utils/formatters"
 
 interface StockHistoryToolbarProps {
   onColumnsChange: () => void
@@ -32,7 +33,7 @@ interface StockHistoryToolbarProps {
   onVisibleColumnsChange: (columns: string[]) => void
 }
 
-export function StockHistoryToolbar({ 
+export function StockHistoryToolbar({
   onColumnsChange,
   dateRange,
   onDateRangeChange,
@@ -46,15 +47,15 @@ export function StockHistoryToolbar({
   visibleColumns,
   onVisibleColumnsChange
 }: StockHistoryToolbarProps) {
-  const { toast } = useToast()
+  const toast = useToast()
   const [filterDialogOpen, setFilterDialogOpen] = useState(false)
   const [sortDialogOpen, setSortDialogOpen] = useState(false)
   const [columnDialogOpen, setColumnDialogOpen] = useState(false)
 
+  // Using imported formatDate from formatters.ts
   const formatDateString = (dateStr: string) => {
     try {
-      const date = new Date(dateStr)
-      return isNaN(date.getTime()) ? dateStr : format(date, 'MMM dd, yyyy')
+      return formatDate(dateStr, { format: 'short' })
     } catch {
       return dateStr
     }
@@ -82,14 +83,14 @@ export function StockHistoryToolbar({
       if (exportFormat === 'csv') {
         // Create CSV content
         const header = columns.map(col => col.label).join(',')
-        const rows = formattedData.map(row => 
+        const rows = formattedData.map(row =>
           columns.map(col => {
             const value = row[col.label]?.toString() || ''
             return value.includes(',') ? `"${value}"` : value
           }).join(',')
         )
         const csvContent = [header, ...rows].join('\n')
-        
+
         // Create and trigger download using Blob URL
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
         const url = window.URL.createObjectURL(blob)
@@ -100,7 +101,7 @@ export function StockHistoryToolbar({
         link.click()
         document.body.removeChild(link)
         window.URL.revokeObjectURL(url)
-      } 
+      }
       else if (exportFormat === 'excel') {
         try {
           const XLSX = await import('xlsx/xlsx.mjs')
@@ -112,11 +113,11 @@ export function StockHistoryToolbar({
           console.error('XLSX error:', xlsxError)
           throw new Error('Failed to load Excel export module. Please try CSV format instead.')
         }
-      } 
+      }
       else if (exportFormat === 'pdf') {
         const { jsPDF } = await import('jspdf')
         const autoTable = (await import('jspdf-autotable')).default
-        
+
         const doc = new jsPDF({
           orientation: 'landscape',
           unit: 'mm',
@@ -130,13 +131,13 @@ export function StockHistoryToolbar({
         autoTable(doc, {
           head: [columns.map(col => col.label)],
           body: formattedData.map(row => columns.map(col => row[col.label])),
-          styles: { 
+          styles: {
             fontSize: 8,
             cellPadding: 1,
             overflow: 'linebreak',
             cellWidth: baseWidth
           },
-          headStyles: { 
+          headStyles: {
             fillColor: [41, 37, 36],
             textColor: 255,
             fontSize: 8,
@@ -148,22 +149,20 @@ export function StockHistoryToolbar({
             doc.text(`Stock History - ${format(new Date(), 'MMM dd, yyyy')}`, data.settings.margin.left, 7)
           }
         })
-        
+
         doc.save(`${filename}.pdf`)
       }
 
-      toast({
-        title: "Export successful",
-        description: `Your data has been exported as ${exportFormat.toUpperCase()}`,
-        variant: "default"
-      })
+      toast.success(
+        "Export successful",
+        `Your data has been exported as ${exportFormat.toUpperCase()}`
+      )
     } catch (error) {
       console.error('Export error:', error)
-      toast({
-        title: "Export failed",
-        description: error instanceof Error ? error.message : "There was an error exporting your data. Please try again.",
-        variant: "destructive"
-      })
+      toast.error(
+        "Export failed",
+        error instanceof Error ? error.message : "There was an error exporting your data. Please try again."
+      )
     }
   }
 
@@ -175,10 +174,10 @@ export function StockHistoryToolbar({
           label: "Refresh",
           onClick: () => {
             onRefresh()
-            toast({
-              title: "Refreshing data...",
-              description: "Your stock history is being updated."
-            })
+            toast.info(
+              "Refreshing data...",
+              "Your stock history is being updated."
+            )
           }
         }
       ]
@@ -229,7 +228,7 @@ export function StockHistoryToolbar({
 
   return (
     <>
-      <ProductsToolbar 
+      <ProductsToolbar
         groups={toolbarGroups}
         rightContent={
           <DateRangePicker

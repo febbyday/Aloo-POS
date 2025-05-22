@@ -1,14 +1,14 @@
-import { 
-  RefreshCw, 
-  Filter, 
-  ArrowUpDown, 
+import {
+  RefreshCw,
+  Filter,
+  ArrowUpDown,
   SlidersHorizontal,
   Bell,
   FileDown,
   Settings
 } from "lucide-react"
 import { ProductsToolbar } from "../ProductsToolbar"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/lib/toast"
 import { motion } from "framer-motion"
 
 interface LowStockToolbarProps {
@@ -17,12 +17,12 @@ interface LowStockToolbarProps {
   onAlertSettings: () => void
 }
 
-export function LowStockToolbar({ 
-  onExport, 
+export function LowStockToolbar({
+  onExport,
   onColumnsChange,
   onAlertSettings
 }: LowStockToolbarProps) {
-  const { toast } = useToast()
+  const toast = useToast()
 
   const toolbarGroups = [
     {
@@ -31,10 +31,7 @@ export function LowStockToolbar({
           icon: RefreshCw,
           label: "Refresh",
           onClick: () => {
-            toast({
-              title: "Refreshing data...",
-              description: "Your low stock alerts are being updated."
-            })
+            toast.info("Refreshing data...", "Your low stock alerts are being updated.")
           }
         }
       ]
@@ -45,20 +42,14 @@ export function LowStockToolbar({
           icon: Bell,
           label: "Notifications",
           onClick: () => {
-            toast({
-              title: "Notification settings",
-              description: "Configure low stock notifications."
-            })
+            toast.info("Notification settings", "Configure low stock notifications.")
           }
         },
         {
           icon: Filter,
           label: "Filter",
           onClick: () => {
-            toast({
-              title: "Filter options",
-              description: "Filter alerts by various criteria."
-            })
+            toast.info("Filter options", "Filter alerts by various criteria.")
           }
         }
       ]
@@ -69,10 +60,7 @@ export function LowStockToolbar({
           icon: ArrowUpDown,
           label: "Sort",
           onClick: () => {
-            toast({
-              title: "Sort options",
-              description: "Sort alerts by urgency or quantity."
-            })
+            toast.info("Sort options", "Sort alerts by urgency or quantity.")
           }
         },
         {
@@ -99,7 +87,7 @@ export function LowStockToolbar({
   ]
 
   return (
-    <ProductsToolbar 
+    <ProductsToolbar
       groups={toolbarGroups}
       rightContent={null}
     />

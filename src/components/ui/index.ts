@@ -1,6 +1,6 @@
 /**
  * UI Components Barrel Export
- * 
+ *
  * This file exports all UI components from the UI directory to simplify imports.
  * Instead of importing each component individually, you can import them all from '@/components/ui'.
  */
@@ -51,17 +51,23 @@ export * from './image';
 export * from './loading-state';
 export * from './shared-table-styles';
 
+// Responsive components
+export * from './responsive-card-grid';
+export * from './responsive-table';
+export * from './responsive-dialog';
+export * from './responsive-form-layout';
+
 // Table components
 export * from './table';
 
 // Re-export from folders with index files
 export * from './toolbar';
 
-// File upload components 
+// File upload components
 export * from './file-upload';
 export * from './file-upload-container';
 export * from './file-list';
 export * from './file-preview';
 
 // For components that might have hooks, export those as well
-export { useToast } from './use-toast'; 
+export { useToast } from '@/lib/toast';

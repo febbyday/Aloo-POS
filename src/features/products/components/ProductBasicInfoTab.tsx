@@ -1,36 +1,36 @@
 import React from 'react';
-import { 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormControl, 
-  FormDescription, 
-  FormMessage 
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { useProductForm } from '../context/ProductFormContext';
 import { useCategories } from '../context/CategoryContext';
-import { useBrands } from '../context/BrandContext';
+import { useBrands } from '../context/BatchBrandProvider';
 
 export function ProductBasicInfoTab() {
   const { form } = useProductForm();
   const { categories } = useCategories();
   const { brands } = useBrands();
-  
+
   // Filter active categories and brands
   const activeCategories = categories.filter(category => category.status === 'active');
   const activeBrands = brands.filter(brand => brand.status === 'active');
-  
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -47,7 +47,7 @@ export function ProductBasicInfoTab() {
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="productType"
@@ -76,7 +76,7 @@ export function ProductBasicInfoTab() {
           )}
         />
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <FormField
           control={form.control}
@@ -109,7 +109,7 @@ export function ProductBasicInfoTab() {
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="brand"
@@ -142,9 +142,9 @@ export function ProductBasicInfoTab() {
           )}
         />
       </div>
-      
+
       <Separator />
-      
+
       <div className="space-y-4">
         <FormField
           control={form.control}
@@ -153,10 +153,10 @@ export function ProductBasicInfoTab() {
             <FormItem>
               <FormLabel>Short Description</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="Brief description for product listings" 
+                <Textarea
+                  placeholder="Brief description for product listings"
                   className="resize-none h-20"
-                  {...field} 
+                  {...field}
                 />
               </FormControl>
               <FormDescription>
@@ -166,7 +166,7 @@ export function ProductBasicInfoTab() {
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="description"
@@ -174,10 +174,10 @@ export function ProductBasicInfoTab() {
             <FormItem>
               <FormLabel>Full Description</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="Detailed product description" 
+                <Textarea
+                  placeholder="Detailed product description"
                   className="resize-none h-32"
-                  {...field} 
+                  {...field}
                 />
               </FormControl>
               <FormDescription>
@@ -188,9 +188,9 @@ export function ProductBasicInfoTab() {
           )}
         />
       </div>
-      
+
       <Separator />
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <FormField
           control={form.control}
@@ -220,7 +220,7 @@ export function ProductBasicInfoTab() {
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="featured"

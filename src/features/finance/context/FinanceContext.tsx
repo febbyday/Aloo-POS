@@ -1,59 +1,7 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { FinanceSettings, FinanceSettingsSchema } from "../types/finance.types";
+import { FinanceSettings } from "../schemas/finance-settings.schema";
 import { toast } from "@/components/ui/use-toast";
-
-// Default finance settings
-const defaultFinanceSettings: FinanceSettings = {
-  currency: "USD",
-  taxEnabled: true,
-  defaultTaxRate: "standard",
-  fiscalizationEnabled: false,
-  fiscalizationSettings: {},
-  paymentMethods: [
-    {
-      id: "cash",
-      name: "Cash",
-      icon: "Banknote",
-      enabled: true,
-      systemDefined: true,
-    },
-    {
-      id: "card",
-      name: "Card",
-      icon: "CreditCard",
-      enabled: true,
-      systemDefined: true,
-    },
-    {
-      id: "mobile",
-      name: "Mobile Money",
-      icon: "Smartphone",
-      enabled: true,
-      systemDefined: true,
-    },
-    {
-      id: "bank",
-      name: "Bank Transfer",
-      icon: "Building",
-      enabled: true,
-      systemDefined: true,
-    },
-    {
-      id: "installments",
-      name: "Pay in Installments",
-      icon: "Calendar",
-      enabled: true,
-      systemDefined: true,
-    },
-  ],
-  receiptFooter: "Thank you for your business!",
-  receiptHeader: "Official Receipt",
-  showTaxOnReceipt: true,
-  requireReconciliation: true,
-  reconciliationFrequency: "daily",
-};
+import { SettingsService } from "../services/finance.service";
 
 interface FinanceContextType {
   settings: FinanceSettings;
@@ -66,34 +14,21 @@ interface FinanceContextType {
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<FinanceSettings>(defaultFinanceSettings);
+  const [settings, setSettings] = useState<FinanceSettings | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Simulate loading settings from API/localStorage
+  // Load settings using the settings service
   useEffect(() => {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        // In a real app, this would be an API call or localStorage read
-        // For now, we'll use a timeout to simulate loading
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Check if settings exist in localStorage
-        const savedSettings = localStorage.getItem("financeSettings");
-        if (savedSettings) {
-          const parsedSettings = JSON.parse(savedSettings);
-          // Validate settings with Zod
-          const validatedSettings = FinanceSettingsSchema.parse(parsedSettings);
-          setSettings(validatedSettings);
-        }
-        
+        const data = await SettingsService.getSettings();
+        setSettings(data);
         setError(null);
       } catch (err) {
         console.error("Failed to load finance settings:", err);
         setError("Failed to load finance settings");
-        // Fall back to default settings
-        setSettings(defaultFinanceSettings);
       } finally {
         setLoading(false);
       }
@@ -103,16 +38,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   // Update settings
-  const updateSettings = (newSettings: Partial<FinanceSettings>) => {
+  const updateSettings = async (newSettings: Partial<FinanceSettings>) => {
+    if (!settings) return;
+
     try {
       const updatedSettings = { ...settings, ...newSettings };
-      // Validate with Zod
-      const validatedSettings = FinanceSettingsSchema.parse(updatedSettings);
-      
-      setSettings(validatedSettings);
-      // Save to localStorage
-      localStorage.setItem("financeSettings", JSON.stringify(validatedSettings));
-      
+
+      // Save settings using the settings service
+      await SettingsService.saveSettings(updatedSettings);
+
+      // Update local state
+      setSettings(updatedSettings);
+
       toast({
         title: "Settings updated",
         description: "Finance settings have been updated successfully.",
@@ -129,26 +66,40 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   // Reset settings to default
-  const resetSettings = () => {
-    setSettings(defaultFinanceSettings);
-    localStorage.setItem("financeSettings", JSON.stringify(defaultFinanceSettings));
-    toast({
-      title: "Settings reset",
-      description: "Finance settings have been reset to defaults.",
-      variant: "default",
-    });
+  const resetSettings = async () => {
+    try {
+      // Reset settings using the settings service
+      const defaultSettings = await SettingsService.resetSettings();
+
+      // Update local state
+      setSettings(defaultSettings);
+
+      toast({
+        title: "Settings reset",
+        description: "Finance settings have been reset to defaults.",
+        variant: "default",
+      });
+    } catch (err) {
+      console.error("Failed to reset settings:", err);
+      toast({
+        title: "Error",
+        description: "Failed to reset settings. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // If settings are still loading, provide default empty settings
+  const contextValue: FinanceContextType = {
+    settings: settings || {} as FinanceSettings,
+    updateSettings,
+    resetSettings,
+    loading,
+    error,
   };
 
   return (
-    <FinanceContext.Provider
-      value={{
-        settings,
-        updateSettings,
-        resetSettings,
-        loading,
-        error,
-      }}
-    >
+    <FinanceContext.Provider value={contextValue}>
       {children}
     </FinanceContext.Provider>
   );

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useToast } from '@/components/ui/use-toast';
-import { 
+import { useToast } from '@/lib/toast';
+import {
   CreditCard,
-  Hash, 
-  Wallet, 
-  Calendar, 
-  User, 
+  Hash,
+  Wallet,
+  Calendar,
+  User,
   Activity,
   Settings,
   Mail,
@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 
 import {
   AreaChart,
@@ -45,7 +46,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -61,39 +62,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { useGiftCards } from '../hooks/gift-cards/useGiftCards';
-import { GiftCardsToolbar } from '../components/gift-cards/GiftCardsToolbar';
-import { GiftCardForm } from '../components/gift-cards/GiftCardForm';
-import { GiftCardSettings } from '../components/gift-cards/GiftCardSettings';
-import { TemplateManager } from '../components/gift-cards/TemplateManager';
-import { GiftCard, GiftCardStatus, GiftCardTransaction, GiftCardSettings as GiftCardSettingsType } from '../types/gift-cards';
+import { useGiftCards } from '../hooks/gift-cards';
+import {
+  GiftCardsToolbar,
+  GiftCardForm,
+  GiftCardSettings,
+  TemplateManager
+} from '../components/gift-cards';
+import {
+  GiftCard,
+  GiftCardStatus,
+  GiftCardTransaction,
+  GiftCardSettings as GiftCardSettingsType
+} from '../types/gift-cards';
 import SettingsService from '../services/gift-cards/settingsService';
 
-// Helper to format currency
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(amount);
-};
-
-// Helper to format dates
-const formatDate = (date: Date | null) => {
-  if (!date) return 'N/A';
-  return format(new Date(date), 'MMM d, yyyy');
-};
+// Using imported formatCurrency and formatDate from formatters.ts
 
 // Helper to generate status badge
 const getStatusBadge = (status: GiftCardStatus) => {
@@ -177,7 +172,7 @@ export function GiftCardsPage() {
   const [showTemplateManagerDialog, setShowTemplateManagerDialog] = useState(false);
   const [settings, setSettings] = useState<GiftCardSettingsType | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
-  
+
   const itemsPerPage = 5;
   const totalPages = Math.ceil(filteredGiftCards.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -194,8 +189,8 @@ export function GiftCardsPage() {
   const totalBalance = giftCards
     .filter(card => card.status === 'active')
     .reduce((sum, card) => sum + card.balance, 0);
-  const averageValue = totalGiftCards > 0 
-    ? giftCards.reduce((sum, card) => sum + card.initialValue, 0) / totalGiftCards 
+  const averageValue = totalGiftCards > 0
+    ? giftCards.reduce((sum, card) => sum + card.initialValue, 0) / totalGiftCards
     : 0;
 
   // Load gift card settings
@@ -215,7 +210,7 @@ export function GiftCardsPage() {
         setLoadingSettings(false);
       }
     };
-    
+
     loadSettings();
   }, [toast]);
 
@@ -353,8 +348,8 @@ export function GiftCardsPage() {
                       <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis 
-                    dataKey="name" 
+                  <XAxis
+                    dataKey="name"
                     tick={{ fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
@@ -373,7 +368,7 @@ export function GiftCardsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2 relative">
             <div>
@@ -406,7 +401,7 @@ export function GiftCardsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2 relative">
             <div>
@@ -430,8 +425,8 @@ export function GiftCardsPage() {
                       <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis 
-                    dataKey="name" 
+                  <XAxis
+                    dataKey="name"
                     tick={{ fontSize: 10 }}
                     stroke="hsl(var(--muted-foreground))"
                     tickLine={false}
@@ -551,7 +546,7 @@ export function GiftCardsPage() {
               ) : paginatedGiftCards.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8">
-                    No gift cards found. 
+                    No gift cards found.
                     <Button variant="link" onClick={handleAddGiftCard} className="px-2 py-0">
                       Create a new gift card
                     </Button>
@@ -559,8 +554,8 @@ export function GiftCardsPage() {
                 </TableRow>
               ) : (
                 paginatedGiftCards.map((giftCard) => (
-                  <TableRow 
-                    key={giftCard.id} 
+                  <TableRow
+                    key={giftCard.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleViewDetails(giftCard)}
                   >
@@ -582,21 +577,21 @@ export function GiftCardsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={(e) => { 
+                          <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
                             handleViewDetails(giftCard);
                           }}>
                             <Eye className="h-4 w-4 mr-2" />
                             View details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { 
+                          <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
                             handleEditGiftCard(giftCard);
                           }}>
                             <Edit className="h-4 w-4 mr-2" />
                             Edit gift card
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { 
+                          <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
                             // Implement send email functionality
                             toast({
@@ -608,7 +603,7 @@ export function GiftCardsPage() {
                             Send email
                           </DropdownMenuItem>
                           {giftCard.status === 'active' && (
-                            <DropdownMenuItem onClick={(e) => { 
+                            <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation();
                               adjustBalance(giftCard.id, giftCard.balance, 'expire', 'Manually disabled');
                               toast({
@@ -621,7 +616,7 @@ export function GiftCardsPage() {
                             </DropdownMenuItem>
                           )}
                           {(giftCard.status === 'expired' || giftCard.status === 'disabled') && (
-                            <DropdownMenuItem onClick={(e) => { 
+                            <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation();
                               // Implement reactivate functionality
                               toast({
@@ -686,7 +681,7 @@ export function GiftCardsPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8" 
+                className="h-8"
                 onClick={() => setCurrentPage(totalPages)}
                 disabled={currentPage === totalPages}
               >
@@ -707,13 +702,13 @@ export function GiftCardsPage() {
               View all gift card transactions
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             <p className="text-sm text-muted-foreground mb-4">
               This would display a comprehensive transaction history for all gift cards.
               In a full implementation, it would include filters, search, and pagination.
             </p>
-            
+
             <div className="border rounded-md">
               <Table>
                 <TableHeader>
@@ -736,7 +731,7 @@ export function GiftCardsPage() {
               </Table>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTransactionHistory(false)}>
               Close
@@ -754,7 +749,7 @@ export function GiftCardsPage() {
               Set filters to narrow down gift card results
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             <p className="text-sm text-muted-foreground mb-4">
               This dialog would include various filter options like:
@@ -769,7 +764,7 @@ export function GiftCardsPage() {
               Implementation of these filters would be part of a full gift card management system.
             </p>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowFilterDialog(false)}>
               Cancel
@@ -798,14 +793,14 @@ export function GiftCardsPage() {
               {selectedGiftCard ? 'Edit Gift Card' : 'Create New Gift Card'}
             </DialogTitle>
             <DialogDescription>
-              {selectedGiftCard 
-                ? 'Update gift card information' 
+              {selectedGiftCard
+                ? 'Update gift card information'
                 : 'Fill out the form to create a new gift card'
               }
             </DialogDescription>
           </DialogHeader>
-          
-          <GiftCardForm 
+
+          <GiftCardForm
             giftCard={selectedGiftCard}
             onSubmit={async (data) => {
               try {
@@ -825,7 +820,7 @@ export function GiftCardsPage() {
                     designTemplateId: data.designTemplateId,
                     code: data.generateCode ? undefined : data.manualCode,
                   });
-                  
+
                   toast({
                     title: "Gift Card Updated",
                     description: "Gift card has been updated successfully",
@@ -847,12 +842,12 @@ export function GiftCardsPage() {
                     designTemplateId: data.designTemplateId,
                     code: data.generateCode ? undefined : data.manualCode,
                   });
-                  
+
                   toast({
                     title: "Gift Card Created",
                     description: "New gift card has been created successfully",
                   });
-                  
+
                   // Handle email delivery if selected
                   if (data.sendEmailToRecipient && data.recipientEmail) {
                     toast({
@@ -860,7 +855,7 @@ export function GiftCardsPage() {
                       description: `Gift card has been emailed to ${data.recipientEmail}`,
                     });
                   }
-                  
+
                   // Handle printable version if selected
                   if (data.generatePrintableVersion) {
                     toast({
@@ -869,7 +864,7 @@ export function GiftCardsPage() {
                     });
                   }
                 }
-                
+
                 setShowAddEditDialog(false);
                 clearSelectedGiftCard();
               } catch (error) {
@@ -898,21 +893,21 @@ export function GiftCardsPage() {
               Configure system-wide settings for gift cards
             </DialogDescription>
           </DialogHeader>
-          
+
           {loadingSettings ? (
             <div className="py-8 text-center">
               <p className="text-sm text-muted-foreground">Loading settings...</p>
             </div>
           ) : settings ? (
-            <GiftCardSettings 
+            <GiftCardSettings
               settings={settings}
               onSave={handleSaveSettings}
             />
           ) : (
             <div className="py-8 text-center">
               <p className="text-sm text-muted-foreground">Failed to load settings</p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="mt-4"
                 onClick={() => setShowSettingsDialog(false)}
               >
@@ -924,8 +919,8 @@ export function GiftCardsPage() {
       </Dialog>
 
       {/* Template Manager Dialog */}
-      <Dialog 
-        open={showTemplateManagerDialog} 
+      <Dialog
+        open={showTemplateManagerDialog}
         onOpenChange={setShowTemplateManagerDialog}
         modal={true}
       >
@@ -936,7 +931,7 @@ export function GiftCardsPage() {
               Manage gift card design templates
             </DialogDescription>
           </DialogHeader>
-          
+
           <TemplateManager />
         </DialogContent>
       </Dialog>

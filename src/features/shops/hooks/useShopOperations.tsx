@@ -1,13 +1,13 @@
 /**
  * useShopOperations Hook
- * 
+ *
  * This hook provides operations for managing individual shops using the shops service.
  */
 
 import { useState } from 'react';
 import { shopsService } from '../services/shopsService';
 import { Shop } from '../types/shops.types';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/toast';
 
 export interface UseShopOperationsResult {
   loading: boolean;
@@ -29,7 +29,7 @@ export function useShopOperations(): UseShopOperationsResult {
   const createShop = async (shopData: Omit<Shop, 'id' | 'createdAt' | 'lastSync'>): Promise<Shop | null> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const newShop = await shopsService.create(shopData);
       toast({
@@ -57,7 +57,7 @@ export function useShopOperations(): UseShopOperationsResult {
   const updateShop = async (id: string, shopData: Partial<Shop>): Promise<Shop | null> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const updatedShop = await shopsService.update(id, shopData);
       toast({
@@ -85,7 +85,7 @@ export function useShopOperations(): UseShopOperationsResult {
   const deleteShop = async (id: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const success = await shopsService.delete(id);
       if (success) {
@@ -117,7 +117,7 @@ export function useShopOperations(): UseShopOperationsResult {
   const refreshShop = async (id: string): Promise<Shop | null> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const shop = await shopsService.fetchById(id);
       return shop;
@@ -143,4 +143,4 @@ export function useShopOperations(): UseShopOperationsResult {
     deleteShop,
     refreshShop
   };
-} 
+}

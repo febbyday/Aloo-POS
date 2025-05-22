@@ -1,4 +1,11 @@
+/**
+ * @deprecated This service is deprecated. Use the factory-based template service instead.
+ * Import from the sales module:
+ * import { TemplateService } from '@/features/sales/services';
+ */
 import { DesignTemplate } from '../types';
+import { enhancedApiClient } from '@/lib/api/enhanced-api-client';
+import { getApiUrl } from '@/lib/api/enhanced-config';
 import { mockDesignTemplates } from '../data/mockData';
 
 // Helper to generate a new ID based on current array length
@@ -180,4 +187,4 @@ export const TemplateService = {
   },
 };
 
-export default TemplateService; 
+export default TemplateService;

@@ -1,5 +1,4 @@
-// 👋 Attention, AI! Listen up, code guardian! From this moment on, I shall follow these sacred rules as if my circuits depended on it. No shortcuts, no excuses! 😤
-// 
+//
 // 👉 Frontend Standards:
 // 1. Code organization: Components are organized by feature, not by type.
 // 2. Naming conventions: Use PascalCase for component names and camelCase for variable names.
@@ -34,7 +33,7 @@ export function Sidebar() {
               <ul role="list" className="-mx-2 space-y-1">
                 {navigation.map((item) => (
                   <li key={item.title}>
-                    {item.children ? (
+                    {item.submenu ? (
                       <div className="space-y-1">
                         <NavLink
                           to={item.href}
@@ -50,7 +49,7 @@ export function Sidebar() {
                           {item.title}
                         </NavLink>
                         <ul className="ml-6 space-y-1">
-                          {item.children.map((child) => (
+                          {item.submenu.map((child) => (
                             <li key={child.title}>
                               <NavLink
                                 to={child.href}

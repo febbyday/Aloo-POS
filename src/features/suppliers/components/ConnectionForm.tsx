@@ -28,7 +28,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ConnectionConfig, connectionConfigSchema } from '../types';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { suppliersService } from '../services/suppliersService';
+// Update to use the factory-based service
+import suppliersService from '../services/factory-suppliers-service';
 
 interface ConnectionFormProps {
   config: ConnectionConfig;
